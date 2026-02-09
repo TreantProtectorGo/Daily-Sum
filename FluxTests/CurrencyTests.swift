@@ -27,8 +27,8 @@ final class CurrencyTests: XCTestCase {
         let toBase = twd.convertToBase(originalAmount) // Should be ~3.125 USD
         let backToTWD = twd.convertFromBase(toBase) // Should be ~100 TWD
         
-        XCTAssertEqual(toBase, 3.125, accuracy: 0.001)
-        XCTAssertEqual(backToTWD, originalAmount, accuracy: 0.001)
+        XCTAssertDecimalEqual(toBase, 3.125, accuracy: 0.001)
+        XCTAssertDecimalEqual(backToTWD, originalAmount, accuracy: 0.001)
     }
     
     func testCurrencyFormatterBasic() {
@@ -122,7 +122,7 @@ extension Decimal {
 }
 
 extension XCTestCase {
-    func XCTAssertEqual(_ expression1: Decimal, _ expression2: Decimal, accuracy: Decimal, file: StaticString = #file, line: UInt = #line) {
+    func XCTAssertDecimalEqual(_ expression1: Decimal, _ expression2: Decimal, accuracy: Decimal, file: StaticString = #file, line: UInt = #line) {
         XCTAssertTrue(
             expression1.isEqual(to: expression2, accuracy: accuracy),
             "\(expression1) is not equal to \(expression2) within accuracy \(accuracy)",

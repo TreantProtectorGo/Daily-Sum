@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import Flux
 
 final class LocalizationTests: XCTestCase {

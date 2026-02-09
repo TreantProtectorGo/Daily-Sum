@@ -37,9 +37,6 @@ struct SettingsView: View {
     @ViewBuilder
     private func settingsContent(viewModel: SettingsViewModel) -> some View {
         Form {
-            // Regional Settings
-            regionalSection(viewModel: viewModel)
-            
             // Currency Settings
             currencySection(viewModel: viewModel)
             
@@ -77,32 +74,6 @@ struct SettingsView: View {
             Button(String(localized: "action.ok", defaultValue: "OK")) { }
         } message: {
             Text(errorMessage)
-        }
-    }
-    
-    // MARK: - Regional Section
-    
-    @ViewBuilder
-    private func regionalSection(viewModel: SettingsViewModel) -> some View {
-        Section {
-            // Gain/loss color preview
-            HStack {
-                Text(String(localized: "settings.preview", defaultValue: "Preview"))
-                    .foregroundStyle(.secondary)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    Text("+$100")
-                        .foregroundStyle(viewModel.regionalSettings.gainColor)
-                    Text("-$50")
-                        .foregroundStyle(viewModel.regionalSettings.lossColor)
-                }
-                .font(.subheadline)
-                .fontWeight(.medium)
-            }
-        } header: {
-            Text(String(localized: "settings.regional", defaultValue: "Regional"))
         }
     }
     
