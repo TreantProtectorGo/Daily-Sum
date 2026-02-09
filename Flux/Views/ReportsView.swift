@@ -42,17 +42,6 @@ struct ReportsView: View {
                 tabContent
             }
             .navigationTitle(String(localized: "reports.title", defaultValue: "Reports"))
-            .toolbar {
-                if selectedTab == .budgets {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            showAddBudget = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
-                    }
-                }
-            }
             .task {
                 if reportsViewModel == nil {
                     reportsViewModel = ReportsViewModel(modelContext: modelContext)
@@ -79,6 +68,15 @@ struct ReportsView: View {
                 BudgetEntrySheet(budget: budget, onSave: {
                     Task { await budgetViewModel?.loadBudgets() }
                 })
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if selectedTab == .budgets {
+                    FloatingActionButton {
+                        showAddBudget = true
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
+                }
             }
         }
     }
@@ -178,6 +176,7 @@ struct ReportsView: View {
                     }
                 }
                 .padding()
+                .padding(.bottom, 80)
                 .glassContainer(spacing: 20)
             }
         }

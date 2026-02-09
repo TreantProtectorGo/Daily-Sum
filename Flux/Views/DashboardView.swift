@@ -1,34 +1,30 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Dashboard View
-
-/// Main dashboard screen showing financial overview
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: DashboardViewModel?
     
     @State private var showAddTransaction = false
     @State private var showAddAccount = false
+    @State private var showAddBudget = false
+    @State private var selectedAccount: Account?
+    @State private var selectedTransaction: Transaction?
+    @State private var selectedBudget: Budget?
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if let viewModel {
-                        // Total Balance Card
                         balanceCard(viewModel: viewModel)
                         
-                        // Monthly Summary
                         monthlySummarySection(viewModel: viewModel)
                         
-                        // Accounts Section
                         accountsSection(viewModel: viewModel)
                         
-                        // Recent Transactions Section
                         recentTransactionsSection(viewModel: viewModel)
                         
-                        // Budget Overview Section
                         budgetOverviewSection(viewModel: viewModel)
                     } else {
                         ProgressView()
@@ -36,13 +32,9 @@ struct DashboardView: View {
                     }
                 }
                 .padding()
+                .padding(.bottom, 80)
             }
             .navigationTitle(String(localized: "dashboard.title", defaultValue: "Dashboard"))
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    addMenu
-                }
-            }
             .refreshable {
                 await viewModel?.refresh()
             }
@@ -61,6 +53,44 @@ struct DashboardView: View {
                 AccountEntrySheet(onSave: {
                     Task { await viewModel?.refresh() }
                 })
+            }
+            .sheet(item: $selectedAccount) { account in
+                AccountEntrySheet(account: account, onSave: {
+                    Task { await viewModel?.refresh() }
+                })
+            }
+            .sheet(item: $selectedTransaction) { transaction in
+                TransactionEntrySheet(transaction: transaction, onSave: {
+                    Task { await viewModel?.refresh() }
+                })
+            }
+            .sheet(item: $selectedBudget) { budget in
+                BudgetEntrySheet(budget: budget, onSave: {
+                    Task { await viewModel?.refresh() }
+                })
+            }
+            .sheet(isPresented: $showAddBudget) {
+                BudgetEntrySheet(onSave: {
+                    Task { await viewModel?.refresh() }
+                })
+            }
+            .overlay(alignment: .bottomTrailing) {
+                ExpandableFAB(items: [
+                    .init(
+                        label: String(localized: "action.addTransaction", defaultValue: "Transaction"),
+                        systemImage: "plus.circle"
+                    ) {
+                        showAddTransaction = true
+                    },
+                    .init(
+                        label: String(localized: "action.addAccount", defaultValue: "Account"),
+                        systemImage: "building.columns"
+                    ) {
+                        showAddAccount = true
+                    }
+                ])
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
             }
         }
     }
@@ -158,6 +188,9 @@ struct DashboardView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                             .glassBackground(cornerRadius: 12, isInteractive: true)
+                            .onTapGesture {
+                                selectedAccount = account
+                            }
                     }
                     
                     if viewModel.accounts.count > 3 {
@@ -202,6 +235,10 @@ struct DashboardView: View {
                 VStack(spacing: 8) {
                     ForEach(viewModel.recentTransactions.prefix(5)) { transaction in
                         GlassTransactionRow(transaction: transaction)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedTransaction = transaction
+                            }
                     }
                     
                     if viewModel.recentTransactions.count > 5 {
@@ -245,6 +282,10 @@ struct DashboardView: View {
                 VStack(spacing: 8) {
                     ForEach(viewModel.topBudgets) { budget in
                         BudgetCard(budget: budget)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedBudget = budget
+                            }
                     }
                     
                     HStack {
@@ -262,40 +303,12 @@ struct DashboardView: View {
                     systemImage: "chart.pie",
                     actionTitle: String(localized: "empty.budgets.action", defaultValue: "Create Budget")
                 ) {
-                    // TODO: Show add budget sheet
+                    showAddBudget = true
                 }
             }
         }
     }
-    
-    // MARK: - Add Menu
-    
-    private var addMenu: some View {
-        Menu {
-            Button {
-                showAddTransaction = true
-            } label: {
-                Label(
-                    String(localized: "action.addTransaction", defaultValue: "Add Transaction"),
-                    systemImage: "plus.circle"
-                )
-            }
-            
-            Button {
-                showAddAccount = true
-            } label: {
-                Label(
-                    String(localized: "action.addAccount", defaultValue: "Add Account"),
-                    systemImage: "building.columns"
-                )
-            }
-        } label: {
-            Image(systemName: "plus")
-        }
-    }
 }
-
-// MARK: - Preview
 
 #Preview("Dashboard") {
     do {

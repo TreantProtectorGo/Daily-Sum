@@ -3,6 +3,7 @@ import SwiftData
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .dashboard
+    @State private var searchText: String = ""
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -39,7 +40,19 @@ struct MainTabView: View {
             ) {
                 SettingsView()
             }
+            
+            // iOS 26 Global Search - pinned to trailing edge of tab bar
+            Tab(value: .search, role: .search) {
+                NavigationStack {
+                    TransactionListView(searchText: $searchText)
+                }
+            }
         }
+        .searchable(
+            text: $searchText,
+            prompt: String(localized: "search.prompt", defaultValue: "Search accounts, transactions, budgets...")
+        )
+        .tabViewSearchActivation(.searchTabSelection)
         .tint(AppColors.primary)
     }
 }
@@ -49,6 +62,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     case transactions
     case reports
     case settings
+    case search
     
     var id: String { rawValue }
     
@@ -62,6 +76,8 @@ enum AppTab: String, CaseIterable, Identifiable {
             String(localized: "tab.reports", defaultValue: "Reports")
         case .settings:
             String(localized: "tab.settings", defaultValue: "Settings")
+        case .search:
+            String(localized: "tab.search", defaultValue: "Search")
         }
     }
     
@@ -71,6 +87,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .transactions: "list.bullet.rectangle"
         case .reports: "chart.bar.fill"
         case .settings: "gearshape.fill"
+        case .search: "magnifyingglass"
         }
     }
 }

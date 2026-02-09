@@ -13,7 +13,7 @@ struct BudgetEntrySheet: View {
     @State private var limitAmount: Decimal = 0
     @State private var period: BudgetPeriod = .monthly
     @State private var selectedCategory: Category?
-    @State private var currencyCode: String = SupportedCurrency.defaultFromLocale.rawValue
+    @State private var currencyCode: String = UserCurrencyPreference.currencyCode
     @State private var isActive: Bool = true
     @State private var alertThreshold: Decimal = 0.8
     @State private var alertsEnabled: Bool = true

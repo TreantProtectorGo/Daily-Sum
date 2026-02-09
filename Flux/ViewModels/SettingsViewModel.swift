@@ -2,13 +2,39 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+// MARK: - User Currency Preference (Persisted)
+
+/// Key for storing user's preferred currency in UserDefaults
+private let kDefaultCurrencyCode = "flux.defaultCurrencyCode"
+
+/// Global accessor for user's preferred currency code
+/// Use this in views that need the default currency without SettingsViewModel
+enum UserCurrencyPreference {
+    static var currencyCode: String {
+        get {
+            UserDefaults.standard.string(forKey: kDefaultCurrencyCode) 
+                ?? SupportedCurrency.defaultFromLocale.rawValue
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: kDefaultCurrencyCode)
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class SettingsViewModel {
     private let modelContext: ModelContext
     
     var regionalSettings = RegionalSettings.shared
-    var defaultCurrencyCode: String = SupportedCurrency.defaultFromLocale.rawValue
+    
+    /// User's selected default currency - persisted to UserDefaults
+    var defaultCurrencyCode: String {
+        didSet {
+            UserCurrencyPreference.currencyCode = defaultCurrencyCode
+        }
+    }
+    
     var defaultAccountId: UUID?
     
     var accountCount: Int = 0
@@ -37,6 +63,8 @@ final class SettingsViewModel {
     
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+        // Load persisted currency preference on init
+        self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
     }
     
     func loadSettings() async {

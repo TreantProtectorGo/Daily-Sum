@@ -1,16 +1,24 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Transaction List View
-
-/// Full transaction list with grouping, filtering, and search
 struct TransactionListView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: TransactionListViewModel?
     
+    private let filterAccount: Account?
+    private let externalSearchText: Binding<String>?
+    
     @State private var showAddTransaction = false
     @State private var selectedTransaction: Transaction?
     @State private var showFilters = false
+
+    init(
+        filterAccount: Account? = nil,
+        searchText: Binding<String>? = nil
+    ) {
+        self.filterAccount = filterAccount
+        self.externalSearchText = searchText
+    }
     
     var body: some View {
         Group {
@@ -23,14 +31,6 @@ struct TransactionListView: View {
         }
         .navigationTitle(String(localized: "transactions.title", defaultValue: "Transactions"))
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showAddTransaction = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-            }
-            
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     showFilters = true
@@ -39,21 +39,20 @@ struct TransactionListView: View {
                 }
             }
         }
-        .searchable(
-            text: Binding(
-                get: { viewModel?.searchText ?? "" },
-                set: { newValue in
-                    viewModel?.searchText = newValue
-                    viewModel?.applyFilters()
-                }
-            ),
-            prompt: String(localized: "transactions.search", defaultValue: "Search transactions")
-        )
         .task {
             if viewModel == nil {
                 viewModel = TransactionListViewModel(modelContext: modelContext)
+                viewModel?.selectedAccount = filterAccount
+                if let externalSearchText {
+                    viewModel?.searchText = externalSearchText.wrappedValue
+                }
             }
             await viewModel?.loadTransactions()
+        }
+        .onChange(of: externalSearchText?.wrappedValue ?? "") { _, newValue in
+            guard let viewModel else { return }
+            viewModel.searchText = newValue
+            viewModel.applyFilters()
         }
         .refreshable {
             await viewModel?.loadTransactions()
@@ -72,6 +71,13 @@ struct TransactionListView: View {
             if let viewModel {
                 TransactionFiltersSheet(viewModel: viewModel)
             }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            FloatingActionButton {
+                showAddTransaction = true
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
         }
     }
     
@@ -116,6 +122,11 @@ struct TransactionListView: View {
                         .foregroundStyle(.primary)
                 }
             }
+            
+            Color.clear
+                .frame(height: 80)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
     }
