@@ -119,15 +119,8 @@ struct AccountEntrySheet: View {
     private var currencyPicker: some View {
         Picker(String(localized: "account.currency", defaultValue: "Currency"), selection: $selectedCurrency) {
             ForEach(SupportedCurrency.allCases, id: \.self) { (currency: SupportedCurrency) in
-                HStack {
-                    Text(currency.flag)
-                    Text(currency.rawValue)
-                    Text("-")
-                        .foregroundStyle(.secondary)
-                    Text(currency.displayName)
-                        .foregroundStyle(.secondary)
-                }
-                .tag(currency)
+                Text("\(currency.symbol) \(currency.rawValue) - \(currency.displayName)")
+                    .tag(currency)
             }
         }
     }

@@ -101,11 +101,8 @@ struct BudgetEntrySheet: View {
             
             Picker(String(localized: "budget.currency", defaultValue: "Currency"), selection: $currencyCode) {
                 ForEach(currencyOptions, id: \.self) { currency in
-                    HStack {
-                        Text(currency.flag)
-                        Text(currency.rawValue)
-                    }
-                    .tag(currency.rawValue)
+                    Text("\(currency.symbol) \(currency.rawValue) - \(currency.displayName)")
+                        .tag(currency.rawValue)
                 }
             }
         }

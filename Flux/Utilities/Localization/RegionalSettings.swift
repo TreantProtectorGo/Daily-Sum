@@ -96,10 +96,10 @@ final class RegionalSettings {
             switch self {
             case .western:
                 String(localized: "settings.colorScheme.western", 
-                       defaultValue: "Western (Green +, Red -)")
+                       defaultValue: "Green ↑ Red ↓")
             case .eastern:
                 String(localized: "settings.colorScheme.eastern", 
-                       defaultValue: "Eastern (Red +, Green -)")
+                       defaultValue: "Red ↑ Green ↓")
             }
         }
     }

@@ -1,49 +1,127 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Reports View
+enum ReportsTab: String, CaseIterable, Identifiable {
+    case reports
+    case budgets
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .reports:
+            String(localized: "reports.tab.reports", defaultValue: "Reports")
+        case .budgets:
+            String(localized: "reports.tab.budgets", defaultValue: "Budgets")
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .reports: "chart.bar.fill"
+        case .budgets: "chart.pie.fill"
+        }
+    }
+}
 
-/// Financial reports with category breakdown and trends
 struct ReportsView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var viewModel: ReportsViewModel?
+    @State private var selectedTab: ReportsTab = .reports
+    @State private var reportsViewModel: ReportsViewModel?
+    @State private var budgetViewModel: BudgetListViewModel?
+    @State private var showAddBudget = false
+    @State private var selectedBudget: Budget?
     
     var body: some View {
         NavigationStack {
-            Group {
-                if let viewModel {
-                    reportsContent(viewModel: viewModel)
-                } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+            VStack(spacing: 0) {
+                tabPicker
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                
+                tabContent
             }
             .navigationTitle(String(localized: "reports.title", defaultValue: "Reports"))
-            .task {
-                if viewModel == nil {
-                    viewModel = ReportsViewModel(modelContext: modelContext)
+            .toolbar {
+                if selectedTab == .budgets {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showAddBudget = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                    }
                 }
-                await viewModel?.loadReports()
+            }
+            .task {
+                if reportsViewModel == nil {
+                    reportsViewModel = ReportsViewModel(modelContext: modelContext)
+                }
+                if budgetViewModel == nil {
+                    budgetViewModel = BudgetListViewModel(modelContext: modelContext)
+                }
+                await reportsViewModel?.loadReports()
+                await budgetViewModel?.loadBudgets()
             }
             .refreshable {
-                await viewModel?.loadReports()
+                if selectedTab == .reports {
+                    await reportsViewModel?.loadReports()
+                } else {
+                    await budgetViewModel?.loadBudgets()
+                }
+            }
+            .sheet(isPresented: $showAddBudget) {
+                BudgetEntrySheet(onSave: {
+                    Task { await budgetViewModel?.loadBudgets() }
+                })
+            }
+            .sheet(item: $selectedBudget) { budget in
+                BudgetEntrySheet(budget: budget, onSave: {
+                    Task { await budgetViewModel?.loadBudgets() }
+                })
             }
         }
     }
     
-    // MARK: - Content
+    @ViewBuilder
+    private var tabPicker: some View {
+        Picker("", selection: $selectedTab) {
+            ForEach(ReportsTab.allCases) { tab in
+                Label(tab.title, systemImage: tab.icon)
+                    .tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+    
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .reports:
+            if let viewModel = reportsViewModel {
+                reportsContent(viewModel: viewModel)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        case .budgets:
+            if let viewModel = budgetViewModel {
+                budgetContent(viewModel: viewModel)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
     
     @ViewBuilder
     private func reportsContent(viewModel: ReportsViewModel) -> some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Period Selector
                 periodSelector(viewModel: viewModel)
                 
-                // Summary Cards
                 summarySection(viewModel: viewModel)
                 
-                // Expense Breakdown
                 if !viewModel.expensesByCategory.isEmpty {
                     categoryBreakdownSection(
                         title: String(localized: "reports.expensesByCategory", defaultValue: "Expenses by Category"),
@@ -52,7 +130,6 @@ struct ReportsView: View {
                     )
                 }
                 
-                // Income Breakdown
                 if !viewModel.incomeByCategory.isEmpty {
                     categoryBreakdownSection(
                         title: String(localized: "reports.incomeByCategory", defaultValue: "Income by Category"),
@@ -61,22 +138,50 @@ struct ReportsView: View {
                     )
                 }
                 
-                // Monthly Trends
                 if !viewModel.monthlyTrends.isEmpty {
                     monthlyTrendsSection(viewModel: viewModel)
                 }
                 
-                // Empty state if no data
                 if viewModel.expensesByCategory.isEmpty && viewModel.incomeByCategory.isEmpty {
                     EmptyStateView.noDataForPeriod()
                         .padding(.top, 40)
                 }
             }
             .padding()
+            .glassContainer(spacing: 20)
         }
     }
     
-    // MARK: - Period Selector
+    @ViewBuilder
+    private func budgetContent(viewModel: BudgetListViewModel) -> some View {
+        if viewModel.budgets.isEmpty {
+            budgetEmptyState
+        } else {
+            ScrollView {
+                VStack(spacing: 20) {
+                    budgetSummaryCard(viewModel: viewModel)
+                    
+                    if !viewModel.activeBudgets.isEmpty {
+                        budgetSection(
+                            title: String(localized: "budgets.active", defaultValue: "Active Budgets"),
+                            budgets: viewModel.activeBudgets,
+                            viewModel: viewModel
+                        )
+                    }
+                    
+                    if !viewModel.inactiveBudgets.isEmpty {
+                        budgetSection(
+                            title: String(localized: "budgets.inactive", defaultValue: "Inactive Budgets"),
+                            budgets: viewModel.inactiveBudgets,
+                            viewModel: viewModel
+                        )
+                    }
+                }
+                .padding()
+                .glassContainer(spacing: 20)
+            }
+        }
+    }
     
     @ViewBuilder
     private func periodSelector(viewModel: ReportsViewModel) -> some View {
@@ -104,14 +209,10 @@ struct ReportsView: View {
         }
     }
     
-    // MARK: - Summary Section
-    
     @ViewBuilder
     private func summarySection(viewModel: ReportsViewModel) -> some View {
         VStack(spacing: 12) {
-            // Income vs Expenses
             HStack(spacing: 12) {
-                // Income
                 GlassCard(cornerRadius: 16, padding: 16) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
@@ -129,7 +230,6 @@ struct ReportsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
-                // Expenses
                 GlassCard(cornerRadius: 16, padding: 16) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
@@ -148,9 +248,7 @@ struct ReportsView: View {
                 }
             }
             
-            // Net Income & Savings Rate
             HStack(spacing: 12) {
-                // Net
                 GlassCard(cornerRadius: 16, padding: 16) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(String(localized: "reports.netIncome", defaultValue: "Net Income"))
@@ -168,7 +266,6 @@ struct ReportsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
-                // Savings Rate
                 GlassCard(cornerRadius: 16, padding: 16) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(String(localized: "reports.savingsRate", defaultValue: "Savings Rate"))
@@ -190,8 +287,6 @@ struct ReportsView: View {
             }
         }
     }
-    
-    // MARK: - Category Breakdown Section
     
     @ViewBuilder
     private func categoryBreakdownSection(
@@ -227,8 +322,6 @@ struct ReportsView: View {
         }
     }
     
-    // MARK: - Monthly Trends Section
-    
     @ViewBuilder
     private func monthlyTrendsSection(viewModel: ReportsViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -249,9 +342,126 @@ struct ReportsView: View {
             }
         }
     }
+    
+    @ViewBuilder
+    private func budgetSummaryCard(viewModel: BudgetListViewModel) -> some View {
+        GlassCard(cornerRadius: 20, padding: 20) {
+            VStack(spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(String(localized: "budgets.totalSpent", defaultValue: "Total Spent"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Text(CurrencyFormatter.shared.format(viewModel.totalSpent, currencyCode: SupportedCurrency.defaultFromLocale.rawValue))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(String(localized: "budgets.totalBudget", defaultValue: "Total Budget"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Text(CurrencyFormatter.shared.format(viewModel.totalBudgeted, currencyCode: SupportedCurrency.defaultFromLocale.rawValue))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                    }
+                }
+                
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.2))
+                        
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(AppColors.budgetProgressColor(for: viewModel.overallProgress))
+                            .frame(width: min(geometry.size.width * CGFloat(viewModel.overallProgress), geometry.size.width))
+                    }
+                }
+                .frame(height: 12)
+                
+                HStack {
+                    budgetStatBadge(
+                        value: viewModel.budgetsOverLimit,
+                        label: String(localized: "budgets.overLimit", defaultValue: "Over Limit"),
+                        color: AppColors.budgetDanger
+                    )
+                    
+                    Spacer()
+                    
+                    budgetStatBadge(
+                        value: viewModel.budgetsNearLimit,
+                        label: String(localized: "budgets.nearLimit", defaultValue: "Near Limit"),
+                        color: AppColors.budgetWarning
+                    )
+                    
+                    Spacer()
+                    
+                    budgetStatBadge(
+                        value: viewModel.activeBudgets.count - viewModel.budgetsOverLimit - viewModel.budgetsNearLimit,
+                        label: String(localized: "budgets.onTrack", defaultValue: "On Track"),
+                        color: AppColors.budgetSafe
+                    )
+                }
+            }
+        }
+    }
+    
+    private func budgetStatBadge(value: Int, label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text("\(value)")
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundStyle(color)
+            
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    @ViewBuilder
+    private func budgetSection(title: String, budgets: [Budget], viewModel: BudgetListViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+            
+            ForEach(budgets) { budget in
+                BudgetRowCard(
+                    budget: budget,
+                    onTap: { selectedBudget = budget },
+                    onToggleActive: {
+                        Task { try? await viewModel.toggleBudgetActive(budget) }
+                    },
+                    onDelete: {
+                        Task { try? await viewModel.deleteBudget(budget) }
+                    }
+                )
+            }
+        }
+    }
+    
+    private var budgetEmptyState: some View {
+        ContentUnavailableView {
+            Label(
+                String(localized: "empty.budgets.title", defaultValue: "No Budgets"),
+                systemImage: "chart.pie"
+            )
+        } description: {
+            Text(String(localized: "empty.budgets.message", defaultValue: "Create budgets to track your spending goals."))
+        } actions: {
+            Button(String(localized: "empty.budgets.action", defaultValue: "Create Budget")) {
+                showAddBudget = true
+            }
+            .buttonStyle(.fluxGlassProminent)
+        }
+    }
 }
-
-// MARK: - Category Breakdown Row
 
 struct CategoryBreakdownRow: View {
     let category: ReportsViewModel.CategorySummary
@@ -260,7 +470,6 @@ struct CategoryBreakdownRow: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                // Category info
                 Circle()
                     .fill(category.color)
                     .frame(width: 12, height: 12)
@@ -270,7 +479,6 @@ struct CategoryBreakdownRow: View {
                 
                 Spacer()
                 
-                // Amount and percentage
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(currency: category.amount, code: currencyCode)
                         .font(.subheadline)
@@ -285,7 +493,6 @@ struct CategoryBreakdownRow: View {
                 }
             }
             
-            // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2)
@@ -301,8 +508,6 @@ struct CategoryBreakdownRow: View {
     }
 }
 
-// MARK: - Monthly Trend Row
-
 struct MonthlyTrendRow: View {
     let trend: ReportsViewModel.MonthlyTrend
     let currencyCode: String
@@ -311,14 +516,12 @@ struct MonthlyTrendRow: View {
     
     var body: some View {
         HStack {
-            // Month
             Text(trend.month.formatted(.dateTime.month(.abbreviated).year()))
                 .font(.subheadline)
                 .frame(width: 80, alignment: .leading)
             
             Spacer()
             
-            // Income
             VStack(alignment: .trailing, spacing: 2) {
                 Text(currency: trend.income, code: currencyCode)
                     .font(.caption)
@@ -329,7 +532,6 @@ struct MonthlyTrendRow: View {
             }
             .frame(width: 80)
             
-            // Expenses
             VStack(alignment: .trailing, spacing: 2) {
                 Text(currency: trend.expenses, code: currencyCode)
                     .font(.caption)
@@ -340,7 +542,6 @@ struct MonthlyTrendRow: View {
             }
             .frame(width: 80)
             
-            // Net
             VStack(alignment: .trailing, spacing: 2) {
                 AmountText(
                     trend.net,
@@ -358,7 +559,95 @@ struct MonthlyTrendRow: View {
     }
 }
 
-// MARK: - Preview
+struct BudgetRowCard: View {
+    let budget: Budget
+    let onTap: () -> Void
+    let onToggleActive: () -> Void
+    let onDelete: () -> Void
+    
+    @State private var showDeleteConfirmation = false
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    if let category = budget.category {
+                        CategoryIcon(category: category, size: .small)
+                        Text(category.displayName)
+                            .font(.headline)
+                    } else {
+                        Image(systemName: "chart.pie.fill")
+                            .foregroundStyle(.secondary)
+                        Text(budget.category?.displayName ?? String(localized: "budget.unnamed", defaultValue: "Unnamed Budget"))
+                            .font(.headline)
+                    }
+                    
+                    Spacer()
+                    
+                    Text(budget.period.localizedName)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondary.opacity(0.15))
+                        .clipShape(Capsule())
+                    
+                    if !budget.isActive {
+                        Image(systemName: "pause.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                BudgetProgressView(budget: budget)
+            }
+            .padding(16)
+        }
+        .buttonStyle(.plain)
+        .glassBackground(cornerRadius: 16, isInteractive: true)
+        .contextMenu {
+            Button {
+                onTap()
+            } label: {
+                Label(
+                    String(localized: "action.edit", defaultValue: "Edit"),
+                    systemImage: "pencil"
+                )
+            }
+            
+            Button {
+                onToggleActive()
+            } label: {
+                Label(
+                    budget.isActive
+                        ? String(localized: "action.deactivate", defaultValue: "Deactivate")
+                        : String(localized: "action.activate", defaultValue: "Activate"),
+                    systemImage: budget.isActive ? "pause.circle" : "play.circle"
+                )
+            }
+            
+            Divider()
+            
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label(
+                    String(localized: "action.delete", defaultValue: "Delete"),
+                    systemImage: "trash"
+                )
+            }
+        }
+        .confirmationDialog(
+            String(localized: "budget.deleteConfirmation.title", defaultValue: "Delete Budget?"),
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "action.delete", defaultValue: "Delete"), role: .destructive) {
+                onDelete()
+            }
+        } message: {
+            Text(String(localized: "budget.deleteConfirmation.message", defaultValue: "This action cannot be undone."))
+        }
+    }
+}
 
 #Preview("Reports") {
     do {

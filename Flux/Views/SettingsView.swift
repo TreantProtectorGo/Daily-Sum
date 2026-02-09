@@ -131,8 +131,6 @@ struct SettingsView: View {
             }
         } header: {
             Text(String(localized: "settings.regional", defaultValue: "Regional"))
-        } footer: {
-            Text(String(localized: "settings.colorScheme.footer", defaultValue: "Western markets typically use green for gains and red for losses. East Asian markets traditionally use red for gains and green for losses."))
         }
     }
     
@@ -149,15 +147,8 @@ struct SettingsView: View {
                 )
             ) {
                 ForEach(viewModel.availableCurrencies, id: \.self) { currency in
-                    HStack {
-                        Text(currency.flag)
-                        Text(currency.rawValue)
-                        Text("-")
-                            .foregroundStyle(.secondary)
-                        Text(currency.displayName)
-                            .foregroundStyle(.secondary)
-                    }
-                    .tag(currency.rawValue)
+                    Text("\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)")
+                        .tag(currency.rawValue)
                 }
             }
         }
@@ -232,12 +223,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             
-            // Privacy note
             Label {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(String(localized: "settings.privacy.title", defaultValue: "Privacy First"))
                         .font(.subheadline)
-                    Text(String(localized: "settings.privacy.message", defaultValue: "All your data stays on your device. No accounts, no cloud sync, no tracking."))
+                    Text(String(localized: "settings.privacy.message", defaultValue: "All data stored locally on device. iCloud Sync and premium features coming soon."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

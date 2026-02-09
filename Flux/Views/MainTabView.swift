@@ -25,16 +25,6 @@ struct MainTabView: View {
             }
             
             Tab(
-                String(localized: "tab.budgets", defaultValue: "Budgets"),
-                systemImage: "chart.pie.fill",
-                value: .budgets
-            ) {
-                NavigationStack {
-                    BudgetListView()
-                }
-            }
-            
-            Tab(
                 String(localized: "tab.reports", defaultValue: "Reports"),
                 systemImage: "chart.bar.fill",
                 value: .reports
@@ -57,7 +47,6 @@ struct MainTabView: View {
 enum AppTab: String, CaseIterable, Identifiable {
     case dashboard
     case transactions
-    case budgets
     case reports
     case settings
     
@@ -69,8 +58,6 @@ enum AppTab: String, CaseIterable, Identifiable {
             String(localized: "tab.dashboard", defaultValue: "Dashboard")
         case .transactions:
             String(localized: "tab.transactions", defaultValue: "Transactions")
-        case .budgets:
-            String(localized: "tab.budgets", defaultValue: "Budgets")
         case .reports:
             String(localized: "tab.reports", defaultValue: "Reports")
         case .settings:
@@ -82,7 +69,6 @@ enum AppTab: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard: "house.fill"
         case .transactions: "list.bullet.rectangle"
-        case .budgets: "chart.pie.fill"
         case .reports: "chart.bar.fill"
         case .settings: "gearshape.fill"
         }

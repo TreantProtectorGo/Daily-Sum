@@ -121,7 +121,6 @@ struct TransactionEntrySheet: View {
                 selectedCategory: $selectedCategory,
                 transactionType: transactionType
             )
-            .id(transactionType) // Force view recreation when type changes to refresh @Query
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             .listRowBackground(Color.clear)
         }

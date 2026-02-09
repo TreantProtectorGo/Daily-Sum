@@ -247,16 +247,12 @@ struct DashboardView: View {
                         BudgetCard(budget: budget)
                     }
                     
-                    NavigationLink {
-                        BudgetListView()
-                    } label: {
-                        HStack {
-                            Text(String(localized: "dashboard.viewAll", defaultValue: "View All"))
-                            Image(systemName: "chevron.right")
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        Text(String(localized: "dashboard.viewAllInReports", defaultValue: "View all in Reports tab"))
+                        Image(systemName: "arrow.right")
                     }
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
                     .padding(.top, 4)
                 }
             } else {

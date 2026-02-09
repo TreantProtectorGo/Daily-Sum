@@ -5,11 +5,9 @@ struct CategoryPickerView: View {
     @Binding var selectedCategory: Category?
     let transactionType: TransactionType
     
-    // Fetch ALL categories - filtering in predicate doesn't work with enum types
     @Query(sort: \Category.nameKey) private var allCategories: [Category]
-    @State private var isExpanded = false
+    @State private var showCategorySheet = false
     
-    // Filter categories by type in computed property (SwiftData workaround)
     private var categories: [Category] {
         allCategories.filter { $0.type == transactionType }
     }
@@ -20,59 +18,87 @@ struct CategoryPickerView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(.spring(duration: 0.3)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    if let category = selectedCategory {
-                        CategoryIcon(category: category, size: .small)
-                        Text(category.displayName)
-                            .font(.headline)
-                    } else {
-                        PlaceholderCategoryIcon(size: .small)
-                        Text(String(localized: "category.select", defaultValue: "Select Category"))
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
+        Button {
+            showCategorySheet = true
+        } label: {
+            HStack {
+                if let category = selectedCategory {
+                    CategoryIcon(category: category, size: .small)
+                    Text(category.displayName)
+                        .font(.headline)
+                } else {
+                    PlaceholderCategoryIcon(size: .small)
+                    Text(String(localized: "category.select", defaultValue: "Select Category"))
+                        .font(.headline)
                         .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
-                .padding()
-                .glassBackground(cornerRadius: 12, isInteractive: true)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            
-            if isExpanded {
-                categoryGrid
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            .padding()
+            .glassBackground(cornerRadius: 12, isInteractive: true)
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showCategorySheet) {
+            CategorySelectionSheet(
+                selectedCategory: $selectedCategory,
+                categories: categories,
+                transactionType: transactionType
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
+}
+
+private struct CategorySelectionSheet: View {
+    @Binding var selectedCategory: Category?
+    let categories: [Category]
+    let transactionType: TransactionType
+    @Environment(\.dismiss) private var dismiss
     
-    private var categoryGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 12) {
-            ForEach(categories) { category in
-                CategoryGridItem(
-                    category: category,
-                    isSelected: selectedCategory?.id == category.id
-                ) {
-                    selectedCategory = category
-                    withAnimation(.spring(duration: 0.3)) {
-                        isExpanded = false
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                    ForEach(categories) { category in
+                        CategoryGridItem(
+                            category: category,
+                            isSelected: selectedCategory?.id == category.id
+                        ) {
+                            selectedCategory = category
+                            dismiss()
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle(transactionType == .expense
+                ? String(localized: "category.select.expense", defaultValue: "Select Category")
+                : String(localized: "category.select.income", defaultValue: "Select Category"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "action.cancel", defaultValue: "Cancel")) {
+                        dismiss()
+                    }
+                }
+                
+                if selectedCategory != nil {
+                    ToolbarItem(placement: .destructiveAction) {
+                        Button(String(localized: "action.clear", defaultValue: "Clear")) {
+                            selectedCategory = nil
+                            dismiss()
+                        }
+                        .foregroundStyle(.red)
                     }
                 }
             }
         }
-        .padding()
-        .glassBackground(cornerRadius: 16)
     }
 }
 
@@ -88,16 +114,18 @@ private struct CategoryGridItem: View {
                     .overlay {
                         if isSelected {
                             Circle()
-                                .stroke(category.color, lineWidth: 2)
-                                .padding(-4)
+                                .stroke(category.color, lineWidth: 3)
+                                .padding(-6)
                         }
                     }
                 
                 Text(category.displayName)
                     .font(.caption)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(isSelected ? .primary : .secondary)
             }
+            .frame(minWidth: 70)
         }
         .buttonStyle(.plain)
     }
@@ -107,10 +135,8 @@ struct InlineCategoryPicker: View {
     @Binding var selectedCategory: Category?
     let transactionType: TransactionType
     
-    // Fetch ALL categories - filtering in predicate doesn't work with enum types
     @Query(sort: \Category.nameKey) private var allCategories: [Category]
     
-    // Filter categories by type in computed property (SwiftData workaround)
     private var categories: [Category] {
         allCategories.filter { $0.type == transactionType }
     }
