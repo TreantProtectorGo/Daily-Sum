@@ -22,16 +22,9 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(cnRegion, .china)
     }
     
-    func testColorSchemeForRegion() {
-        // Western: green = gain, red = loss
-        let western = RegionalSettings.GainLossColorScheme.western
-        XCTAssertEqual(western.gainColor, .green)
-        XCTAssertEqual(western.lossColor, .red)
-        
-        // Eastern: red = gain, green = loss
-        let eastern = RegionalSettings.GainLossColorScheme.eastern
-        XCTAssertEqual(eastern.gainColor, .red)
-        XCTAssertEqual(eastern.lossColor, .green)
+    func testGainLossColorsAreFixed() {
+        XCTAssertEqual(RegionalSettings.shared.gainColor, .green)
+        XCTAssertEqual(RegionalSettings.shared.lossColor, .red)
     }
     
     func testDefaultCurrencyForRegion() {

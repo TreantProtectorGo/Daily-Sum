@@ -57,10 +57,6 @@ final class SettingsViewModel {
         SupportedCurrency.allCases
     }
     
-    var colorSchemes: [RegionalSettings.GainLossColorScheme] {
-        RegionalSettings.GainLossColorScheme.allCases
-    }
-    
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         // Load persisted currency preference on init
@@ -85,14 +81,6 @@ final class SettingsViewModel {
         }
         
         isLoading = false
-    }
-    
-    func setColorScheme(_ scheme: RegionalSettings.GainLossColorScheme?) {
-        regionalSettings.colorSchemeOverride = scheme
-    }
-    
-    func resetToRegionalDefault() {
-        regionalSettings.colorSchemeOverride = nil
     }
     
     func clearAllData() async throws {

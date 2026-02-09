@@ -85,35 +85,7 @@ struct SettingsView: View {
     @ViewBuilder
     private func regionalSection(viewModel: SettingsViewModel) -> some View {
         Section {
-            // Color Scheme
-            Picker(
-                String(localized: "settings.colorScheme", defaultValue: "Gain/Loss Colors"),
-                selection: Binding(
-                    get: { viewModel.regionalSettings.colorSchemeOverride },
-                    set: { viewModel.setColorScheme($0) }
-                )
-            ) {
-                Text(String(localized: "settings.colorScheme.auto", defaultValue: "Auto (Regional)"))
-                    .tag(nil as RegionalSettings.GainLossColorScheme?)
-                
-                ForEach(viewModel.colorSchemes, id: \.self) { scheme in
-                    HStack {
-                        Text(scheme.localizedName)
-                        Spacer()
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(scheme.gainColor)
-                                .frame(width: 12, height: 12)
-                            Circle()
-                                .fill(scheme.lossColor)
-                                .frame(width: 12, height: 12)
-                        }
-                    }
-                    .tag(scheme as RegionalSettings.GainLossColorScheme?)
-                }
-            }
-            
-            // Current scheme preview
+            // Gain/loss color preview
             HStack {
                 Text(String(localized: "settings.preview", defaultValue: "Preview"))
                     .foregroundStyle(.secondary)

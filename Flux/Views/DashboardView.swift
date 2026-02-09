@@ -89,7 +89,7 @@ struct DashboardView: View {
                         showAddAccount = true
                     }
                 ])
-                .padding(.trailing, 20)
+                .padding(.trailing, 25)
                 .padding(.bottom, 20)
             }
         }

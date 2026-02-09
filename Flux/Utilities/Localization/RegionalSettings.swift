@@ -6,23 +6,17 @@ final class RegionalSettings {
     static let shared = RegionalSettings()
     
     var region: Region
-    var colorSchemeOverride: GainLossColorScheme?
     
     private init() {
         self.region = Region.fromLocale()
-        self.colorSchemeOverride = nil
-    }
-    
-    var gainLossColors: GainLossColorScheme {
-        colorSchemeOverride ?? region.defaultColorScheme
     }
     
     var gainColor: Color {
-        gainLossColors.gainColor
+        .green
     }
     
     var lossColor: Color {
-        gainLossColors.lossColor
+        .red
     }
     
     func color(for value: Decimal) -> Color {
@@ -54,52 +48,11 @@ final class RegionalSettings {
             }
         }
         
-        var defaultColorScheme: GainLossColorScheme {
-            switch self {
-            case .unitedStates, .other:
-                .western
-            case .taiwan, .china:
-                .eastern
-            }
-        }
-        
         var defaultCurrency: SupportedCurrency {
             switch self {
             case .unitedStates, .other: .USD
             case .taiwan: .TWD
             case .china: .CNY
-            }
-        }
-    }
-    
-    enum GainLossColorScheme: String, CaseIterable, Identifiable {
-        case western
-        case eastern
-        
-        var id: String { rawValue }
-        
-        var gainColor: Color {
-            switch self {
-            case .western: .green
-            case .eastern: .red
-            }
-        }
-        
-        var lossColor: Color {
-            switch self {
-            case .western: .red
-            case .eastern: .green
-            }
-        }
-        
-        var localizedName: String {
-            switch self {
-            case .western:
-                String(localized: "settings.colorScheme.western", 
-                       defaultValue: "Green ↑ Red ↓")
-            case .eastern:
-                String(localized: "settings.colorScheme.eastern", 
-                       defaultValue: "Red ↑ Green ↓")
             }
         }
     }
