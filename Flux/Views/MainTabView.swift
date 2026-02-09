@@ -45,13 +45,13 @@ struct MainTabView: View {
             Tab(value: .search, role: .search) {
                 NavigationStack {
                     TransactionListView(searchText: $searchText)
+                    .searchable(
+                        text: $searchText,
+                        prompt: String(localized: "search.prompt", defaultValue: "Search accounts, transactions, budgets...")
+                    )
                 }
             }
         }
-        .searchable(
-            text: $searchText,
-            prompt: String(localized: "search.prompt", defaultValue: "Search accounts, transactions, budgets...")
-        )
         .tabViewSearchActivation(.searchTabSelection)
         .tint(AppColors.primary)
     }
