@@ -32,6 +32,23 @@ final class FluxUITests: XCTestCase {
     }
 
     @MainActor
+    func testCategoryPickerOpensWhenTappingBlankArea() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.tabBars.buttons["Transactions"].tap()
+        app.buttons["transactions.addButton"].tap()
+
+        let categoryPicker = app.buttons["transaction.categoryPicker.trigger"]
+        XCTAssertTrue(categoryPicker.waitForExistence(timeout: 2))
+
+        let blankArea = categoryPicker.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5))
+        blankArea.tap()
+
+        XCTAssertTrue(app.otherElements["transaction.categoryPicker.sheet"].waitForExistence(timeout: 1))
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {

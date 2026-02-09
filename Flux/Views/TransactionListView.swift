@@ -76,6 +76,7 @@ struct TransactionListView: View {
             FloatingActionButton {
                 showAddTransaction = true
             }
+            .accessibilityIdentifier("transactions.addButton")
             .padding(.trailing, 20)
             .padding(.bottom, 20)
         }

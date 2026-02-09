@@ -39,10 +39,13 @@ struct CategoryPickerView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
             .glassBackground(cornerRadius: 12, isInteractive: true)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("transaction.categoryPicker.trigger")
         .sheet(isPresented: $showCategorySheet) {
             CategorySelectionSheet(
                 selectedCategory: $selectedCategory,
@@ -77,6 +80,7 @@ private struct CategorySelectionSheet: View {
                 }
                 .padding()
             }
+            .accessibilityIdentifier("transaction.categoryPicker.sheet")
             .navigationTitle(transactionType == .expense
                 ? String(localized: "category.select.expense", defaultValue: "Select Category")
                 : String(localized: "category.select.income", defaultValue: "Select Category"))
