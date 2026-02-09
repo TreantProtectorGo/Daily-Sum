@@ -1,0 +1,165 @@
+import Foundation
+import SwiftData
+
+/// Service for managing Budget CRUD operations
+@MainActor
+@Observable
+final class BudgetService {
+    private let context: ModelContext
+    
+    init(context: ModelContext) {
+        self.context = context
+    }
+    
+    // MARK: - Create
+    
+    /// Creates a new budget
+    @discardableResult
+    func create(
+        category: Category,
+        limitAmount: Decimal,
+        currencyCode: String,
+        period: BudgetPeriod = .monthly,
+        alertThreshold: Decimal = 0.8,
+        alertsEnabled: Bool = true
+    ) throws -> Budget {
+        // Validate category is expense type
+        guard category.type == .expense else {
+            throw BudgetError.incomeCategory
+        }
+        
+        let budget = Budget(
+            limitAmount: limitAmount,
+            currencyCode: currencyCode,
+            period: period,
+            alertThreshold: alertThreshold,
+            alertsEnabled: alertsEnabled,
+            category: category
+        )
+        context.insert(budget)
+        try context.save()
+        return budget
+    }
+    
+    // MARK: - Read
+    
+    /// Fetches all active budgets
+    func fetch(activeOnly: Bool = true) throws -> [Budget] {
+        var descriptor = FetchDescriptor<Budget>(
+            sortBy: [SortDescriptor(\.createdAt)]
+        )
+        
+        if activeOnly {
+            descriptor.predicate = #Predicate { $0.isActive }
+        }
+        
+        return try context.fetch(descriptor)
+    }
+    
+    /// Fetches a budget by ID
+    func fetch(byId id: UUID) throws -> Budget? {
+        let descriptor = FetchDescriptor<Budget>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try context.fetch(descriptor).first
+    }
+    
+    /// Fetches the budget for a specific category
+    func fetch(forCategory category: Category) throws -> Budget? {
+        let categoryId = category.id
+        let descriptor = FetchDescriptor<Budget>(
+            predicate: #Predicate { $0.category?.id == categoryId && $0.isActive }
+        )
+        return try context.fetch(descriptor).first
+    }
+    
+    // MARK: - Update
+    
+    /// Updates a budget
+    func update(
+        _ budget: Budget,
+        limitAmount: Decimal? = nil,
+        period: BudgetPeriod? = nil,
+        alertThreshold: Decimal? = nil,
+        alertsEnabled: Bool? = nil
+    ) throws {
+        if let limitAmount { budget.limitAmount = limitAmount }
+        if let period { budget.period = period }
+        if let alertThreshold { budget.alertThreshold = alertThreshold }
+        if let alertsEnabled { budget.alertsEnabled = alertsEnabled }
+        
+        try context.save()
+    }
+    
+    /// Deactivates a budget
+    func deactivate(_ budget: Budget) throws {
+        budget.isActive = false
+        try context.save()
+    }
+    
+    /// Reactivates a budget
+    func reactivate(_ budget: Budget) throws {
+        budget.isActive = true
+        try context.save()
+    }
+    
+    // MARK: - Delete
+    
+    /// Deletes a budget
+    func delete(_ budget: Budget) throws {
+        context.delete(budget)
+        try context.save()
+    }
+    
+    // MARK: - Status
+    
+    /// Gets the status of all active budgets
+    func allBudgetStatuses(for date: Date = .now) throws -> [BudgetStatus] {
+        let budgets = try fetch(activeOnly: true)
+        return budgets.map { budget in
+            BudgetStatus(
+                budget: budget,
+                spent: budget.spentAmount(in: context, for: date),
+                limit: budget.limitAmount,
+                isAlertTriggered: budget.isAlertTriggered(in: context, for: date),
+                isExceeded: budget.isExceeded(in: context, for: date)
+            )
+        }
+    }
+    
+    /// Gets budgets that have triggered alerts
+    func triggeredAlerts(for date: Date = .now) throws -> [Budget] {
+        try fetch(activeOnly: true).filter { budget in
+            budget.isAlertTriggered(in: context, for: date)
+        }
+    }
+    
+    // MARK: - Types
+    
+    struct BudgetStatus {
+        let budget: Budget
+        let spent: Decimal
+        let limit: Decimal
+        let isAlertTriggered: Bool
+        let isExceeded: Bool
+        
+        var remaining: Decimal { limit - spent }
+        var percentage: Decimal { limit > 0 ? spent / limit : 0 }
+    }
+    
+    // MARK: - Errors
+    
+    enum BudgetError: LocalizedError {
+        case incomeCategory
+        case duplicateBudget
+        
+        var errorDescription: String? {
+            switch self {
+            case .incomeCategory:
+                "Budgets can only be created for expense categories"
+            case .duplicateBudget:
+                "A budget already exists for this category"
+            }
+        }
+    }
+}

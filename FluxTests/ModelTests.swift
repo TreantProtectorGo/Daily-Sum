@@ -1,0 +1,196 @@
+import XCTest
+import SwiftData
+@testable import Flux
+
+@MainActor
+final class ModelTests: XCTestCase {
+    var container: ModelContainer!
+    var context: ModelContext!
+    
+    override func setUp() async throws {
+        container = try ModelContainerConfiguration.createTestContainer()
+        context = container.mainContext
+    }
+    
+    override func tearDown() async throws {
+        container = nil
+        context = nil
+    }
+    
+    // MARK: - Currency Tests
+    
+    func testCurrencyConversion() throws {
+        let usd = Currency(code: "USD", exchangeRateToBase: 1.0, isBaseCurrency: true)
+        let twd = Currency(code: "TWD", exchangeRateToBase: 0.031) // 1 TWD = 0.031 USD
+        
+        context.insert(usd)
+        context.insert(twd)
+        
+        let amountInTWD: Decimal = 1000
+        let convertedToUSD = twd.convertToBase(amountInTWD)
+        
+        XCTAssertEqual(convertedToUSD, 31, "1000 TWD should equal 31 USD")
+    }
+    
+    // MARK: - Category Tests
+    
+    func testCategoryHierarchy() throws {
+        let parent = Category(
+            nameKey: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF0000",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(parent)
+        
+        let child = Category(
+            nameKey: "Restaurants",
+            icon: "cup.and.saucer",
+            colorHex: "#FF5555",
+            type: .expense,
+            isSystemDefault: false,
+            parentCategory: parent
+        )
+        context.insert(child)
+        
+        try context.save()
+        
+        XCTAssertTrue(child.isSubcategory)
+        XCTAssertEqual(parent.subcategories.count, 1)
+        XCTAssertEqual(parent.subcategories.first?.nameKey, "Restaurants")
+    }
+    
+    // MARK: - Account Tests
+    
+    func testAccountBalance() throws {
+        let account = Account(
+            name: "Test Account",
+            type: .bank,
+            currencyCode: "USD",
+            initialBalance: 1000
+        )
+        context.insert(account)
+        
+        let income = Transaction(
+            amount: 500,
+            currencyCode: "USD",
+            type: .income,
+            account: account,
+            category: nil
+        )
+        context.insert(income)
+        
+        let expense = Transaction(
+            amount: 200,
+            currencyCode: "USD",
+            type: .expense,
+            account: account,
+            category: nil
+        )
+        context.insert(expense)
+        
+        try context.save()
+        
+        XCTAssertEqual(account.currentBalance, 1300, "Balance should be 1000 + 500 - 200")
+    }
+    
+    // MARK: - Transaction Tests
+    
+    func testRecurringTransactionTemplate() throws {
+        let account = Account(name: "Test", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        
+        let template = Transaction(
+            amount: 100,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            account: account
+        )
+        context.insert(template)
+        
+        let instance = Transaction.fromTemplate(template, forDate: .now)
+        context.insert(instance)
+        
+        try context.save()
+        
+        XCTAssertTrue(template.isRecurringTemplate)
+        XCTAssertFalse(instance.isRecurringTemplate)
+        XCTAssertEqual(instance.recurringTemplateId, template.id)
+        XCTAssertTrue(instance.isGeneratedFromRecurring)
+    }
+    
+    // MARK: - Budget Tests
+    
+    func testBudgetUsage() throws {
+        let category = Category(
+            nameKey: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF0000",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(category)
+        
+        let budget = Budget(
+            limitAmount: 500,
+            currencyCode: "USD",
+            period: .monthly,
+            alertThreshold: 0.8,
+            category: category
+        )
+        context.insert(budget)
+        
+        let account = Account(name: "Test", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        
+        // Add expense within current month
+        let expense = Transaction(
+            amount: 400,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            account: account,
+            category: category
+        )
+        context.insert(expense)
+        
+        try context.save()
+        
+        let spent = budget.spentAmount(in: context)
+        let percentage = budget.usagePercentage(in: context)
+        
+        XCTAssertEqual(spent, 400)
+        XCTAssertEqual(percentage, 0.8)
+        XCTAssertTrue(budget.isAlertTriggered(in: context))
+        XCTAssertFalse(budget.isExceeded(in: context))
+    }
+    
+    // MARK: - RecurrenceRule Tests
+    
+    func testRecurrenceRuleNextDate() {
+        let startDate = Date(timeIntervalSince1970: 0) // Jan 1, 1970
+        let calendar = Calendar(identifier: .gregorian)
+        
+        let dailyNext = RecurrenceRule.daily.nextDate(from: startDate, calendar: calendar)
+        XCTAssertEqual(
+            calendar.dateComponents([.day], from: startDate, to: dailyNext).day,
+            1
+        )
+        
+        let weeklyNext = RecurrenceRule.weekly.nextDate(from: startDate, calendar: calendar)
+        XCTAssertEqual(
+            calendar.dateComponents([.day], from: startDate, to: weeklyNext).day,
+            7
+        )
+        
+        let monthlyNext = RecurrenceRule.monthly.nextDate(from: startDate, calendar: calendar)
+        XCTAssertEqual(
+            calendar.dateComponents([.month], from: startDate, to: monthlyNext).month,
+            1
+        )
+    }
+}
