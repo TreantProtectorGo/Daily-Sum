@@ -83,9 +83,12 @@ private struct CategorySelectionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "action.cancel", defaultValue: "Cancel")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
+                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
                 
                 if selectedCategory != nil {

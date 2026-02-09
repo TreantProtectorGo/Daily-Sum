@@ -160,7 +160,7 @@ struct TransactionEntrySheet: View {
             DatePicker(
                 String(localized: "transaction.date", defaultValue: "Date"),
                 selection: $date,
-                displayedComponents: [.date, .hourAndMinute]
+                displayedComponents: .date
             )
         }
     }
