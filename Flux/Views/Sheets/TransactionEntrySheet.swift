@@ -127,7 +127,7 @@ struct TransactionEntrySheet: View {
                 selectedCategory: $selectedCategory,
                 transactionType: transactionType
             )
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
     }
