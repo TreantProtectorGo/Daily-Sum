@@ -44,15 +44,21 @@ struct AccountEntrySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "action.cancel", defaultValue: "Cancel")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
+                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "action.save", defaultValue: "Save")) {
+                    Button {
                         saveAccount()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel(String(localized: "action.save", defaultValue: "Save"))
                     .disabled(!isFormValid || isSaving)
                 }
             }

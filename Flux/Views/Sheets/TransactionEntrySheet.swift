@@ -59,15 +59,21 @@ struct TransactionEntrySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "action.cancel", defaultValue: "Cancel")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
+                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "action.save", defaultValue: "Save")) {
+                    Button {
                         saveTransaction()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel(String(localized: "action.save", defaultValue: "Save"))
                     .disabled(!isFormValid || isSaving)
                 }
             }
@@ -83,7 +89,7 @@ struct TransactionEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
     
     // MARK: - Form Sections
