@@ -84,14 +84,28 @@ final class AccountService {
     func update(
         _ account: Account,
         name: String? = nil,
+        type: AccountType? = nil,
+        currencyCode: String? = nil,
         icon: String? = nil,
         colorHex: String? = nil,
-        includeInTotal: Bool? = nil
+        includeInTotal: Bool? = nil,
+        isArchived: Bool? = nil
     ) throws {
+        let previousCurrencyCode = account.currencyCode
+        
         if let name { account.name = name }
+        if let type { account.type = type }
+        if let currencyCode { account.currencyCode = currencyCode }
         if let icon { account.icon = icon }
         if let colorHex { account.colorHex = colorHex }
         if let includeInTotal { account.includeInTotal = includeInTotal }
+        if let isArchived { account.isArchived = isArchived }
+        
+        if account.currencyCode != previousCurrencyCode {
+            for transaction in account.transactions {
+                transaction.currencyCode = account.currencyCode
+            }
+        }
         
         try context.save()
     }

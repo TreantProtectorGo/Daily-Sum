@@ -171,12 +171,13 @@ struct AccountEntrySheet: View {
             let service = AccountService(context: modelContext)
             
             if let existing = existingAccount {
-                existing.name = name.trimmingCharacters(in: .whitespaces)
-                existing.type = accountType
-                existing.currencyCode = selectedCurrency.rawValue
-                existing.isArchived = isArchived
-                
-                try modelContext.save()
+                try service.update(
+                    existing,
+                    name: name.trimmingCharacters(in: .whitespaces),
+                    type: accountType,
+                    currencyCode: selectedCurrency.rawValue,
+                    isArchived: isArchived
+                )
             } else {
                 try service.create(
                     name: name.trimmingCharacters(in: .whitespaces),

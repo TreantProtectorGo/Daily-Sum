@@ -114,6 +114,32 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(total, 6000)
     }
     
+    func testAccountCurrencyUpdatePropagatesToTransactions() async throws {
+        let accountService = AccountService(context: context)
+        let transactionService = TransactionService(context: context)
+        
+        let account = try accountService.create(
+            name: "Wallet",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 100
+        )
+        
+        let transaction = try transactionService.create(
+            amount: 25,
+            type: .expense,
+            account: account,
+            category: nil
+        )
+        
+        XCTAssertEqual(transaction.currencyCode, "USD")
+        
+        try accountService.update(account, currencyCode: "TWD")
+        
+        XCTAssertEqual(account.currencyCode, "TWD")
+        XCTAssertEqual(transaction.currencyCode, "TWD")
+    }
+    
     // MARK: - CategoryService Tests
     
     func testCategoryServiceHierarchy() async throws {
