@@ -6,6 +6,9 @@ import SwiftData
 
 /// Key for storing user's preferred currency in UserDefaults
 private let kDefaultCurrencyCode = "flux.defaultCurrencyCode"
+private let kDefaultTransactionAccountId = "flux.defaultTransactionAccountId"
+private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransactionAccount"
+private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
 
 /// Global accessor for user's preferred currency code
 /// Use this in views that need the default currency without SettingsViewModel
@@ -17,6 +20,42 @@ enum UserCurrencyPreference {
         }
         set {
             UserDefaults.standard.set(newValue, forKey: kDefaultCurrencyCode)
+        }
+    }
+}
+
+/// Global accessor for transaction account selection preferences
+enum TransactionAccountPreference {
+    static var defaultAccountId: UUID? {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: kDefaultTransactionAccountId) else {
+                return nil
+            }
+            return UUID(uuidString: raw)
+        }
+        set {
+            UserDefaults.standard.set(newValue?.uuidString, forKey: kDefaultTransactionAccountId)
+        }
+    }
+    
+    static var rememberLastUsedAccount: Bool {
+        get {
+            UserDefaults.standard.object(forKey: kRememberLastUsedTransactionAccount) as? Bool ?? false
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: kRememberLastUsedTransactionAccount)
+        }
+    }
+    
+    static var lastUsedAccountId: UUID? {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: kLastUsedTransactionAccountId) else {
+                return nil
+            }
+            return UUID(uuidString: raw)
+        }
+        set {
+            UserDefaults.standard.set(newValue?.uuidString, forKey: kLastUsedTransactionAccountId)
         }
     }
 }
@@ -35,7 +74,17 @@ final class SettingsViewModel {
         }
     }
     
-    var defaultAccountId: UUID?
+    var defaultAccountId: UUID? {
+        didSet {
+            TransactionAccountPreference.defaultAccountId = defaultAccountId
+        }
+    }
+    
+    var rememberLastUsedAccount: Bool {
+        didSet {
+            TransactionAccountPreference.rememberLastUsedAccount = rememberLastUsedAccount
+        }
+    }
     
     var accountCount: Int = 0
     var transactionCount: Int = 0
@@ -61,6 +110,8 @@ final class SettingsViewModel {
         self.modelContext = modelContext
         // Load persisted currency preference on init
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
+        self.defaultAccountId = TransactionAccountPreference.defaultAccountId
+        self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
     }
     
     func loadSettings() async {

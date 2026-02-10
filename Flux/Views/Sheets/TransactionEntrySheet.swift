@@ -25,8 +25,6 @@ struct TransactionEntrySheet: View {
     
     @Query private var accounts: [Account]
     
-    private var isEditing: Bool { existingTransaction != nil }
-    
     init(transaction: Transaction? = nil, onSave: @escaping () -> Void) {
         self.existingTransaction = transaction
         self.onSave = onSave
@@ -35,27 +33,15 @@ struct TransactionEntrySheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Transaction Type
-                transactionTypeSection
-                
                 // Amount
                 amountSection
                 
-                // Category
-                categorySection
-                
-                // Account
-                accountSection
-                
-                // Date
-                dateSection
+                // Grouped details
+                detailsSection
                 
                 // Notes
                 notesSection
             }
-            .navigationTitle(isEditing 
-                ? String(localized: "transaction.edit.title", defaultValue: "Edit Transaction")
-                : String(localized: "transaction.add.title", defaultValue: "Add Transaction"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -63,8 +49,14 @@ struct TransactionEntrySheet: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
+                            .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
+                }
+                
+                ToolbarItem(placement: .principal) {
+                    transactionTypePicker
+                        .frame(width: 220)
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -78,7 +70,14 @@ struct TransactionEntrySheet: View {
                 }
             }
             .onAppear {
-                loadExistingTransaction()
+                if existingTransaction != nil {
+                    loadExistingTransaction()
+                } else {
+                    applyPreferredAccountIfNeeded()
+                }
+            }
+            .onChange(of: accounts.count) { _, _ in
+                applyPreferredAccountIfNeeded()
             }
             .alert(
                 String(localized: "error.title", defaultValue: "Error"),
@@ -89,24 +88,22 @@ struct TransactionEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.large])
+        .presentationDetents([.medium, .large])
     }
     
     // MARK: - Form Sections
     
-    private var transactionTypeSection: some View {
-        Section {
-            Picker(String(localized: "transaction.type", defaultValue: "Type"), selection: $transactionType) {
-                ForEach(TransactionType.allCases, id: \.self) { type in
-                    Text(type.localizedName)
-                        .tag(type)
-                }
+    private var transactionTypePicker: some View {
+        Picker(String(localized: "transaction.type", defaultValue: "Type"), selection: $transactionType) {
+            ForEach(TransactionType.allCases, id: \.self) { type in
+                Text(type.localizedName)
+                    .tag(type)
             }
-            .pickerStyle(.segmented)
-            .onChange(of: transactionType) { _, _ in
-                // Reset category when type changes
-                selectedCategory = nil
-            }
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: transactionType) { _, _ in
+            // Reset category when type changes
+            selectedCategory = nil
         }
     }
     
@@ -114,26 +111,21 @@ struct TransactionEntrySheet: View {
         Section(String(localized: "transaction.amount", defaultValue: "Amount")) {
             AmountInputView(
                 amount: $amount,
-                currencyCode: selectedAccount?.currencyCode ?? SupportedCurrency.defaultFromLocale.rawValue
+                currencyCode: selectedAccount?.currencyCode ?? SupportedCurrency.defaultFromLocale.rawValue,
+                autoFocus: true
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
     }
     
-    private var categorySection: some View {
-        Section(String(localized: "transaction.category", defaultValue: "Category")) {
+    private var detailsSection: some View {
+        Section {
             CategoryPickerView(
                 selectedCategory: $selectedCategory,
                 transactionType: transactionType
             )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-        }
-    }
-    
-    private var accountSection: some View {
-        Section(String(localized: "transaction.account", defaultValue: "Account")) {
+
             if accounts.isEmpty {
                 Text(String(localized: "transaction.noAccounts", defaultValue: "No accounts available. Please create an account first."))
                     .foregroundStyle(.secondary)
@@ -152,16 +144,14 @@ struct TransactionEntrySheet: View {
                     }
                 }
             }
-        }
-    }
-    
-    private var dateSection: some View {
-        Section(String(localized: "transaction.date", defaultValue: "Date")) {
+
             DatePicker(
                 String(localized: "transaction.date", defaultValue: "Date"),
                 selection: $date,
                 displayedComponents: .date
             )
+        } header: {
+            Text(String(localized: "transaction.details", defaultValue: "Details"))
         }
     }
     
@@ -195,6 +185,33 @@ struct TransactionEntrySheet: View {
         notes = transaction.notes ?? ""
     }
     
+    private func applyPreferredAccountIfNeeded() {
+        guard existingTransaction == nil, selectedAccount == nil else { return }
+        
+        let activeAccounts = accounts.filter { !$0.isArchived }
+        guard !activeAccounts.isEmpty else { return }
+        
+        if TransactionAccountPreference.rememberLastUsedAccount,
+           let lastUsedId = TransactionAccountPreference.lastUsedAccountId,
+           let lastUsedAccount = activeAccounts.first(where: { $0.id == lastUsedId }) {
+            selectedAccount = lastUsedAccount
+            return
+        }
+        
+        if let defaultAccountId = TransactionAccountPreference.defaultAccountId,
+           let defaultAccount = activeAccounts.first(where: { $0.id == defaultAccountId }) {
+            selectedAccount = defaultAccount
+            return
+        }
+        
+        if let cashAccount = activeAccounts.first(where: { $0.type == .cash }) {
+            selectedAccount = cashAccount
+            return
+        }
+        
+        selectedAccount = activeAccounts.first
+    }
+    
     private func saveTransaction() {
         guard isFormValid, let account = selectedAccount else { return }
         
@@ -226,6 +243,9 @@ struct TransactionEntrySheet: View {
             }
             
             onSave()
+            if TransactionAccountPreference.rememberLastUsedAccount {
+                TransactionAccountPreference.lastUsedAccountId = account.id
+            }
             dismiss()
             
         } catch {

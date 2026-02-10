@@ -7,6 +7,7 @@ import SwiftData
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: SettingsViewModel?
+    @Query(sort: \Account.createdAt) private var accounts: [Account]
     
     @State private var showClearDataConfirmation = false
     @State private var showError = false
@@ -39,6 +40,7 @@ struct SettingsView: View {
         Form {
             // Currency Settings
             currencySection(viewModel: viewModel)
+            transactionDefaultsSection(viewModel: viewModel)
             
             // Data Summary
             dataSummarySection(viewModel: viewModel)
@@ -74,6 +76,41 @@ struct SettingsView: View {
             Button(String(localized: "action.ok", defaultValue: "OK")) { }
         } message: {
             Text(errorMessage)
+        }
+    }
+    
+    // MARK: - Transaction Defaults Section
+    
+    @ViewBuilder
+    private func transactionDefaultsSection(viewModel: SettingsViewModel) -> some View {
+        Section {
+            Picker(
+                String(localized: "settings.defaultAccount", defaultValue: "Default Account"),
+                selection: Binding(
+                    get: { viewModel.defaultAccountId },
+                    set: { viewModel.defaultAccountId = $0 }
+                )
+            ) {
+                Text(String(localized: "settings.defaultAccount.none", defaultValue: "None"))
+                    .tag(nil as UUID?)
+                
+                ForEach(accounts.filter { !$0.isArchived }) { account in
+                    Text(account.name)
+                        .tag(account.id as UUID?)
+                }
+            }
+            
+            Toggle(
+                String(localized: "settings.rememberLastAccount", defaultValue: "Remember Last Used Account"),
+                isOn: Binding(
+                    get: { viewModel.rememberLastUsedAccount },
+                    set: { viewModel.rememberLastUsedAccount = $0 }
+                )
+            )
+        } header: {
+            Text(String(localized: "settings.transactionDefaults", defaultValue: "Transaction Defaults"))
+        } footer: {
+            Text(String(localized: "settings.rememberLastAccount.footer", defaultValue: "When enabled, Add Transaction opens with your last used account. Otherwise it uses Default Account."))
         }
     }
     

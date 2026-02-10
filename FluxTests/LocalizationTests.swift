@@ -27,7 +27,7 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(RegionalSettings.shared.gainColor, .green)
         XCTAssertEqual(RegionalSettings.shared.lossColor, .red)
     }
-    
+
     func testDefaultCurrencyForRegion() {
         XCTAssertEqual(RegionalSettings.Region.unitedStates.defaultCurrency, .USD)
         XCTAssertEqual(RegionalSettings.Region.taiwan.defaultCurrency, .TWD)

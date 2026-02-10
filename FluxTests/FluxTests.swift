@@ -18,12 +18,26 @@ final class FluxTests: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+    func testTransactionAccountPreferencePersistsValues() throws {
+        let originalDefaultAccountId = TransactionAccountPreference.defaultAccountId
+        let originalRememberLastUsed = TransactionAccountPreference.rememberLastUsedAccount
+        let originalLastUsedAccountId = TransactionAccountPreference.lastUsedAccountId
+        
+        defer {
+            TransactionAccountPreference.defaultAccountId = originalDefaultAccountId
+            TransactionAccountPreference.rememberLastUsedAccount = originalRememberLastUsed
+            TransactionAccountPreference.lastUsedAccountId = originalLastUsedAccountId
+        }
+        
+        let accountId = UUID()
+        
+        TransactionAccountPreference.defaultAccountId = accountId
+        TransactionAccountPreference.rememberLastUsedAccount = true
+        TransactionAccountPreference.lastUsedAccountId = accountId
+        
+        XCTAssertEqual(TransactionAccountPreference.defaultAccountId, accountId)
+        XCTAssertTrue(TransactionAccountPreference.rememberLastUsedAccount)
+        XCTAssertEqual(TransactionAccountPreference.lastUsedAccountId, accountId)
     }
 
     func testPerformanceExample() throws {

@@ -7,18 +7,22 @@ struct AmountInputView: View {
     @Binding var amount: Decimal
     let currencyCode: String
     let placeholder: String
+    let autoFocus: Bool
     
     @State private var textValue: String = ""
+    @State private var hasAttemptedAutoFocus = false
     @FocusState private var isFocused: Bool
     
     init(
         amount: Binding<Decimal>,
         currencyCode: String,
-        placeholder: String = "0.00"
+        placeholder: String = "0.00",
+        autoFocus: Bool = false
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
         self.placeholder = placeholder
+        self.autoFocus = autoFocus
     }
     
     var body: some View {
@@ -40,6 +44,12 @@ struct AmountInputView: View {
                 .onAppear {
                     if amount != 0 {
                         textValue = formatForEditing(amount)
+                    }
+                    if autoFocus && !hasAttemptedAutoFocus {
+                        hasAttemptedAutoFocus = true
+                        DispatchQueue.main.async {
+                            isFocused = true
+                        }
                     }
                 }
         }
