@@ -115,6 +115,7 @@ struct TransactionListView: View {
                                         systemImage: "trash"
                                     )
                                 }
+                                .tint(.red)
                             }
                     }
                 } header: {
