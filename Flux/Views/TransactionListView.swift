@@ -35,10 +35,11 @@ struct TransactionListView: View {
                 Button {
                     showFilters = true
                 } label: {
-                    Image(systemName: viewModel?.hasFilters == true ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
                         .font(.title3.weight(.semibold))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.black)
+                        .opacity(viewModel?.hasFilters == true ? 1.0 : 0.75)
                 }
             }
 
@@ -46,7 +47,7 @@ struct TransactionListView: View {
                 NavigationLink {
                     SettingsView()
                 } label: {
-                    Image(systemName: "gearshape.circle")
+                    Image(systemName: "gearshape.circle.fill")
                         .font(.title3.weight(.semibold))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.black)

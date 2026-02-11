@@ -40,7 +40,7 @@ struct DashboardView: View {
                     NavigationLink {
                         SettingsView()
                     } label: {
-                        Image(systemName: "gearshape.circle")
+                        Image(systemName: "gearshape.circle.fill")
                             .font(.title3.weight(.semibold))
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(.black)
