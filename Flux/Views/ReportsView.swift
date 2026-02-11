@@ -458,6 +458,7 @@ struct ReportsView: View {
                             systemImage: "trash"
                         )
                     }
+                    .tint(.red)
                 }
             }
         } header: {
