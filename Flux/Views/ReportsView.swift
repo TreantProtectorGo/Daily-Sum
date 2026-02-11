@@ -42,6 +42,16 @@ struct ReportsView: View {
                 tabContent
             }
             .navigationTitle(String(localized: "reports.title", defaultValue: "Reports"))
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
+                }
+            }
             .task {
                 if reportsViewModel == nil {
                     reportsViewModel = ReportsViewModel(modelContext: modelContext)
