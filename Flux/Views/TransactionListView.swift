@@ -38,6 +38,7 @@ struct TransactionListView: View {
                     Image(systemName: viewModel?.hasFilters == true ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                         .font(.title3.weight(.semibold))
                         .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.black)
                 }
             }
 
@@ -48,6 +49,7 @@ struct TransactionListView: View {
                     Image(systemName: "gearshape.circle")
                         .font(.title3.weight(.semibold))
                         .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.black)
                 }
                 .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
             }

@@ -43,6 +43,7 @@ struct DashboardView: View {
                         Image(systemName: "gearshape.circle")
                             .font(.title3.weight(.semibold))
                             .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
                 }
