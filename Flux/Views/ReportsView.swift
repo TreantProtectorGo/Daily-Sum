@@ -59,10 +59,8 @@ struct ReportsView: View {
                     NavigationLink {
                         SettingsView()
                     } label: {
-                        Image(systemName: "gearshape.circle.fill")
-                            .font(.title3.weight(.semibold))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.black)
+                        Image(systemName: "gear")
+                        .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
                 }

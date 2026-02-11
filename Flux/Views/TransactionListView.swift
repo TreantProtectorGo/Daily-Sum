@@ -35,22 +35,18 @@ struct TransactionListView: View {
                 Button {
                     showFilters = true
                 } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                        .font(.title3.weight(.semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.black)
-                        .opacity(viewModel?.hasFilters == true ? 1.0 : 0.75)
+                    Image(systemName: "line.3.horizontal.decrease")
+                    .foregroundStyle(.black)
                 }
+                .accessibilityLabel(String(localized: "action.filters", defaultValue: "Filters"))
             }
 
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     SettingsView()
                 } label: {
-                    Image(systemName: "gearshape.circle.fill")
-                        .font(.title3.weight(.semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.black)
+                    Image(systemName: "gear")
+                    .foregroundStyle(.black)
                 }
                 .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
             }

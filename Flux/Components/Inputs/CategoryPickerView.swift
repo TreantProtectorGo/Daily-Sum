@@ -85,27 +85,6 @@ private struct CategorySelectionSheet: View {
                 ? String(localized: "category.select.expense", defaultValue: "Select Category")
                 : String(localized: "category.select.income", defaultValue: "Select Category"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .foregroundStyle(.black)
-                    }
-                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
-                }
-                
-                if selectedCategory != nil {
-                    ToolbarItem(placement: .destructiveAction) {
-                        Button(String(localized: "action.clear", defaultValue: "Clear")) {
-                            selectedCategory = nil
-                            dismiss()
-                        }
-                        .foregroundStyle(.red)
-                    }
-                }
-            }
         }
     }
 }
