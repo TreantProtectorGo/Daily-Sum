@@ -27,17 +27,25 @@ enum ReportsTab: String, CaseIterable, Identifiable {
 struct ReportsView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: ReportsTab = .reports
+    private let showsTabPicker: Bool
     @State private var reportsViewModel: ReportsViewModel?
     @State private var budgetViewModel: BudgetListViewModel?
     @State private var showAddBudget = false
     @State private var selectedBudget: Budget?
+
+    init(initialTab: ReportsTab = .reports, showsTabPicker: Bool = true) {
+        _selectedTab = State(initialValue: initialTab)
+        self.showsTabPicker = showsTabPicker
+    }
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                tabPicker
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                if showsTabPicker {
+                    tabPicker
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                }
                 
                 tabContent
             }
@@ -47,7 +55,9 @@ struct ReportsView: View {
                     NavigationLink {
                         SettingsView()
                     } label: {
-                        Image(systemName: "gearshape")
+                        Image(systemName: "gearshape.circle")
+                            .font(.title3.weight(.semibold))
+                            .symbolRenderingMode(.hierarchical)
                     }
                     .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
                 }

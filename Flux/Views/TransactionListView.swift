@@ -36,7 +36,20 @@ struct TransactionListView: View {
                     showFilters = true
                 } label: {
                     Image(systemName: viewModel?.hasFilters == true ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        .font(.title3.weight(.semibold))
+                        .symbolRenderingMode(.hierarchical)
                 }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape.circle")
+                        .font(.title3.weight(.semibold))
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
             }
         }
         .task {

@@ -35,6 +35,18 @@ struct DashboardView: View {
                 .padding(.bottom, 80)
             }
             .navigationTitle(String(localized: "dashboard.title", defaultValue: "Dashboard"))
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Image(systemName: "gearshape.circle")
+                            .font(.title3.weight(.semibold))
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                    .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
+                }
+            }
             .refreshable {
                 await viewModel?.refresh()
             }

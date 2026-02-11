@@ -30,15 +30,15 @@ struct MainTabView: View {
                 systemImage: "chart.bar.fill",
                 value: .reports
             ) {
-                ReportsView()
+                ReportsView(initialTab: .reports, showsTabPicker: false)
             }
             
             Tab(
-                String(localized: "tab.settings", defaultValue: "Settings"),
-                systemImage: "gearshape.fill",
-                value: .settings
+                String(localized: "reports.tab.budgets", defaultValue: "Budgets"),
+                systemImage: "chart.pie.fill",
+                value: .budgets
             ) {
-                SettingsView()
+                ReportsView(initialTab: .budgets, showsTabPicker: false)
             }
             
             // iOS 26 Global Search - pinned to trailing edge of tab bar
@@ -61,7 +61,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     case dashboard
     case transactions
     case reports
-    case settings
+    case budgets
     case search
     
     var id: String { rawValue }
@@ -74,8 +74,8 @@ enum AppTab: String, CaseIterable, Identifiable {
             String(localized: "tab.transactions", defaultValue: "Transactions")
         case .reports:
             String(localized: "tab.reports", defaultValue: "Reports")
-        case .settings:
-            String(localized: "tab.settings", defaultValue: "Settings")
+        case .budgets:
+            String(localized: "reports.tab.budgets", defaultValue: "Budgets")
         case .search:
             String(localized: "tab.search", defaultValue: "Search")
         }
@@ -86,7 +86,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .dashboard: "house.fill"
         case .transactions: "list.bullet.rectangle"
         case .reports: "chart.bar.fill"
-        case .settings: "gearshape.fill"
+        case .budgets: "chart.pie.fill"
         case .search: "magnifyingglass"
         }
     }
