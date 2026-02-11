@@ -49,7 +49,11 @@ struct ReportsView: View {
                 
                 tabContent
             }
-            .navigationTitle(String(localized: "reports.title", defaultValue: "Reports"))
+            .navigationTitle(
+                selectedTab == .budgets
+                    ? String(localized: "reports.tab.budgets", defaultValue: "Budgets")
+                    : String(localized: "reports.title", defaultValue: "Reports")
+            )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
