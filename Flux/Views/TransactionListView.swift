@@ -196,29 +196,10 @@ struct TransactionFiltersSheet: View {
     private var incomeCategories: [Category] {
         categories.filter { $0.type == .income }
     }
-
-    private var titleText: String {
-        viewModel.selectedType?.localizedName
-            ?? String(localized: "filter.type", defaultValue: "Transaction Type")
-    }
     
     var body: some View {
         NavigationStack {
             Form {
-                // Transaction Type
-                Section(String(localized: "filter.type", defaultValue: "Transaction Type")) {
-                    Picker(String(localized: "filter.type", defaultValue: "Type"), selection: $viewModel.selectedType) {
-                        Text(String(localized: "filter.all", defaultValue: "All"))
-                            .tag(nil as TransactionType?)
-                        
-                        ForEach(TransactionType.allCases, id: \.self) { type in
-                            Text(type.localizedName)
-                                .tag(type as TransactionType?)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
                 // Account
                 Section(String(localized: "filter.account", defaultValue: "Account")) {
                     Picker(String(localized: "filter.account", defaultValue: "Account"), selection: $viewModel.selectedAccount) {
@@ -261,9 +242,23 @@ struct TransactionFiltersSheet: View {
                     }
                 }
             }
-            .navigationTitle(titleText)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Picker(String(localized: "filter.type", defaultValue: "Transaction Type"), selection: $viewModel.selectedType) {
+                        Text(String(localized: "filter.all", defaultValue: "All"))
+                            .tag(nil as TransactionType?)
+                        
+                        ForEach(TransactionType.allCases, id: \.self) { type in
+                            Text(type.localizedName)
+                                .tag(type as TransactionType?)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 230)
+                }
+
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dismiss()
