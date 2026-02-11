@@ -21,12 +21,18 @@ final class BudgetService {
         currencyCode: String,
         period: BudgetPeriod = .monthly,
         alertThreshold: Decimal = 0.8,
-        alertsEnabled: Bool = true
+        alertsEnabled: Bool = true,
+        isActive: Bool = true
     ) throws -> Budget {
         // Validate category is expense type
         guard category.type == .expense else {
             throw BudgetError.incomeCategory
         }
+
+        try ensureUniqueCategoryBudget(
+            category: category,
+            period: period
+        )
         
         let budget = Budget(
             limitAmount: limitAmount,
@@ -34,6 +40,7 @@ final class BudgetService {
             period: period,
             alertThreshold: alertThreshold,
             alertsEnabled: alertsEnabled,
+            isActive: isActive,
             category: category
         )
         context.insert(budget)
@@ -80,11 +87,33 @@ final class BudgetService {
         _ budget: Budget,
         limitAmount: Decimal? = nil,
         period: BudgetPeriod? = nil,
+        category: Category? = nil,
+        currencyCode: String? = nil,
+        isActive: Bool? = nil,
         alertThreshold: Decimal? = nil,
         alertsEnabled: Bool? = nil
     ) throws {
+        if let category {
+            guard category.type == .expense else {
+                throw BudgetError.incomeCategory
+            }
+        }
+
+        let finalCategory = category ?? budget.category
+        let finalPeriod = period ?? budget.period
+        if let finalCategory {
+            try ensureUniqueCategoryBudget(
+                category: finalCategory,
+                period: finalPeriod,
+                excluding: budget
+            )
+        }
+
         if let limitAmount { budget.limitAmount = limitAmount }
         if let period { budget.period = period }
+        if let category { budget.category = category }
+        if let currencyCode { budget.currencyCode = currencyCode }
+        if let isActive { budget.isActive = isActive }
         if let alertThreshold { budget.alertThreshold = alertThreshold }
         if let alertsEnabled { budget.alertsEnabled = alertsEnabled }
         
@@ -160,6 +189,29 @@ final class BudgetService {
             case .duplicateBudget:
                 "A budget already exists for this category"
             }
+        }
+    }
+
+    // MARK: - Validation
+
+    private func ensureUniqueCategoryBudget(
+        category: Category,
+        period: BudgetPeriod,
+        excluding currentBudget: Budget? = nil
+    ) throws {
+        let categoryId = category.id
+        let descriptor = FetchDescriptor<Budget>(
+            predicate: #Predicate { $0.category?.id == categoryId }
+        )
+
+        let existingBudgets = try context.fetch(descriptor).filter { $0.period == period }
+        let hasDuplicate = existingBudgets.contains { existingBudget in
+            guard let currentBudget else { return true }
+            return existingBudget.id != currentBudget.id
+        }
+
+        if hasDuplicate {
+            throw BudgetError.duplicateBudget
         }
     }
 }

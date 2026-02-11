@@ -155,30 +155,34 @@ struct ReportsView: View {
         if viewModel.budgets.isEmpty {
             budgetEmptyState
         } else {
-            ScrollView {
-                VStack(spacing: 20) {
-                    budgetSummaryCard(viewModel: viewModel)
-                    
-                    if !viewModel.activeBudgets.isEmpty {
-                        budgetSection(
-                            title: String(localized: "budgets.active", defaultValue: "Active Budgets"),
-                            budgets: viewModel.activeBudgets,
-                            viewModel: viewModel
-                        )
-                    }
-                    
-                    if !viewModel.inactiveBudgets.isEmpty {
-                        budgetSection(
-                            title: String(localized: "budgets.inactive", defaultValue: "Inactive Budgets"),
-                            budgets: viewModel.inactiveBudgets,
-                            viewModel: viewModel
-                        )
-                    }
+            List {
+                budgetSummaryCard(viewModel: viewModel)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+
+                if !viewModel.activeBudgets.isEmpty {
+                    budgetSection(
+                        title: String(localized: "budgets.active", defaultValue: "Active Budgets"),
+                        budgets: viewModel.activeBudgets,
+                        viewModel: viewModel
+                    )
                 }
-                .padding()
-                .padding(.bottom, 80)
-                .glassContainer(spacing: 20)
+
+                if !viewModel.inactiveBudgets.isEmpty {
+                    budgetSection(
+                        title: String(localized: "budgets.inactive", defaultValue: "Inactive Budgets"),
+                        budgets: viewModel.inactiveBudgets,
+                        viewModel: viewModel
+                    )
+                }
+
+                Color.clear
+                    .frame(height: 80)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
+            .listStyle(.plain)
         }
     }
     
@@ -430,12 +434,7 @@ struct ReportsView: View {
     
     @ViewBuilder
     private func budgetSection(title: String, budgets: [Budget], viewModel: BudgetListViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-            
+        Section {
             ForEach(budgets) { budget in
                 BudgetRowCard(
                     budget: budget,
@@ -447,7 +446,24 @@ struct ReportsView: View {
                         Task { try? await viewModel.deleteBudget(budget) }
                     }
                 )
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task { try? await viewModel.deleteBudget(budget) }
+                    } label: {
+                        Label(
+                            String(localized: "action.delete", defaultValue: "Delete"),
+                            systemImage: "trash"
+                        )
+                    }
+                }
             }
+        } header: {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
         }
     }
     
@@ -583,7 +599,7 @@ struct BudgetRowCard: View {
                     } else {
                         Image(systemName: "chart.pie.fill")
                             .foregroundStyle(.secondary)
-                        Text(budget.category?.displayName ?? String(localized: "budget.unnamed", defaultValue: "Unnamed Budget"))
+                        Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
                             .font(.headline)
                     }
                     

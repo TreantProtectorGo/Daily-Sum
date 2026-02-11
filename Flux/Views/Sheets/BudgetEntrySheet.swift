@@ -73,6 +73,10 @@ struct BudgetEntrySheet: View {
             }
             .onAppear {
                 loadExistingBudget()
+                applyDefaultCategoryIfNeeded()
+            }
+            .onChange(of: categories.count) { _ in
+                applyDefaultCategoryIfNeeded()
             }
             .alert(
                 String(localized: "error.title", defaultValue: "Error"),
@@ -121,12 +125,6 @@ struct BudgetEntrySheet: View {
                 String(localized: "budget.category", defaultValue: "Category"),
                 selection: $selectedCategory
             ) {
-                HStack {
-                    Image(systemName: "chart.pie")
-                    Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
-                }
-                .tag(nil as Category?)
-                
                 ForEach(expenseCategories) { category in
                     HStack {
                         Image(systemName: category.icon)
@@ -139,7 +137,7 @@ struct BudgetEntrySheet: View {
         } header: {
             Text(String(localized: "budget.category.section", defaultValue: "Category"))
         } footer: {
-            Text(String(localized: "budget.category.footer", defaultValue: "Select a specific category or track all expenses."))
+            Text(String(localized: "budget.category.footer", defaultValue: "Select a category for this budget."))
         }
     }
     
@@ -162,7 +160,7 @@ struct BudgetEntrySheet: View {
     // MARK: - Validation
     
     private var isFormValid: Bool {
-        limitAmount > 0
+        limitAmount > 0 && selectedCategory != nil
     }
     
     // MARK: - Actions
@@ -178,37 +176,46 @@ struct BudgetEntrySheet: View {
         alertThreshold = budget.alertThreshold
         alertsEnabled = budget.alertsEnabled
     }
+
+    private func applyDefaultCategoryIfNeeded() {
+        guard selectedCategory == nil else { return }
+        selectedCategory = expenseCategories.first
+    }
     
     private func saveBudget() {
         guard isFormValid else { return }
+        guard let selectedCategory else {
+            errorMessage = String(localized: "budget.category.required", defaultValue: "Please select a category.")
+            showError = true
+            return
+        }
         
         isSaving = true
         
         do {
+            let budgetService = BudgetService(context: modelContext)
+
             if let existing = existingBudget {
-                existing.limitAmount = limitAmount
-                existing.period = period
-                existing.category = selectedCategory
-                existing.currencyCode = currencyCode
-                existing.isActive = isActive
-                existing.alertThreshold = alertThreshold
-                existing.alertsEnabled = alertsEnabled
-                
-                try modelContext.save()
+                try budgetService.update(
+                    existing,
+                    limitAmount: limitAmount,
+                    period: period,
+                    category: selectedCategory,
+                    currencyCode: currencyCode,
+                    isActive: isActive,
+                    alertThreshold: alertThreshold,
+                    alertsEnabled: alertsEnabled
+                )
             } else {
-                // Create budget directly - service.create requires non-optional category
-                let budget = Budget(
+                _ = try budgetService.create(
+                    category: selectedCategory,
                     limitAmount: limitAmount,
                     currencyCode: currencyCode,
                     period: period,
                     alertThreshold: alertThreshold,
                     alertsEnabled: alertsEnabled,
-                    isActive: isActive,
-                    category: selectedCategory
+                    isActive: isActive
                 )
-                
-                modelContext.insert(budget)
-                try modelContext.save()
             }
             
             onSave()

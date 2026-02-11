@@ -233,4 +233,35 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(triggered.count, 1)
         XCTAssertEqual(triggered.first?.id, budget.id)
     }
+    
+    func testBudgetServiceRejectsDuplicateCategoryAndPeriod() async throws {
+        let categoryService = CategoryService(context: context)
+        let budgetService = BudgetService(context: context)
+        
+        let category = try categoryService.create(
+            name: "Transport",
+            icon: "car",
+            colorHex: "#2E86DE",
+            type: .expense
+        )
+        
+        _ = try budgetService.create(
+            category: category,
+            limitAmount: 200,
+            currencyCode: "USD",
+            period: .monthly
+        )
+        
+        do {
+            _ = try budgetService.create(
+                category: category,
+                limitAmount: 300,
+                currencyCode: "USD",
+                period: .monthly
+            )
+            XCTFail("Expected duplicate budget validation to fail")
+        } catch let error as BudgetService.BudgetError {
+            XCTAssertEqual(error, .duplicateBudget)
+        }
+    }
 }
