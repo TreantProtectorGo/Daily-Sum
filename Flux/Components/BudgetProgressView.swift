@@ -5,9 +5,15 @@ import SwiftData
 
 struct BudgetProgressView: View {
     let budget: Budget
+    let showsCategoryHeader: Bool
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.regionalSettings) private var regionalSettings
+
+    init(budget: Budget, showsCategoryHeader: Bool = true) {
+        self.budget = budget
+        self.showsCategoryHeader = showsCategoryHeader
+    }
     
     private var spentAmount: Decimal {
         budget.spentAmount(in: modelContext)
@@ -23,15 +29,17 @@ struct BudgetProgressView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header with category and amounts
+            // Header with amounts
             HStack {
-                if let category = budget.category {
-                    CategoryIcon(category: category, size: .small)
-                    Text(category.displayName)
-                        .font(.headline)
-                } else {
-                    Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
-                        .font(.headline)
+                if showsCategoryHeader {
+                    if let category = budget.category {
+                        CategoryIcon(category: category, size: .small)
+                        Text(category.displayName)
+                            .font(.headline)
+                    } else {
+                        Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
+                            .font(.headline)
+                    }
                 }
                 
                 Spacer()

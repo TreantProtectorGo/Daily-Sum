@@ -618,7 +618,7 @@ struct BudgetRowCard: View {
                     }
                 }
                 
-                BudgetProgressView(budget: budget)
+                BudgetProgressView(budget: budget, showsCategoryHeader: false)
             }
             .padding(16)
         }
