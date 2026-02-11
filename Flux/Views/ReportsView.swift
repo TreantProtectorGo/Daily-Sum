@@ -184,28 +184,34 @@ struct ReportsView: View {
     
     @ViewBuilder
     private func periodSelector(viewModel: ReportsViewModel) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(ReportsViewModel.ReportPeriod.allCases.filter { $0 != .custom }, id: \.id) { period in
-                    Button {
-                        viewModel.selectedPeriod = period
-                        Task { await viewModel.loadReports() }
-                    } label: {
-                        Text(period.localizedName)
-                            .font(.subheadline)
-                            .fontWeight(viewModel.selectedPeriod == period ? .semibold : .regular)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.plain)
-                    .glassBackground(
-                        cornerRadius: 20,
-                        isInteractive: viewModel.selectedPeriod != period
-                    )
-                    .opacity(viewModel.selectedPeriod == period ? 1.0 : 0.7)
-                }
+        Picker("", selection: periodSelectionBinding(viewModel: viewModel)) {
+            ForEach([
+                ReportsViewModel.ReportPeriod.month,
+                ReportsViewModel.ReportPeriod.quarter,
+                ReportsViewModel.ReportPeriod.year,
+                ReportsViewModel.ReportPeriod.all
+            ], id: \.id) { period in
+                Text(period.localizedName).tag(period)
             }
         }
+        .pickerStyle(.segmented)
+    }
+    
+    private func periodSelectionBinding(viewModel: ReportsViewModel) -> Binding<ReportsViewModel.ReportPeriod> {
+        let supportedPeriods: Set<ReportsViewModel.ReportPeriod> = [.month, .quarter, .year, .all]
+        
+        return Binding(
+            get: {
+                if supportedPeriods.contains(viewModel.selectedPeriod) {
+                    return viewModel.selectedPeriod
+                }
+                return .month
+            },
+            set: { newPeriod in
+                viewModel.selectedPeriod = newPeriod
+                Task { await viewModel.loadReports() }
+            }
+        )
     }
     
     @ViewBuilder

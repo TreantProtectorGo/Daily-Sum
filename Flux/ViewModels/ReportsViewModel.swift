@@ -29,38 +29,40 @@ final class ReportsViewModel {
     }
     
     enum ReportPeriod: String, CaseIterable, Identifiable {
-        case thisMonth = "This Month"
+        case month = "Month"
         case lastMonth = "Last Month"
-        case last3Months = "Last 3 Months"
-        case last6Months = "Last 6 Months"
-        case thisYear = "This Year"
+        case quarter = "Quarter"
+        case year = "Year"
+        case all = "All"
         case custom = "Custom"
         
         var id: String { rawValue }
         
         var localizedName: String {
             switch self {
-            case .thisMonth:
-                String(localized: "reports.period.thisMonth", defaultValue: "This Month")
+            case .month:
+                String(localized: "reports.period.thisMonth", defaultValue: "Month")
             case .lastMonth:
-                String(localized: "reports.period.lastMonth", defaultValue: "Last Month")
-            case .last3Months:
-                String(localized: "reports.period.last3Months", defaultValue: "Last 3 Months")
-            case .last6Months:
-                String(localized: "reports.period.last6Months", defaultValue: "Last 6 Months")
-            case .thisYear:
-                String(localized: "reports.period.thisYear", defaultValue: "This Year")
+                String(localized: "reports.period.lastMonth", defaultValue: "Last")
+            case .quarter:
+                String(localized: "reports.period.last3Months", defaultValue: "Quarter")
+            case .year:
+                String(localized: "reports.period.thisYear", defaultValue: "Year")
+            case .all:
+                String(localized: "reports.period.all", defaultValue: "All")
             case .custom:
                 String(localized: "reports.period.custom", defaultValue: "Custom")
             }
         }
         
-        func dateRange() -> (start: Date, end: Date) {
-            let calendar = Calendar.current
-            let now = Date()
+        func dateRange(
+            referenceDate: Date = Date(),
+            calendar: Calendar = .current
+        ) -> (start: Date, end: Date) {
+            let now = referenceDate
             
             switch self {
-            case .thisMonth:
+            case .month:
                 let start = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
                 return (start, now)
                 
@@ -70,17 +72,19 @@ final class ReportsViewModel {
                 let end = thisMonth.addingTimeInterval(-1)
                 return (start, end)
                 
-            case .last3Months:
-                let start = calendar.date(byAdding: .month, value: -3, to: now)!
+            case .quarter:
+                let currentMonth = calendar.component(.month, from: now)
+                let quarterStartMonth = ((currentMonth - 1) / 3) * 3 + 1
+                let year = calendar.component(.year, from: now)
+                let start = calendar.date(from: DateComponents(year: year, month: quarterStartMonth, day: 1))!
                 return (start, now)
                 
-            case .last6Months:
-                let start = calendar.date(byAdding: .month, value: -6, to: now)!
-                return (start, now)
-                
-            case .thisYear:
+            case .year:
                 let start = calendar.date(from: calendar.dateComponents([.year], from: now))!
                 return (start, now)
+                
+            case .all:
+                return (Date(timeIntervalSince1970: 0), now)
                 
             case .custom:
                 return (now, now) // Will be overridden by custom dates
@@ -92,7 +96,7 @@ final class ReportsViewModel {
     
     private let modelContext: ModelContext
     
-    var selectedPeriod: ReportPeriod = .thisMonth
+    var selectedPeriod: ReportPeriod = .month
     var customStartDate: Date = Date()
     var customEndDate: Date = Date()
     
@@ -127,6 +131,21 @@ final class ReportsViewModel {
     
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+    }
+    
+    // MARK: - Period Selection
+    
+    static func normalizedDateRange(start: Date, end: Date) -> (start: Date, end: Date) {
+        if start <= end {
+            return (start, end)
+        }
+        return (end, start)
+    }
+    
+    func setCustomRange(start: Date, end: Date) {
+        let normalizedRange = Self.normalizedDateRange(start: start, end: end)
+        customStartDate = normalizedRange.start
+        customEndDate = normalizedRange.end
     }
     
     // MARK: - Data Loading
