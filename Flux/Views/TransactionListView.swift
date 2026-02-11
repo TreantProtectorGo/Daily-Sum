@@ -196,6 +196,11 @@ struct TransactionFiltersSheet: View {
     private var incomeCategories: [Category] {
         categories.filter { $0.type == .income }
     }
+
+    private var titleText: String {
+        viewModel.selectedType?.localizedName
+            ?? String(localized: "filter.type", defaultValue: "Transaction Type")
+    }
     
     var body: some View {
         NavigationStack {
@@ -256,20 +261,27 @@ struct TransactionFiltersSheet: View {
                     }
                 }
             }
-            .navigationTitle(String(localized: "filter.title", defaultValue: "Filters"))
+            .navigationTitle(titleText)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "action.cancel", defaultValue: "Cancel")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundStyle(.black)
                     }
+                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "action.apply", defaultValue: "Apply")) {
+                    Button {
                         viewModel.applyFilters()
                         dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel(String(localized: "action.apply", defaultValue: "Apply"))
                 }
                 
                 ToolbarItem(placement: .bottomBar) {
