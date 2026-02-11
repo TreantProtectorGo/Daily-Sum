@@ -6,13 +6,19 @@ import SwiftData
 struct BudgetProgressView: View {
     let budget: Budget
     let showsCategoryHeader: Bool
+    let isCompact: Bool
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.regionalSettings) private var regionalSettings
 
-    init(budget: Budget, showsCategoryHeader: Bool = true) {
+    init(
+        budget: Budget,
+        showsCategoryHeader: Bool = true,
+        isCompact: Bool = false
+    ) {
         self.budget = budget
         self.showsCategoryHeader = showsCategoryHeader
+        self.isCompact = isCompact
     }
     
     private var spentAmount: Decimal {
@@ -28,7 +34,7 @@ struct BudgetProgressView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: isCompact ? 6 : 8) {
             // Header with amounts
             HStack {
                 if showsCategoryHeader {
@@ -53,7 +59,7 @@ struct BudgetProgressView: View {
                     Text(CurrencyFormatter.shared.format(budget.limitAmount, currencyCode: budget.currencyCode))
                         .foregroundStyle(.secondary)
                 }
-                .font(.subheadline)
+                .font(isCompact ? .footnote : .subheadline)
             }
             
             // Progress Bar
@@ -69,19 +75,19 @@ struct BudgetProgressView: View {
                         .frame(width: min(geometry.size.width * CGFloat(progress), geometry.size.width))
                 }
             }
-            .frame(height: 8)
+            .frame(height: isCompact ? 6 : 8)
             
             // Status text
             HStack {
                 Text(statusText)
-                    .font(.caption)
+                    .font(isCompact ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
                 
                 Spacer()
                 
                 Text(String(localized: "budget.remaining", defaultValue: "Remaining: ") + 
                      CurrencyFormatter.shared.format(remainingAmount, currencyCode: budget.currencyCode))
-                    .font(.caption)
+                    .font(isCompact ? .caption2 : .caption)
                     .foregroundStyle(remainingAmount >= 0 ? .secondary : regionalSettings.lossColor)
             }
         }

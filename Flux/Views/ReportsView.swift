@@ -1,8 +1,32 @@
 import SwiftUI
 import SwiftData
 
+enum ReportsTab: String, CaseIterable, Identifiable {
+    case reports
+    case budgets
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .reports:
+            String(localized: "reports.tab.reports", defaultValue: "Reports")
+        case .budgets:
+            String(localized: "reports.tab.budgets", defaultValue: "Budgets")
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .reports: "chart.bar.fill"
+        case .budgets: "chart.pie.fill"
+        }
+    }
+}
+
 struct ReportsView: View {
     @Environment(\.modelContext) private var modelContext
+    @State private var selectedTab: ReportsTab = .reports
     @State private var reportsViewModel: ReportsViewModel?
     @State private var budgetViewModel: BudgetListViewModel?
     @State private var showAddBudget = false
@@ -10,144 +34,156 @@ struct ReportsView: View {
     
     var body: some View {
         NavigationStack {
-            if let reportsViewModel, let budgetViewModel {
-                mergedContent(
-                    reportsViewModel: reportsViewModel,
-                    budgetViewModel: budgetViewModel
-                )
+            VStack(spacing: 0) {
+                tabPicker
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                
+                tabContent
+            }
+            .navigationTitle(String(localized: "reports.title", defaultValue: "Reports"))
+            .task {
+                if reportsViewModel == nil {
+                    reportsViewModel = ReportsViewModel(modelContext: modelContext)
+                }
+                if budgetViewModel == nil {
+                    budgetViewModel = BudgetListViewModel(modelContext: modelContext)
+                }
+                await reportsViewModel?.loadReports()
+                await budgetViewModel?.loadBudgets()
+            }
+            .refreshable {
+                if selectedTab == .reports {
+                    await reportsViewModel?.loadReports()
+                } else {
+                    await budgetViewModel?.loadBudgets()
+                }
+            }
+            .sheet(isPresented: $showAddBudget) {
+                BudgetEntrySheet(onSave: {
+                    Task { await budgetViewModel?.loadBudgets() }
+                })
+            }
+            .sheet(item: $selectedBudget) { budget in
+                BudgetEntrySheet(budget: budget, onSave: {
+                    Task { await budgetViewModel?.loadBudgets() }
+                })
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if selectedTab == .budgets {
+                    FloatingActionButton {
+                        showAddBudget = true
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var tabPicker: some View {
+        Picker("", selection: $selectedTab) {
+            ForEach(ReportsTab.allCases) { tab in
+                Label(tab.title, systemImage: tab.icon)
+                    .tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+    
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .reports:
+            if let viewModel = reportsViewModel {
+                reportsContent(viewModel: viewModel)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        case .budgets:
+            if let viewModel = budgetViewModel {
+                budgetContent(viewModel: viewModel)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(String(localized: "reports.title", defaultValue: "Reports"))
-        .task {
-            if reportsViewModel == nil {
-                reportsViewModel = ReportsViewModel(modelContext: modelContext)
+    }
+    
+    @ViewBuilder
+    private func reportsContent(viewModel: ReportsViewModel) -> some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                periodSelector(viewModel: viewModel)
+                
+                summarySection(viewModel: viewModel)
+                
+                if !viewModel.expensesByCategory.isEmpty {
+                    categoryBreakdownSection(
+                        title: String(localized: "reports.expensesByCategory", defaultValue: "Expenses by Category"),
+                        categories: viewModel.expensesByCategory,
+                        total: viewModel.totalExpenses
+                    )
+                }
+                
+                if !viewModel.incomeByCategory.isEmpty {
+                    categoryBreakdownSection(
+                        title: String(localized: "reports.incomeByCategory", defaultValue: "Income by Category"),
+                        categories: viewModel.incomeByCategory,
+                        total: viewModel.totalIncome
+                    )
+                }
+                
+                if !viewModel.monthlyTrends.isEmpty {
+                    monthlyTrendsSection(viewModel: viewModel)
+                }
+                
+                if viewModel.expensesByCategory.isEmpty && viewModel.incomeByCategory.isEmpty {
+                    EmptyStateView.noDataForPeriod()
+                        .padding(.top, 40)
+                }
             }
-            if budgetViewModel == nil {
-                budgetViewModel = BudgetListViewModel(modelContext: modelContext)
-            }
-            await reportsViewModel?.loadReports()
-            await budgetViewModel?.loadBudgets()
-        }
-        .refreshable {
-            await reportsViewModel?.loadReports()
-            await budgetViewModel?.loadBudgets()
-        }
-        .sheet(isPresented: $showAddBudget) {
-            BudgetEntrySheet(onSave: {
-                Task { await budgetViewModel?.loadBudgets() }
-            })
-        }
-        .sheet(item: $selectedBudget) { budget in
-            BudgetEntrySheet(budget: budget, onSave: {
-                Task { await budgetViewModel?.loadBudgets() }
-            })
-        }
-        .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showAddBudget = true
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
+            .padding()
+            .glassContainer(spacing: 20)
         }
     }
     
     @ViewBuilder
-    private func mergedContent(
-        reportsViewModel: ReportsViewModel,
-        budgetViewModel: BudgetListViewModel
-    ) -> some View {
-        List {
-            periodSelector(viewModel: reportsViewModel)
-                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            
-            summarySection(viewModel: reportsViewModel)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            
-            if !reportsViewModel.expensesByCategory.isEmpty {
-                categoryBreakdownSection(
-                    title: String(localized: "reports.expensesByCategory", defaultValue: "Expenses by Category"),
-                    categories: reportsViewModel.expensesByCategory,
-                    total: reportsViewModel.totalExpenses
-                )
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-            
-            if !reportsViewModel.incomeByCategory.isEmpty {
-                categoryBreakdownSection(
-                    title: String(localized: "reports.incomeByCategory", defaultValue: "Income by Category"),
-                    categories: reportsViewModel.incomeByCategory,
-                    total: reportsViewModel.totalIncome
-                )
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-            
-            if !reportsViewModel.monthlyTrends.isEmpty {
-                monthlyTrendsSection(viewModel: reportsViewModel)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
-            
-            if reportsViewModel.expensesByCategory.isEmpty && reportsViewModel.incomeByCategory.isEmpty {
-                EmptyStateView.noDataForPeriod()
-                    .padding(.vertical, 16)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
-            
-            Text(String(localized: "reports.tab.budgets", defaultValue: "Budgets"))
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 4, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            
-            if budgetViewModel.budgets.isEmpty {
-                budgetEmptyState
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            } else {
-                budgetSummaryCard(viewModel: budgetViewModel)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+    private func budgetContent(viewModel: BudgetListViewModel) -> some View {
+        if viewModel.budgets.isEmpty {
+            budgetEmptyState
+        } else {
+            List {
+                budgetSummaryCard(viewModel: viewModel)
+                    .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
-                if !budgetViewModel.activeBudgets.isEmpty {
+                if !viewModel.activeBudgets.isEmpty {
                     budgetSection(
                         title: String(localized: "budgets.active", defaultValue: "Active Budgets"),
-                        budgets: budgetViewModel.activeBudgets,
-                        viewModel: budgetViewModel
+                        budgets: viewModel.activeBudgets,
+                        viewModel: viewModel
                     )
                 }
 
-                if !budgetViewModel.inactiveBudgets.isEmpty {
+                if !viewModel.inactiveBudgets.isEmpty {
                     budgetSection(
                         title: String(localized: "budgets.inactive", defaultValue: "Inactive Budgets"),
-                        budgets: budgetViewModel.inactiveBudgets,
-                        viewModel: budgetViewModel
+                        budgets: viewModel.inactiveBudgets,
+                        viewModel: viewModel
                     )
                 }
+
+                Color.clear
+                    .frame(height: 80)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
-            
-            Color.clear
-                .frame(height: 80)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+            .listStyle(.plain)
         }
-        .listStyle(.plain)
     }
     
     @ViewBuilder
@@ -410,7 +446,7 @@ struct ReportsView: View {
                         Task { try? await viewModel.deleteBudget(budget) }
                     }
                 )
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -555,25 +591,27 @@ struct BudgetRowCard: View {
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     if let category = budget.category {
                         CategoryIcon(category: category, size: .small)
                         Text(category.displayName)
-                            .font(.headline)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
                     } else {
                         Image(systemName: "chart.pie.fill")
                             .foregroundStyle(.secondary)
                         Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
-                            .font(.headline)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
                     }
                     
                     Spacer()
                     
                     Text(budget.period.localizedName)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
                         .background(Color.secondary.opacity(0.15))
                         .clipShape(Capsule())
                     
@@ -583,12 +621,18 @@ struct BudgetRowCard: View {
                     }
                 }
                 
-                BudgetProgressView(budget: budget, showsCategoryHeader: false)
+                BudgetProgressView(
+                    budget: budget,
+                    showsCategoryHeader: false,
+                    isCompact: true
+                )
             }
-            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .padding(12)
         }
         .buttonStyle(.plain)
-        .glassBackground(cornerRadius: 16, isInteractive: true)
+        .glassBackground(cornerRadius: 14, isInteractive: true)
         .contextMenu {
             Button {
                 onTap()
