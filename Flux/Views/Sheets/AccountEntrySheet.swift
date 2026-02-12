@@ -75,16 +75,16 @@ struct AccountEntrySheet: View {
                 Text(errorMessage)
             }
         }
+        .tint(.black)
         .presentationDetents([.medium, .large])
-        .confirmationDialog(
+        .alert(
             String(localized: "account.delete.confirm.title", defaultValue: "Delete Account Permanently?"),
             isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
         ) {
-            Button(String(localized: "account.delete.confirm.action", defaultValue: "Delete Account"), role: .destructive) {
+            Button(String(localized: "action.confirm", defaultValue: "Confirm"), role: .destructive) {
                 deleteAccount()
             }
-            Button(String(localized: "action.cancel", defaultValue: "Cancel"), role: .cancel) {}
+            Button(String(localized: "action.cancel", defaultValue: "Cancel")) { }
         } message: {
             Text(String(localized: "account.delete.confirm.message", defaultValue: "This permanently deletes the account and all related transactions. This action cannot be undone."))
         }
@@ -150,10 +150,8 @@ struct AccountEntrySheet: View {
             Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
-                Label(
-                    String(localized: "account.delete", defaultValue: "Delete Account Permanently"),
-                    systemImage: "trash"
-                )
+                Text(String(localized: "account.delete", defaultValue: "Delete Account Permanently"))
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         } footer: {
             Text(String(localized: "account.delete.footer", defaultValue: "Use this only if you are sure. Deleting an account removes all its transactions."))

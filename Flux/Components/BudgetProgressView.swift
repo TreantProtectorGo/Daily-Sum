@@ -164,6 +164,8 @@ struct BudgetCard: View {
         } label: {
             BudgetProgressView(budget: budget)
                 .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .glassBackground(cornerRadius: 16, isInteractive: true)

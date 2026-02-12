@@ -75,6 +75,8 @@ struct GlassTransactionRow: View {
             TransactionRowView(transaction: transaction)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .glassBackground(cornerRadius: 12, isInteractive: true)

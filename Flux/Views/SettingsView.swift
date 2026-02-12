@@ -183,10 +183,8 @@ struct SettingsView: View {
             Button(role: .destructive) {
                 showClearDataConfirmation = true
             } label: {
-                Label(
-                    String(localized: "settings.clearData", defaultValue: "Clear All Data"),
-                    systemImage: "trash"
-                )
+                Text(String(localized: "settings.clearData", defaultValue: "Clear All Data"))
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
     }
