@@ -10,6 +10,7 @@ struct DefaultDataSeeder {
     func seedIfNeeded() async throws {
         let currencyCount = try context.fetchCount(FetchDescriptor<Currency>())
         let categoryCount = try context.fetchCount(FetchDescriptor<Category>())
+        let accountCount = try context.fetchCount(FetchDescriptor<Account>())
         
         if currencyCount == 0 {
             try seedCurrencies()
@@ -17,6 +18,10 @@ struct DefaultDataSeeder {
         
         if categoryCount == 0 {
             try seedCategories()
+        }
+        
+        if accountCount == 0 {
+            try seedAccounts()
         }
         
         try context.save()
@@ -89,6 +94,28 @@ struct DefaultDataSeeder {
                 isSystemDefault: true
             )
             context.insert(category)
+        }
+    }
+    
+    // MARK: - Account Seeding
+    
+    private func seedAccounts() throws {
+        let defaultCurrencyCode = SupportedCurrency.defaultFromLocale.rawValue
+        
+        let defaultAccounts: [(name: String, type: AccountType)] = [
+            ("Cash", .cash),
+            ("Bank Account", .bank),
+            ("Credit Card", .creditCard)
+        ]
+        
+        for item in defaultAccounts {
+            let account = Account(
+                name: item.name,
+                type: item.type,
+                currencyCode: defaultCurrencyCode,
+                initialBalance: 0
+            )
+            context.insert(account)
         }
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import SwiftData
 @testable import Flux
 
 final class FluxTests: XCTestCase {
@@ -115,6 +116,41 @@ final class FluxTests: XCTestCase {
         
         XCTAssertEqual(normalized.start, earlier)
         XCTAssertEqual(normalized.end, later)
+    }
+    
+    @MainActor
+    func testDefaultDataSeederCreatesDefaultAccountsWhenNoneExist() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+        
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Account>()), 0)
+        
+        try await seeder.seedIfNeeded()
+        
+        let accounts = try context.fetch(FetchDescriptor<Account>())
+        XCTAssertEqual(accounts.count, 3)
+        
+        let names = Set(accounts.map(\.name))
+        XCTAssertTrue(names.contains("Cash"))
+        XCTAssertTrue(names.contains("Bank Account"))
+        XCTAssertTrue(names.contains("Credit Card"))
+    }
+    
+    @MainActor
+    func testDefaultDataSeederDoesNotDuplicateExistingAccounts() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+        
+        try await seeder.seedIfNeeded()
+        let firstCount = try context.fetchCount(FetchDescriptor<Account>())
+        
+        try await seeder.seedIfNeeded()
+        let secondCount = try context.fetchCount(FetchDescriptor<Account>())
+        
+        XCTAssertEqual(firstCount, 3)
+        XCTAssertEqual(secondCount, 3)
     }
 
     func testPerformanceExample() throws {

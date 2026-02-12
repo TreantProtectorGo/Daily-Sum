@@ -11,6 +11,10 @@ struct TransactionListView: View {
     @State private var showAddTransaction = false
     @State private var selectedTransaction: Transaction?
     @State private var showFilters = false
+    
+    private var isSearchContext: Bool {
+        externalSearchText != nil
+    }
 
     init(
         filterAccount: Account? = nil,
@@ -85,12 +89,14 @@ struct TransactionListView: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showAddTransaction = true
+            if !isSearchContext {
+                FloatingActionButton {
+                    showAddTransaction = true
+                }
+                .accessibilityIdentifier("transactions.addButton")
+                .padding(.trailing, 20)
+                .padding(.bottom, 20)
             }
-            .accessibilityIdentifier("transactions.addButton")
-            .padding(.trailing, 20)
-            .padding(.bottom, 20)
         }
     }
     
@@ -170,10 +176,12 @@ struct TransactionListView: View {
             } description: {
                 Text(String(localized: "empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."))
             } actions: {
-                Button(String(localized: "empty.transactions.action", defaultValue: "Add Transaction")) {
-                    showAddTransaction = true
+                if !isSearchContext {
+                    Button(String(localized: "empty.transactions.action", defaultValue: "Add Transaction")) {
+                        showAddTransaction = true
+                    }
+                    .buttonStyle(.fluxGlassProminent)
                 }
-                .buttonStyle(.fluxGlassProminent)
             }
         }
     }

@@ -41,33 +41,21 @@ final class AccountService {
     // MARK: - Read
     
     /// Fetches all accounts
-    func fetch(includeArchived: Bool = false) throws -> [Account] {
-        var descriptor = FetchDescriptor<Account>(
+    func fetch() throws -> [Account] {
+        let descriptor = FetchDescriptor<Account>(
             sortBy: [SortDescriptor(\.name)]
         )
-        
-        if !includeArchived {
-            descriptor.predicate = #Predicate { !$0.isArchived }
-        }
-        
         return try context.fetch(descriptor)
     }
     
     /// Fetches accounts of a specific type
-    func fetch(type: AccountType, includeArchived: Bool = false) throws -> [Account] {
+    func fetch(type: AccountType) throws -> [Account] {
         let typeRaw = type.rawValue
-        var descriptor = FetchDescriptor<Account>(
+        let descriptor = FetchDescriptor<Account>(
             predicate: #Predicate { $0.type.rawValue == typeRaw },
             sortBy: [SortDescriptor(\.name)]
         )
-        
-        var results = try context.fetch(descriptor)
-        
-        if !includeArchived {
-            results = results.filter { !$0.isArchived }
-        }
-        
-        return results
+        return try context.fetch(descriptor)
     }
     
     /// Fetches an account by ID
@@ -86,20 +74,20 @@ final class AccountService {
         name: String? = nil,
         type: AccountType? = nil,
         currencyCode: String? = nil,
+        initialBalance: Decimal? = nil,
         icon: String? = nil,
         colorHex: String? = nil,
-        includeInTotal: Bool? = nil,
-        isArchived: Bool? = nil
+        includeInTotal: Bool? = nil
     ) throws {
         let previousCurrencyCode = account.currencyCode
         
         if let name { account.name = name }
         if let type { account.type = type }
         if let currencyCode { account.currencyCode = currencyCode }
+        if let initialBalance { account.initialBalance = initialBalance }
         if let icon { account.icon = icon }
         if let colorHex { account.colorHex = colorHex }
         if let includeInTotal { account.includeInTotal = includeInTotal }
-        if let isArchived { account.isArchived = isArchived }
         
         if account.currencyCode != previousCurrencyCode {
             for transaction in account.transactions {
@@ -110,16 +98,30 @@ final class AccountService {
         try context.save()
     }
     
-    /// Archives an account (hides from main views but preserves data)
-    func archive(_ account: Account) throws {
-        account.isArchived = true
-        try context.save()
-    }
-    
-    /// Unarchives an account
-    func unarchive(_ account: Account) throws {
-        account.isArchived = false
-        try context.save()
+    /// Adjusts an account to a target current balance by creating a transaction delta.
+    /// This preserves historical income/expense totals and auditability.
+    @discardableResult
+    func adjustCurrentBalance(
+        _ account: Account,
+        to targetBalance: Decimal,
+        date: Date = .now,
+        note: String? = nil
+    ) throws -> Transaction? {
+        let delta = targetBalance - account.currentBalance
+        guard delta != .zero else { return nil }
+        
+        let adjustmentType: TransactionType = delta > 0 ? .income : .expense
+        let adjustmentAmount = delta > 0 ? delta : -delta
+        
+        let transactionService = TransactionService(context: context)
+        return try transactionService.create(
+            amount: adjustmentAmount,
+            type: adjustmentType,
+            date: date,
+            notes: note,
+            account: account,
+            category: nil
+        )
     }
     
     // MARK: - Delete
@@ -134,7 +136,7 @@ final class AccountService {
     
     /// Calculates total balance across all accounts (in base currency)
     func totalBalance(convertToBase: Bool = true) throws -> Decimal {
-        let accounts = try fetch(includeArchived: false)
+        let accounts = try fetch()
             .filter { $0.includeInTotal }
         
         if !convertToBase {
@@ -157,7 +159,7 @@ final class AccountService {
     
     /// Groups accounts by type with their balances
     func balancesByType() throws -> [AccountType: Decimal] {
-        let accounts = try fetch(includeArchived: false)
+        let accounts = try fetch()
         
         var result: [AccountType: Decimal] = [:]
         for account in accounts where account.includeInTotal {

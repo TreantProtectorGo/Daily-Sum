@@ -134,7 +134,7 @@ struct TransactionEntrySheet: View {
                     Text(String(localized: "transaction.selectAccount", defaultValue: "Select Account"))
                         .tag(nil as Account?)
                     
-                    ForEach(accounts.filter { !$0.isArchived }) { account in
+                    ForEach(accounts) { account in
                         HStack {
                             Image(systemName: account.type.icon)
                                 .foregroundStyle(account.type.color)
@@ -188,28 +188,27 @@ struct TransactionEntrySheet: View {
     private func applyPreferredAccountIfNeeded() {
         guard existingTransaction == nil, selectedAccount == nil else { return }
         
-        let activeAccounts = accounts.filter { !$0.isArchived }
-        guard !activeAccounts.isEmpty else { return }
+        guard !accounts.isEmpty else { return }
         
         if TransactionAccountPreference.rememberLastUsedAccount,
            let lastUsedId = TransactionAccountPreference.lastUsedAccountId,
-           let lastUsedAccount = activeAccounts.first(where: { $0.id == lastUsedId }) {
+           let lastUsedAccount = accounts.first(where: { $0.id == lastUsedId }) {
             selectedAccount = lastUsedAccount
             return
         }
         
         if let defaultAccountId = TransactionAccountPreference.defaultAccountId,
-           let defaultAccount = activeAccounts.first(where: { $0.id == defaultAccountId }) {
+           let defaultAccount = accounts.first(where: { $0.id == defaultAccountId }) {
             selectedAccount = defaultAccount
             return
         }
         
-        if let cashAccount = activeAccounts.first(where: { $0.type == .cash }) {
+        if let cashAccount = accounts.first(where: { $0.type == .cash }) {
             selectedAccount = cashAccount
             return
         }
         
-        selectedAccount = activeAccounts.first
+        selectedAccount = accounts.first
     }
     
     private func saveTransaction() {

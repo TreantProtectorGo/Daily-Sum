@@ -14,11 +14,11 @@ struct AccountEntrySheet: View {
     @State private var accountType: AccountType = .cash
     @State private var selectedCurrency: SupportedCurrency = .defaultFromLocale
     @State private var initialBalance: Decimal = 0
-    @State private var isArchived: Bool = false
     
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showDeleteConfirmation = false
     
     private var isEditing: Bool { existingAccount != nil }
     
@@ -35,7 +35,7 @@ struct AccountEntrySheet: View {
                 balanceSection
                 
                 if isEditing {
-                    statusSection
+                    deleteSection
                 }
             }
             .navigationTitle(isEditing 
@@ -76,6 +76,18 @@ struct AccountEntrySheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .confirmationDialog(
+            String(localized: "account.delete.confirm.title", defaultValue: "Delete Account Permanently?"),
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "account.delete.confirm.action", defaultValue: "Delete Account"), role: .destructive) {
+                deleteAccount()
+            }
+            Button(String(localized: "action.cancel", defaultValue: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "account.delete.confirm.message", defaultValue: "This permanently deletes the account and all related transactions. This action cannot be undone."))
+        }
     }
     
     // MARK: - Form Sections
@@ -132,14 +144,19 @@ struct AccountEntrySheet: View {
         }
     }
     
-    private var statusSection: some View {
+    @ViewBuilder
+    private var deleteSection: some View {
         Section {
-            Toggle(
-                String(localized: "account.archived", defaultValue: "Archived"),
-                isOn: $isArchived
-            )
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Label(
+                    String(localized: "account.delete", defaultValue: "Delete Account Permanently"),
+                    systemImage: "trash"
+                )
+            }
         } footer: {
-            Text(String(localized: "account.archived.footer", defaultValue: "Archived accounts are hidden from the main list but preserve transaction history."))
+            Text(String(localized: "account.delete.footer", defaultValue: "Use this only if you are sure. Deleting an account removes all its transactions."))
         }
     }
     
@@ -160,7 +177,6 @@ struct AccountEntrySheet: View {
             selectedCurrency = currency
         }
         initialBalance = account.currentBalance
-        isArchived = account.isArchived
     }
     
     private func saveAccount() {
@@ -172,12 +188,19 @@ struct AccountEntrySheet: View {
             let service = AccountService(context: modelContext)
             
             if let existing = existingAccount {
+                let targetCurrentBalance = initialBalance
+                
                 try service.update(
                     existing,
                     name: name.trimmingCharacters(in: .whitespaces),
                     type: accountType,
-                    currencyCode: selectedCurrency.rawValue,
-                    isArchived: isArchived
+                    currencyCode: selectedCurrency.rawValue
+                )
+                
+                _ = try service.adjustCurrentBalance(
+                    existing,
+                    to: targetCurrentBalance,
+                    note: String(localized: "account.balanceAdjustment.note", defaultValue: "Manual balance adjustment")
                 )
             } else {
                 try service.create(
@@ -191,6 +214,24 @@ struct AccountEntrySheet: View {
             onSave()
             dismiss()
             
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+        
+        isSaving = false
+    }
+    
+    private func deleteAccount() {
+        guard let existing = existingAccount else { return }
+        
+        isSaving = true
+        
+        do {
+            let service = AccountService(context: modelContext)
+            try service.delete(existing)
+            onSave()
+            dismiss()
         } catch {
             errorMessage = error.localizedDescription
             showError = true

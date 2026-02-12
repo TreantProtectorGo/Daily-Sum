@@ -30,9 +30,6 @@ final class Account {
     /// Whether this account is included in totals
     var includeInTotal: Bool
     
-    /// Whether this account is archived (hidden from main views)
-    var isArchived: Bool
-    
     /// Date the account was created
     var createdAt: Date
     
@@ -49,7 +46,6 @@ final class Account {
         icon: String? = nil,
         colorHex: String = "#007AFF",
         includeInTotal: Bool = true,
-        isArchived: Bool = false,
         createdAt: Date = .now
     ) {
         self.id = id
@@ -60,7 +56,6 @@ final class Account {
         self.icon = icon ?? type.defaultIcon
         self.colorHex = colorHex
         self.includeInTotal = includeInTotal
-        self.isArchived = isArchived
         self.createdAt = createdAt
         self.transactions = []
     }

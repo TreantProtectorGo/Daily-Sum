@@ -94,7 +94,7 @@ struct SettingsView: View {
                 Text(String(localized: "settings.defaultAccount.none", defaultValue: "None"))
                     .tag(nil as UUID?)
                 
-                ForEach(accounts.filter { !$0.isArchived }) { account in
+                ForEach(accounts) { account in
                     Text(account.name)
                         .tag(account.id as UUID?)
                 }

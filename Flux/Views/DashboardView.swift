@@ -195,13 +195,9 @@ struct DashboardView: View {
             if viewModel.hasAccounts {
                 VStack(spacing: 8) {
                     ForEach(viewModel.accounts.prefix(3)) { account in
-                        AccountRowView(account: account)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .glassBackground(cornerRadius: 12, isInteractive: true)
-                            .onTapGesture {
+                        GlassAccountRow(account: account) {
                                 selectedAccount = account
-                            }
+                        }
                     }
                     
                     if viewModel.accounts.count > 3 {
@@ -245,11 +241,9 @@ struct DashboardView: View {
             if viewModel.hasTransactions {
                 VStack(spacing: 8) {
                     ForEach(viewModel.recentTransactions.prefix(5)) { transaction in
-                        GlassTransactionRow(transaction: transaction)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedTransaction = transaction
-                            }
+                        GlassTransactionRow(transaction: transaction) {
+                            selectedTransaction = transaction
+                        }
                     }
                     
                     if viewModel.recentTransactions.count > 5 {
@@ -292,11 +286,9 @@ struct DashboardView: View {
             if viewModel.hasBudgets {
                 VStack(spacing: 8) {
                     ForEach(viewModel.topBudgets) { budget in
-                        BudgetCard(budget: budget)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedBudget = budget
-                            }
+                        BudgetCard(budget: budget) {
+                            selectedBudget = budget
+                        }
                     }
                     
                     HStack {

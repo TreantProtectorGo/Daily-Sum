@@ -140,6 +140,56 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(transaction.currencyCode, "TWD")
     }
     
+    func testAccountServiceUpdateInitialBalance() async throws {
+        let accountService = AccountService(context: context)
+        
+        let account = try accountService.create(
+            name: "Wallet",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 100
+        )
+        
+        XCTAssertEqual(account.initialBalance, 100)
+        
+        try accountService.update(account, initialBalance: 250)
+        
+        XCTAssertEqual(account.initialBalance, 250)
+    }
+    
+    func testAccountServiceAdjustCurrentBalanceCreatesDeltaTransaction() async throws {
+        let accountService = AccountService(context: context)
+        let transactionService = TransactionService(context: context)
+        
+        let account = try accountService.create(
+            name: "Wallet",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 100
+        )
+        
+        _ = try transactionService.create(
+            amount: 40,
+            type: .expense,
+            account: account,
+            category: nil
+        )
+        
+        XCTAssertEqual(account.currentBalance, 60)
+        
+        let adjustment = try accountService.adjustCurrentBalance(
+            account,
+            to: 50,
+            note: "Manual balance adjustment"
+        )
+        
+        XCTAssertNotNil(adjustment)
+        XCTAssertEqual(adjustment?.type, .expense)
+        XCTAssertEqual(adjustment?.amount, 10)
+        XCTAssertEqual(adjustment?.notes, "Manual balance adjustment")
+        XCTAssertEqual(account.currentBalance, 50)
+    }
+    
     // MARK: - CategoryService Tests
     
     func testCategoryServiceHierarchy() async throws {
