@@ -51,12 +51,11 @@ struct SettingsView: View {
             // About
             aboutSection(viewModel: viewModel)
         }
-        .confirmationDialog(
-            String(localized: "settings.clearData.title", defaultValue: "Clear All Data?"),
+        .alert(
+            String(localized: "settings.clearData.title", defaultValue: "Do you want to clear all data?"),
             isPresented: $showClearDataConfirmation,
-            titleVisibility: .visible
         ) {
-            Button(String(localized: "settings.clearData.confirm", defaultValue: "Clear All Data"), role: .destructive) {
+            Button(String(localized: "action.confirm", defaultValue: "Confirm"), role: .destructive) {
                 Task {
                     do {
                         try await viewModel.clearAllData()
@@ -66,8 +65,9 @@ struct SettingsView: View {
                     }
                 }
             }
+            Button(String(localized: "action.cancel", defaultValue: "Cancel"), role: .cancel) { }
         } message: {
-            Text(String(localized: "settings.clearData.message", defaultValue: "This will delete all your accounts, transactions, budgets, and categories. This action cannot be undone."))
+            Text(String(localized: "settings.clearData.message", defaultValue: "You cannot undo this action."))
         }
         .alert(
             String(localized: "error.title", defaultValue: "Error"),

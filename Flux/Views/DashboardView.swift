@@ -41,7 +41,6 @@ struct DashboardView: View {
                         SettingsView()
                     } label: {
                         Image(systemName: "gear")
-                        .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
                 }

@@ -48,7 +48,6 @@ struct AccountEntrySheet: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
@@ -75,18 +74,17 @@ struct AccountEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .tint(.black)
         .presentationDetents([.medium, .large])
         .alert(
-            String(localized: "account.delete.confirm.title", defaultValue: "Delete Account Permanently?"),
+            String(localized: "account.delete.confirm.title", defaultValue: "Do you want to delete this Account?"),
             isPresented: $showDeleteConfirmation,
         ) {
             Button(String(localized: "action.confirm", defaultValue: "Confirm"), role: .destructive) {
                 deleteAccount()
             }
-            Button(String(localized: "action.cancel", defaultValue: "Cancel")) { }
+            Button(String(localized: "action.cancel", defaultValue: "Cancel"), role: .cancel) { }
         } message: {
-            Text(String(localized: "account.delete.confirm.message", defaultValue: "This permanently deletes the account and all related transactions. This action cannot be undone."))
+            Text(String(localized: "account.delete.confirm.message", defaultValue: "You cannot undo this action."))
         }
     }
     

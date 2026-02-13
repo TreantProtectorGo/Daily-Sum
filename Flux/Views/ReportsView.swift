@@ -60,7 +60,6 @@ struct ReportsView: View {
                         SettingsView()
                     } label: {
                         Image(systemName: "gear")
-                        .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
                 }
@@ -188,14 +187,6 @@ struct ReportsView: View {
                     budgetSection(
                         title: String(localized: "budgets.active", defaultValue: "Active Budgets"),
                         budgets: viewModel.activeBudgets,
-                        viewModel: viewModel
-                    )
-                }
-
-                if !viewModel.inactiveBudgets.isEmpty {
-                    budgetSection(
-                        title: String(localized: "budgets.inactive", defaultValue: "Inactive Budgets"),
-                        budgets: viewModel.inactiveBudgets,
                         viewModel: viewModel
                     )
                 }
@@ -462,9 +453,6 @@ struct ReportsView: View {
                 BudgetRowCard(
                     budget: budget,
                     onTap: { selectedBudget = budget },
-                    onToggleActive: {
-                        Task { try? await viewModel.toggleBudgetActive(budget) }
-                    },
                     onDelete: {
                         Task { try? await viewModel.deleteBudget(budget) }
                     }
@@ -607,7 +595,6 @@ struct MonthlyTrendRow: View {
 struct BudgetRowCard: View {
     let budget: Budget
     let onTap: () -> Void
-    let onToggleActive: () -> Void
     let onDelete: () -> Void
     
     @State private var showDeleteConfirmation = false
@@ -638,10 +625,6 @@ struct BudgetRowCard: View {
                         .background(Color.secondary.opacity(0.15))
                         .clipShape(Capsule())
                     
-                    if !budget.isActive {
-                        Image(systemName: "pause.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
                 }
                 
                 BudgetProgressView(
@@ -665,19 +648,6 @@ struct BudgetRowCard: View {
                     systemImage: "pencil"
                 )
             }
-            
-            Button {
-                onToggleActive()
-            } label: {
-                Label(
-                    budget.isActive
-                        ? String(localized: "action.deactivate", defaultValue: "Deactivate")
-                        : String(localized: "action.activate", defaultValue: "Activate"),
-                    systemImage: budget.isActive ? "pause.circle" : "play.circle"
-                )
-            }
-            
-            Divider()
             
             Button(role: .destructive) {
                 showDeleteConfirmation = true

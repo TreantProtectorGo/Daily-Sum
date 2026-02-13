@@ -40,7 +40,6 @@ struct TransactionListView: View {
                     showFilters = true
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease")
-                    .foregroundStyle(.black)
                 }
                 .accessibilityLabel(String(localized: "action.filters", defaultValue: "Filters"))
             }
@@ -50,7 +49,6 @@ struct TransactionListView: View {
                     SettingsView()
                 } label: {
                     Image(systemName: "gear")
-                    .foregroundStyle(.black)
                 }
                 .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
             }
@@ -284,7 +282,6 @@ struct TransactionFiltersSheet: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }

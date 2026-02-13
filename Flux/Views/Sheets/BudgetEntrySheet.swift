@@ -14,7 +14,6 @@ struct BudgetEntrySheet: View {
     @State private var period: BudgetPeriod = .monthly
     @State private var selectedCategory: Category?
     @State private var currencyCode: String = UserCurrencyPreference.currencyCode
-    @State private var isActive: Bool = true
     @State private var alertThreshold: Decimal = 0.8
     @State private var alertsEnabled: Bool = true
     
@@ -56,7 +55,6 @@ struct BudgetEntrySheet: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
@@ -144,16 +142,9 @@ struct BudgetEntrySheet: View {
     private var statusSection: some View {
         Section {
             Toggle(
-                String(localized: "budget.active", defaultValue: "Active"),
-                isOn: $isActive
-            )
-            
-            Toggle(
                 String(localized: "budget.alertsEnabled", defaultValue: "Enable Alerts"),
                 isOn: $alertsEnabled
             )
-        } footer: {
-            Text(String(localized: "budget.active.footer", defaultValue: "Inactive budgets won't track spending or show alerts."))
         }
     }
     
@@ -172,7 +163,6 @@ struct BudgetEntrySheet: View {
         period = budget.period
         selectedCategory = budget.category
         currencyCode = budget.currencyCode
-        isActive = budget.isActive
         alertThreshold = budget.alertThreshold
         alertsEnabled = budget.alertsEnabled
     }
@@ -202,7 +192,7 @@ struct BudgetEntrySheet: View {
                     period: period,
                     category: selectedCategory,
                     currencyCode: currencyCode,
-                    isActive: isActive,
+                    isActive: true,
                     alertThreshold: alertThreshold,
                     alertsEnabled: alertsEnabled
                 )
@@ -214,7 +204,7 @@ struct BudgetEntrySheet: View {
                     period: period,
                     alertThreshold: alertThreshold,
                     alertsEnabled: alertsEnabled,
-                    isActive: isActive
+                    isActive: true
                 )
             }
             

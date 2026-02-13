@@ -94,9 +94,8 @@ final class DashboardViewModel {
                 .filter { $0.type == .expense }
                 .reduce(Decimal.zero) { $0 + $1.amount }
             
-            // Fetch active budgets (top 3)
+            // Fetch budgets (top 3)
             var budgetDescriptor = FetchDescriptor<Budget>(
-                predicate: #Predicate<Budget> { $0.isActive },
                 sortBy: [SortDescriptor(\Budget.createdAt, order: .reverse)]
             )
             budgetDescriptor.fetchLimit = 3

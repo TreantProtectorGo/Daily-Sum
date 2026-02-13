@@ -56,8 +56,9 @@ final class BudgetListViewModel {
             )
             budgets = try modelContext.fetch(descriptor)
             
-            activeBudgets = budgets.filter { $0.isActive }
-            inactiveBudgets = budgets.filter { !$0.isActive }
+            // Active state is no longer user-facing; treat all budgets as visible.
+            activeBudgets = budgets
+            inactiveBudgets = []
             
         } catch {
             errorMessage = error.localizedDescription
@@ -71,9 +72,4 @@ final class BudgetListViewModel {
         await loadBudgets()
     }
     
-    func toggleBudgetActive(_ budget: Budget) async throws {
-        budget.isActive.toggle()
-        try modelContext.save()
-        await loadBudgets()
-    }
 }

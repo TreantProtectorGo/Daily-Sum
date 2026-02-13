@@ -49,7 +49,6 @@ struct TransactionEntrySheet: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(.black)
                     }
                     .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
                 }
