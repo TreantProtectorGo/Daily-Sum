@@ -168,6 +168,78 @@ final class ModelTests: XCTestCase {
         XCTAssertTrue(budget.isAlertTriggered(in: context))
         XCTAssertFalse(budget.isExceeded(in: context))
     }
+
+    func testBudgetUsageAllCategoriesTracksAllExpenses() throws {
+        let food = Category(
+            nameKey: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF0000",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(food)
+
+        let transport = Category(
+            nameKey: "Transport",
+            icon: "car.fill",
+            colorHex: "#00AAFF",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(transport)
+
+        let budget = Budget(
+            limitAmount: 500,
+            currencyCode: "USD",
+            period: .monthly,
+            alertThreshold: 0.8,
+            category: nil
+        )
+        context.insert(budget)
+
+        let account = Account(name: "Test", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        context.insert(Transaction(
+            amount: 120,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            account: account,
+            category: food
+        ))
+
+        context.insert(Transaction(
+            amount: 80,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            account: account,
+            category: transport
+        ))
+
+        context.insert(Transaction(
+            amount: 60,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            account: account,
+            category: nil
+        ))
+
+        context.insert(Transaction(
+            amount: 200,
+            currencyCode: "USD",
+            type: .income,
+            date: .now,
+            account: account,
+            category: nil
+        ))
+
+        try context.save()
+
+        XCTAssertEqual(budget.spentAmount(in: context), 260)
+    }
     
     // MARK: - RecurrenceRule Tests
     

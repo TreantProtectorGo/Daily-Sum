@@ -16,7 +16,7 @@ final class BudgetService {
     /// Creates a new budget
     @discardableResult
     func create(
-        category: Category,
+        category: Category? = nil,
         limitAmount: Decimal,
         currencyCode: String,
         period: BudgetPeriod = .monthly,
@@ -24,15 +24,19 @@ final class BudgetService {
         alertsEnabled: Bool = true,
         isActive: Bool = true
     ) throws -> Budget {
-        // Validate category is expense type
-        guard category.type == .expense else {
-            throw BudgetError.incomeCategory
-        }
+        if let category {
+            // Validate category is expense type
+            guard category.type == .expense else {
+                throw BudgetError.incomeCategory
+            }
 
-        try ensureUniqueCategoryBudget(
-            category: category,
-            period: period
-        )
+            try ensureUniqueCategoryBudget(
+                category: category,
+                period: period
+            )
+        } else {
+            try ensureUniqueAllCategoriesBudget(period: period)
+        }
         
         let budget = Budget(
             limitAmount: limitAmount,
@@ -88,18 +92,19 @@ final class BudgetService {
         limitAmount: Decimal? = nil,
         period: BudgetPeriod? = nil,
         category: Category? = nil,
+        shouldUpdateCategory: Bool = false,
         currencyCode: String? = nil,
         isActive: Bool? = nil,
         alertThreshold: Decimal? = nil,
         alertsEnabled: Bool? = nil
     ) throws {
-        if let category {
+        if shouldUpdateCategory, let category {
             guard category.type == .expense else {
                 throw BudgetError.incomeCategory
             }
         }
 
-        let finalCategory = category ?? budget.category
+        let finalCategory = shouldUpdateCategory ? category : budget.category
         let finalPeriod = period ?? budget.period
         if let finalCategory {
             try ensureUniqueCategoryBudget(
@@ -107,11 +112,16 @@ final class BudgetService {
                 period: finalPeriod,
                 excluding: budget
             )
+        } else {
+            try ensureUniqueAllCategoriesBudget(
+                period: finalPeriod,
+                excluding: budget
+            )
         }
 
         if let limitAmount { budget.limitAmount = limitAmount }
         if let period { budget.period = period }
-        if let category { budget.category = category }
+        if shouldUpdateCategory { budget.category = category }
         if let currencyCode { budget.currencyCode = currencyCode }
         if let isActive { budget.isActive = isActive }
         if let alertThreshold { budget.alertThreshold = alertThreshold }
@@ -187,7 +197,7 @@ final class BudgetService {
             case .incomeCategory:
                 "Budgets can only be created for expense categories"
             case .duplicateBudget:
-                "A budget already exists for this category"
+                "A budget already exists for this category or scope in the selected period"
             }
         }
     }
@@ -202,6 +212,25 @@ final class BudgetService {
         let categoryId = category.id
         let descriptor = FetchDescriptor<Budget>(
             predicate: #Predicate { $0.category?.id == categoryId }
+        )
+
+        let existingBudgets = try context.fetch(descriptor).filter { $0.period == period }
+        let hasDuplicate = existingBudgets.contains { existingBudget in
+            guard let currentBudget else { return true }
+            return existingBudget.id != currentBudget.id
+        }
+
+        if hasDuplicate {
+            throw BudgetError.duplicateBudget
+        }
+    }
+
+    private func ensureUniqueAllCategoriesBudget(
+        period: BudgetPeriod,
+        excluding currentBudget: Budget? = nil
+    ) throws {
+        let descriptor = FetchDescriptor<Budget>(
+            predicate: #Predicate { $0.category == nil }
         )
 
         let existingBudgets = try context.fetch(descriptor).filter { $0.period == period }

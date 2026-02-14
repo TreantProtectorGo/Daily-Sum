@@ -314,4 +314,56 @@ final class ServiceTests: XCTestCase {
             XCTAssertEqual(error, .duplicateBudget)
         }
     }
+
+    func testBudgetServiceRejectsDuplicateAllCategoriesAndPeriod() async throws {
+        let budgetService = BudgetService(context: context)
+
+        let allCategoriesBudget = try budgetService.create(
+            category: nil,
+            limitAmount: 500,
+            currencyCode: "USD",
+            period: .monthly
+        )
+        XCTAssertNil(allCategoriesBudget.category)
+
+        do {
+            _ = try budgetService.create(
+                category: nil,
+                limitAmount: 600,
+                currencyCode: "USD",
+                period: .monthly
+            )
+            XCTFail("Expected duplicate all-categories budget validation to fail")
+        } catch let error as BudgetService.BudgetError {
+            XCTAssertEqual(error, .duplicateBudget)
+        }
+    }
+
+    func testBudgetServiceUpdateCanClearCategoryToAllCategories() async throws {
+        let categoryService = CategoryService(context: context)
+        let budgetService = BudgetService(context: context)
+
+        let category = try categoryService.create(
+            name: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF0000",
+            type: .expense
+        )
+
+        let budget = try budgetService.create(
+            category: category,
+            limitAmount: 300,
+            currencyCode: "USD",
+            period: .monthly
+        )
+        XCTAssertNotNil(budget.category)
+
+        try budgetService.update(
+            budget,
+            category: nil,
+            shouldUpdateCategory: true
+        )
+
+        XCTAssertNil(budget.category)
+    }
 }

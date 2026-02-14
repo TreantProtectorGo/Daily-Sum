@@ -111,7 +111,7 @@ struct TransactionEntrySheet: View {
             AmountInputView(
                 amount: $amount,
                 currencyCode: selectedAccount?.currencyCode ?? SupportedCurrency.defaultFromLocale.rawValue,
-                autoFocus: true
+                autoFocus: false
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)

@@ -65,25 +65,25 @@ final class Budget {
     
     /// Calculates spent amount for the current period
     func spentAmount(in context: ModelContext, for date: Date = .now) -> Decimal {
-        guard let category else { return 0 }
-        
         let (start, end) = period.dateRange(containing: date)
-        let categoryId = category.id
-        let expenseType = TransactionType.expense
-        
-        let predicate = #Predicate<Transaction> { transaction in
-            transaction.category?.id == categoryId &&
-            transaction.type == expenseType &&
-            transaction.date >= start &&
-            transaction.date < end &&
-            !transaction.isRecurringTemplate
-        }
-        
-        let descriptor = FetchDescriptor<Transaction>(predicate: predicate)
+        let categoryId = category?.id
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate { !$0.isRecurringTemplate }
+        )
         
         do {
             let transactions = try context.fetch(descriptor)
-            return transactions.reduce(Decimal.zero) { $0 + $1.amount }
+            return transactions
+                .filter { transaction in
+                    guard transaction.type == .expense else { return false }
+                    guard transaction.date >= start, transaction.date < end else { return false }
+
+                    if let categoryId {
+                        return transaction.category?.id == categoryId
+                    }
+                    return true
+                }
+                .reduce(Decimal.zero) { $0 + $1.amount }
         } catch {
             return 0
         }

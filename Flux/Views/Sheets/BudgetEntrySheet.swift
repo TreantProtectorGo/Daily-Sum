@@ -13,6 +13,7 @@ struct BudgetEntrySheet: View {
     @State private var limitAmount: Decimal = 0
     @State private var period: BudgetPeriod = .monthly
     @State private var selectedCategory: Category?
+    @State private var useSpecificCategory = true
     @State private var currencyCode: String = UserCurrencyPreference.currencyCode
     @State private var alertThreshold: Decimal = 0.8
     @State private var alertsEnabled: Bool = true
@@ -119,23 +120,46 @@ struct BudgetEntrySheet: View {
     
     private var categorySection: some View {
         Section {
-            Picker(
-                String(localized: "budget.category", defaultValue: "Category"),
-                selection: $selectedCategory
-            ) {
-                ForEach(expenseCategories) { category in
-                    HStack {
-                        Image(systemName: category.icon)
-                            .foregroundStyle(category.color)
-                        Text(category.displayName)
+            Toggle(
+                String(localized: "budget.category.enabled", defaultValue: "Use Specific Category"),
+                isOn: $useSpecificCategory
+            )
+            .onChange(of: useSpecificCategory) { _, isEnabled in
+                if isEnabled {
+                    applyDefaultCategoryIfNeeded()
+                } else {
+                    selectedCategory = nil
+                }
+            }
+
+            if useSpecificCategory {
+                if expenseCategories.isEmpty {
+                    Text(String(localized: "budget.category.empty", defaultValue: "No expense categories available."))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker(
+                        String(localized: "budget.category", defaultValue: "Category"),
+                        selection: $selectedCategory
+                    ) {
+                        ForEach(expenseCategories) { category in
+                            HStack {
+                                Image(systemName: category.icon)
+                                    .foregroundStyle(category.color)
+                                Text(category.displayName)
+                            }
+                            .tag(category as Category?)
+                        }
                     }
-                    .tag(category as Category?)
                 }
             }
         } header: {
             Text(String(localized: "budget.category.section", defaultValue: "Category"))
         } footer: {
-            Text(String(localized: "budget.category.footer", defaultValue: "Select a category for this budget."))
+            if useSpecificCategory {
+                Text(String(localized: "budget.category.footer", defaultValue: "Select a category for this budget."))
+            } else {
+                Text(String(localized: "budget.category.footer.all", defaultValue: "This budget tracks all expense categories."))
+            }
         }
     }
     
@@ -151,7 +175,7 @@ struct BudgetEntrySheet: View {
     // MARK: - Validation
     
     private var isFormValid: Bool {
-        limitAmount > 0 && selectedCategory != nil
+        limitAmount > 0 && (!useSpecificCategory || selectedCategory != nil)
     }
     
     // MARK: - Actions
@@ -162,23 +186,27 @@ struct BudgetEntrySheet: View {
         limitAmount = budget.limitAmount
         period = budget.period
         selectedCategory = budget.category
+        useSpecificCategory = budget.category != nil
         currencyCode = budget.currencyCode
         alertThreshold = budget.alertThreshold
         alertsEnabled = budget.alertsEnabled
     }
 
     private func applyDefaultCategoryIfNeeded() {
+        guard useSpecificCategory else { return }
         guard selectedCategory == nil else { return }
         selectedCategory = expenseCategories.first
     }
     
     private func saveBudget() {
         guard isFormValid else { return }
-        guard let selectedCategory else {
+        if useSpecificCategory, selectedCategory == nil {
             errorMessage = String(localized: "budget.category.required", defaultValue: "Please select a category.")
             showError = true
             return
         }
+
+        let budgetCategory = useSpecificCategory ? selectedCategory : nil
         
         isSaving = true
         
@@ -190,7 +218,8 @@ struct BudgetEntrySheet: View {
                     existing,
                     limitAmount: limitAmount,
                     period: period,
-                    category: selectedCategory,
+                    category: budgetCategory,
+                    shouldUpdateCategory: true,
                     currencyCode: currencyCode,
                     isActive: true,
                     alertThreshold: alertThreshold,
@@ -198,7 +227,7 @@ struct BudgetEntrySheet: View {
                 )
             } else {
                 _ = try budgetService.create(
-                    category: selectedCategory,
+                    category: budgetCategory,
                     limitAmount: limitAmount,
                     currencyCode: currencyCode,
                     period: period,

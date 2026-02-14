@@ -185,7 +185,7 @@ struct ReportsView: View {
 
                 if !viewModel.activeBudgets.isEmpty {
                     budgetSection(
-                        title: String(localized: "budgets.active", defaultValue: "Active Budgets"),
+                        title: String(localized: "budgets.list", defaultValue: "Budgets"),
                         budgets: viewModel.activeBudgets,
                         viewModel: viewModel
                     )
