@@ -85,6 +85,12 @@ final class SettingsViewModel {
             TransactionAccountPreference.rememberLastUsedAccount = rememberLastUsedAccount
         }
     }
+
+    var appLanguage: AppLanguage {
+        didSet {
+            AppLanguagePreference.language = appLanguage
+        }
+    }
     
     var accountCount: Int = 0
     var transactionCount: Int = 0
@@ -112,6 +118,7 @@ final class SettingsViewModel {
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
+        self.appLanguage = AppLanguagePreference.language
     }
     
     func loadSettings() async {

@@ -40,6 +40,7 @@ struct SettingsView: View {
         Form {
             // Currency Settings
             currencySection(viewModel: viewModel)
+            languageSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
             
             // Data Summary
@@ -131,6 +132,30 @@ struct SettingsView: View {
                         .tag(currency.rawValue)
                 }
             }
+        }
+    }
+
+    // MARK: - Language Section
+
+    @ViewBuilder
+    private func languageSection(viewModel: SettingsViewModel) -> some View {
+        Section {
+            Picker(
+                String(localized: "settings.defaultLanguage", defaultValue: "App Language"),
+                selection: Binding(
+                    get: { viewModel.appLanguage },
+                    set: { viewModel.appLanguage = $0 }
+                )
+            ) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(language.displayName)
+                        .tag(language)
+                }
+            }
+        } header: {
+            Text(String(localized: "settings.language", defaultValue: "Language"))
+        } footer: {
+            Text(String(localized: "settings.language.footer", defaultValue: "Choose the language used by the app interface."))
         }
     }
     

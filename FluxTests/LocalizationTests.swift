@@ -63,4 +63,18 @@ final class LocalizationTests: XCTestCase {
         let defaultCurrency = SupportedCurrency.defaultFromLocale
         XCTAssertTrue(SupportedCurrency.allCases.contains(defaultCurrency))
     }
+
+    // MARK: - App Language Tests
+
+    func testAppLanguageLocaleIdentifierMapping() {
+        XCTAssertNil(AppLanguage.system.localeIdentifier)
+        XCTAssertEqual(AppLanguage.english.localeIdentifier, "en")
+        XCTAssertEqual(AppLanguage.simplifiedChinese.localeIdentifier, "zh-Hans")
+        XCTAssertEqual(AppLanguage.traditionalChinese.localeIdentifier, "zh-Hant")
+    }
+
+    func testAppLanguageFallbackToSystemForInvalidRawValue() {
+        XCTAssertEqual(AppLanguage.from(rawValue: nil), .system)
+        XCTAssertEqual(AppLanguage.from(rawValue: "invalid"), .system)
+    }
 }

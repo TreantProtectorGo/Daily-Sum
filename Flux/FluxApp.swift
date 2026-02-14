@@ -13,6 +13,7 @@ struct FluxApp: App {
     @State private var container: ModelContainer?
     @State private var isLoading = true
     @State private var loadError: Error?
+    @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
     
     var body: some Scene {
         WindowGroup {
@@ -21,6 +22,7 @@ struct FluxApp: App {
                     ContentView()
                         .modelContainer(container)
                         .environment(\.regionalSettings, RegionalSettings.shared)
+                        .environment(\.locale, appLocale)
                 } else if let error = loadError {
                     ErrorView(error: error)
                 } else {
@@ -31,6 +33,14 @@ struct FluxApp: App {
                 await initializeApp()
             }
         }
+    }
+
+    private var appLocale: Locale {
+        let selectedLanguage = AppLanguage.from(rawValue: appLanguageCode)
+        if let localeIdentifier = selectedLanguage.localeIdentifier {
+            return Locale(identifier: localeIdentifier)
+        }
+        return .autoupdatingCurrent
     }
     
     /// Initializes the app's data layer
