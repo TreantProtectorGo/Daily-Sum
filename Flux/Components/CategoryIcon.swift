@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Category Icon
 
@@ -46,10 +47,38 @@ struct CategoryIcon: View {
     var body: some View {
         Image(systemName: icon)
             .font(size.iconFont)
-            .foregroundStyle(color)
+            .foregroundStyle(iconColor)
             .frame(width: size.dimension, height: size.dimension)
             .background(color.opacity(0.15))
+            .overlay {
+                Circle()
+                    .stroke(iconColor.opacity(0.2), lineWidth: 1)
+            }
             .clipShape(Circle())
+    }
+
+    private var iconColor: Color {
+        let uiColor = UIColor(color)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        guard uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return color
+        }
+
+        let luminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+        guard luminance > 0.7 else { return color }
+
+        let factor: CGFloat = 0.55
+        let darkened = UIColor(
+            red: red * factor,
+            green: green * factor,
+            blue: blue * factor,
+            alpha: alpha
+        )
+        return Color(uiColor: darkened)
     }
 }
 

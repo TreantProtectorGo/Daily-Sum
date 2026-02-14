@@ -1,20 +1,68 @@
 import SwiftUI
 import SwiftData
 
+enum CategoryPickerMode {
+    case transaction(TransactionType)
+    case budgetExpense
+
+    var categoryType: TransactionType {
+        switch self {
+        case .transaction(let type):
+            return type
+        case .budgetExpense:
+            return .expense
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .transaction(let type):
+            return type == .expense
+                ? String(localized: "category.select.expense", defaultValue: "Select Category")
+                : String(localized: "category.select.income", defaultValue: "Select Category")
+        case .budgetExpense:
+            return String(localized: "budget.category.select", defaultValue: "Select Budget Category")
+        }
+    }
+
+    var placeholderTitle: String {
+        switch self {
+        case .transaction:
+            return String(localized: "category.none", defaultValue: "No Category")
+        case .budgetExpense:
+            return String(localized: "budget.allCategories", defaultValue: "All Categories")
+        }
+    }
+
+    var placeholderIcon: String {
+        switch self {
+        case .transaction:
+            return "questionmark.circle"
+        case .budgetExpense:
+            return "square.grid.2x2.fill"
+        }
+    }
+}
+
 struct CategoryPickerView: View {
     @Binding var selectedCategory: Category?
-    let transactionType: TransactionType
+    let mode: CategoryPickerMode
     
     @Query(sort: \Category.nameKey) private var allCategories: [Category]
     @State private var showCategorySheet = false
     
     private var categories: [Category] {
-        allCategories.filter { $0.type == transactionType }
+        allCategories.filter { $0.type == mode.categoryType }
     }
     
     init(selectedCategory: Binding<Category?>, transactionType: TransactionType) {
         self._selectedCategory = selectedCategory
-        self.transactionType = transactionType
+        self.mode = .transaction(transactionType)
+    }
+
+    init(selectedCategory: Binding<Category?>, mode: CategoryPickerMode) {
+        self._selectedCategory = selectedCategory
+        self.mode = mode
     }
     
     var body: some View {
@@ -25,11 +73,11 @@ struct CategoryPickerView: View {
                 if let category = selectedCategory {
                     CategoryIcon(category: category, size: .small)
                     Text(category.displayName)
-                        .font(.headline)
+                        .font(.body)
                 } else {
                     PlaceholderCategoryIcon(size: .small)
-                    Text(String(localized: "category.select", defaultValue: "Select Category"))
-                        .font(.headline)
+                    Text(mode.placeholderTitle)
+                        .font(.body)
                         .foregroundStyle(.secondary)
                 }
                 
@@ -40,8 +88,6 @@ struct CategoryPickerView: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .glassBackground(cornerRadius: 12, isInteractive: true)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -50,7 +96,7 @@ struct CategoryPickerView: View {
             CategorySelectionSheet(
                 selectedCategory: $selectedCategory,
                 categories: categories,
-                transactionType: transactionType
+                mode: mode
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -61,13 +107,22 @@ struct CategoryPickerView: View {
 private struct CategorySelectionSheet: View {
     @Binding var selectedCategory: Category?
     let categories: [Category]
-    let transactionType: TransactionType
+    let mode: CategoryPickerMode
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
+                    CategoryPlaceholderGridItem(
+                        title: mode.placeholderTitle,
+                        icon: mode.placeholderIcon,
+                        isSelected: selectedCategory == nil
+                    ) {
+                        selectedCategory = nil
+                        dismiss()
+                    }
+
                     ForEach(categories) { category in
                         CategoryGridItem(
                             category: category,
@@ -81,9 +136,7 @@ private struct CategorySelectionSheet: View {
                 .padding()
             }
             .accessibilityIdentifier("transaction.categoryPicker.sheet")
-            .navigationTitle(transactionType == .expense
-                ? String(localized: "category.select.expense", defaultValue: "Select Category")
-                : String(localized: "category.select.income", defaultValue: "Select Category"))
+            .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -107,6 +160,43 @@ private struct CategoryGridItem: View {
                     }
                 
                 Text(category.displayName)
+                    .font(.caption)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+            }
+            .frame(minWidth: 70)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct CategoryPlaceholderGridItem: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(spacing: 8) {
+                Circle()
+                    .fill(Color.secondary.opacity(0.2))
+                    .frame(width: 34, height: 34)
+                    .overlay {
+                        Image(systemName: icon)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .overlay {
+                        if isSelected {
+                            Circle()
+                                .stroke(Color.secondary, lineWidth: 2)
+                                .padding(-6)
+                        }
+                    }
+
+                Text(title)
                     .font(.caption)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
