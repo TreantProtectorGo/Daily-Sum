@@ -4,6 +4,7 @@ import SwiftData
 enum ModelContainerConfiguration {
     static let modelTypes: [any PersistentModel.Type] = [
         Currency.self,
+        ExchangeRate.self,
         Category.self,
         Account.self,
         Transaction.self,

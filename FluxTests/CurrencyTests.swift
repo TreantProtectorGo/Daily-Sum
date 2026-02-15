@@ -112,6 +112,76 @@ final class CurrencyTests: XCTestCase {
         XCTAssertEqual(SupportedCurrency.TWD.decimalPlaces, 0) // TWD doesn't use decimals
         XCTAssertEqual(SupportedCurrency.CNY.decimalPlaces, 2)
     }
+
+    func testCurrencyConversionServiceUsesHistoricalRateForDate() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let day1 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 1))!
+        let day2 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
+
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 30,
+                effectiveDate: day1
+            )
+        )
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: day2
+            )
+        )
+        try context.save()
+
+        let conversionService = CurrencyConversionService(context: context)
+        let converted = try await conversionService.convert(
+            10,
+            from: "USD",
+            to: "TWD",
+            on: day1,
+            mode: .historical
+        )
+
+        XCTAssertEqual(converted, 300)
+    }
+
+    func testCurrencyConversionServiceUsesLatestRateInLatestMode() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let day1 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 1))!
+        let day2 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
+
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 30,
+                effectiveDate: day1
+            )
+        )
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: day2
+            )
+        )
+        try context.save()
+
+        let conversionService = CurrencyConversionService(context: context)
+        let converted = try await conversionService.convert(
+            10,
+            from: "USD",
+            to: "TWD",
+            on: day1,
+            mode: .latest
+        )
+
+        XCTAssertEqual(converted, 320)
+    }
 }
 
 // Helper for Decimal comparison with tolerance

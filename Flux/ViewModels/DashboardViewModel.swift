@@ -11,7 +11,9 @@ final class DashboardViewModel {
     // MARK: - Properties
     
     private let modelContext: ModelContext
-    
+    private let conversionService: CurrencyConversionService
+    private let conversionMode: ConversionMode
+
     var totalBalance: Decimal = 0
     var monthlyIncome: Decimal = 0
     var monthlyExpenses: Decimal = 0
@@ -41,13 +43,25 @@ final class DashboardViewModel {
     }
     
     var defaultCurrencyCode: String {
-        accounts.first?.currencyCode ?? SupportedCurrency.defaultFromLocale.rawValue
+        UserCurrencyPreference.resolvedCurrencyCode
+    }
+
+    static func resolvedDisplayCurrencyCode(preferredCurrencyCode: String) -> String {
+        UserCurrencyPreference.resolvedDisplayCurrencyCode(
+            preferredCurrencyCode: preferredCurrencyCode
+        )
     }
     
     // MARK: - Initialization
     
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        conversionService: CurrencyConversionService? = nil,
+        conversionMode: ConversionMode = .defaultForDashboard
+    ) {
         self.modelContext = modelContext
+        self.conversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        self.conversionMode = conversionMode
     }
     
     // MARK: - Data Loading
@@ -64,7 +78,7 @@ final class DashboardViewModel {
             accounts = try modelContext.fetch(accountDescriptor)
             
             // Calculate total balance
-            totalBalance = accounts.reduce(Decimal.zero) { $0 + $1.currentBalance }
+            totalBalance = try await convertedAccountTotal(accounts)
             
             // Fetch recent transactions (non-recurring templates, last 10)
             var transactionDescriptor = FetchDescriptor<Transaction>(
@@ -86,13 +100,11 @@ final class DashboardViewModel {
             )
             let monthlyTransactions = try modelContext.fetch(monthlyTransactionDescriptor)
             
-            monthlyIncome = monthlyTransactions
-                .filter { $0.type == .income }
-                .reduce(Decimal.zero) { $0 + $1.amount }
-            
-            monthlyExpenses = monthlyTransactions
-                .filter { $0.type == .expense }
-                .reduce(Decimal.zero) { $0 + $1.amount }
+            let incomeTransactions = monthlyTransactions.filter { $0.type == .income }
+            let expenseTransactions = monthlyTransactions.filter { $0.type == .expense }
+
+            monthlyIncome = try await convertedTransactionTotal(incomeTransactions)
+            monthlyExpenses = try await convertedTransactionTotal(expenseTransactions)
             
             // Fetch budgets (top 3)
             var budgetDescriptor = FetchDescriptor<Budget>(
@@ -112,5 +124,41 @@ final class DashboardViewModel {
     
     func refresh() async {
         await loadData()
+    }
+
+    // MARK: - Conversion
+
+    private func convertedAccountTotal(_ accounts: [Account]) async throws -> Decimal {
+        var total: Decimal = 0
+
+        for account in accounts where account.includeInTotal {
+            let convertedBalance = try await conversionService.convert(
+                account.currentBalance,
+                from: account.currencyCode,
+                to: defaultCurrencyCode,
+                on: .now,
+                mode: conversionMode
+            )
+            total += convertedBalance
+        }
+
+        return total
+    }
+
+    private func convertedTransactionTotal(_ transactions: [Transaction]) async throws -> Decimal {
+        var total: Decimal = 0
+
+        for transaction in transactions {
+            let convertedAmount = try await conversionService.convert(
+                transaction.amount,
+                from: transaction.currencyCode,
+                to: defaultCurrencyCode,
+                on: transaction.date,
+                mode: conversionMode
+            )
+            total += convertedAmount
+        }
+
+        return total
     }
 }

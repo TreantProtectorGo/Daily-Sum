@@ -7,23 +7,17 @@ import SwiftData
 final class BudgetListViewModel {
     private let modelContext: ModelContext
     private let budgetService: BudgetService
+    private let conversionService: CurrencyConversionService
+    private let conversionMode: ConversionMode
     
     var budgets: [Budget] = []
     var activeBudgets: [Budget] = []
     var inactiveBudgets: [Budget] = []
+    var totalBudgeted: Decimal = 0
+    var totalSpent: Decimal = 0
     
     var isLoading = false
     var errorMessage: String?
-    
-    var totalBudgeted: Decimal {
-        activeBudgets.reduce(Decimal.zero) { $0 + $1.limitAmount }
-    }
-    
-    var totalSpent: Decimal {
-        activeBudgets.reduce(Decimal.zero) { sum, budget in
-            sum + budget.spentAmount(in: modelContext)
-        }
-    }
     
     var overallProgress: Double {
         guard totalBudgeted > 0 else { return 0 }
@@ -41,9 +35,15 @@ final class BudgetListViewModel {
         }.count
     }
     
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        conversionService: CurrencyConversionService? = nil,
+        conversionMode: ConversionMode = .defaultForReports
+    ) {
         self.modelContext = modelContext
         self.budgetService = BudgetService(context: modelContext)
+        self.conversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        self.conversionMode = conversionMode
     }
     
     func loadBudgets() async {
@@ -59,6 +59,9 @@ final class BudgetListViewModel {
             // Active state is no longer user-facing; treat all budgets as visible.
             activeBudgets = budgets
             inactiveBudgets = []
+            let totals = try await calculateConvertedTotals(for: activeBudgets)
+            totalBudgeted = totals.budgeted
+            totalSpent = totals.spent
             
         } catch {
             errorMessage = error.localizedDescription
@@ -71,5 +74,34 @@ final class BudgetListViewModel {
         try budgetService.delete(budget)
         await loadBudgets()
     }
-    
+
+    private func calculateConvertedTotals(
+        for budgets: [Budget]
+    ) async throws -> (budgeted: Decimal, spent: Decimal) {
+        var totalBudgeted: Decimal = 0
+        var totalSpent: Decimal = 0
+        let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
+
+        for budget in budgets {
+            let convertedLimit = try await conversionService.convert(
+                budget.limitAmount,
+                from: budget.currencyCode,
+                to: displayCurrencyCode,
+                on: .now,
+                mode: conversionMode
+            )
+            totalBudgeted += convertedLimit
+
+            let convertedSpent = try await conversionService.convert(
+                budget.spentAmount(in: modelContext),
+                from: budget.currencyCode,
+                to: displayCurrencyCode,
+                on: .now,
+                mode: conversionMode
+            )
+            totalSpent += convertedSpent
+        }
+
+        return (totalBudgeted, totalSpent)
+    }
 }

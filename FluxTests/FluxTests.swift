@@ -10,13 +10,19 @@ import SwiftData
 @testable import Flux
 
 final class FluxTests: XCTestCase {
+    private var originalPreferredCurrencyCode: String?
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        originalPreferredCurrencyCode = UserDefaults.standard.string(
+            forKey: UserCurrencyPreference.storageKey
+        )
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        UserDefaults.standard.set(
+            originalPreferredCurrencyCode,
+            forKey: UserCurrencyPreference.storageKey
+        )
     }
 
     func testTransactionAccountPreferencePersistsValues() throws {
@@ -151,6 +157,235 @@ final class FluxTests: XCTestCase {
         
         XCTAssertEqual(firstCount, 3)
         XCTAssertEqual(secondCount, 3)
+    }
+
+    @MainActor
+    func testDashboardDisplayCurrencyUsesUserPreference() throws {
+        XCTAssertEqual(
+            DashboardViewModel.resolvedDisplayCurrencyCode(preferredCurrencyCode: "TWD"),
+            "TWD"
+        )
+    }
+
+    @MainActor
+    func testDashboardDisplayCurrencyFallsBackForUnsupportedPreference() throws {
+        let resolvedCode = DashboardViewModel.resolvedDisplayCurrencyCode(
+            preferredCurrencyCode: "INVALID"
+        )
+        XCTAssertTrue(SupportedCurrency(rawValue: resolvedCode) != nil)
+    }
+
+    @MainActor
+    func testUserCurrencyPreferenceResolvesValidCode() throws {
+        XCTAssertEqual(
+            UserCurrencyPreference.resolvedDisplayCurrencyCode(preferredCurrencyCode: "EUR"),
+            "EUR"
+        )
+    }
+
+    @MainActor
+    func testUserCurrencyPreferenceResolvesInvalidCodeToSupportedCurrency() throws {
+        let resolvedCode = UserCurrencyPreference.resolvedDisplayCurrencyCode(
+            preferredCurrencyCode: "NOT_A_CURRENCY"
+        )
+        XCTAssertTrue(SupportedCurrency(rawValue: resolvedCode) != nil)
+    }
+
+    func testConversionModeDefaultsForDashboardAndReports() {
+        XCTAssertEqual(ConversionMode.defaultForDashboard, .latest)
+        XCTAssertEqual(ConversionMode.defaultForReports, .historical)
+    }
+
+    @MainActor
+    func testDashboardLoadDataConvertsMixedCurrencyTotalsUsingLatestRates() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let usdAccount = Account(name: "USD Wallet", type: .cash, currencyCode: "USD")
+        let twdAccount = Account(name: "TWD Wallet", type: .cash, currencyCode: "TWD")
+        context.insert(usdAccount)
+        context.insert(twdAccount)
+
+        context.insert(
+            Transaction(
+                amount: 50,
+                currencyCode: "USD",
+                type: .income,
+                date: .now,
+                account: usdAccount
+            )
+        )
+        context.insert(
+            Transaction(
+                amount: 3200,
+                currencyCode: "TWD",
+                type: .income,
+                date: .now,
+                account: twdAccount
+            )
+        )
+        context.insert(
+            Transaction(
+                amount: 10,
+                currencyCode: "USD",
+                type: .expense,
+                date: .now,
+                account: usdAccount
+            )
+        )
+        context.insert(
+            Transaction(
+                amount: 64,
+                currencyCode: "TWD",
+                type: .expense,
+                date: .now,
+                account: twdAccount
+            )
+        )
+
+        let calendar = Calendar(identifier: .gregorian)
+        let day1 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 1))!
+        let day2 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 30,
+                effectiveDate: day1
+            )
+        )
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: day2
+            )
+        )
+        try context.save()
+
+        UserCurrencyPreference.currencyCode = "USD"
+        let viewModel = DashboardViewModel(modelContext: context)
+        await viewModel.loadData()
+
+        XCTAssertEqual(viewModel.totalBalance, 138)
+        XCTAssertEqual(viewModel.monthlyIncome, 150)
+        XCTAssertEqual(viewModel.monthlyExpenses, 12)
+    }
+
+    @MainActor
+    func testReportsUseHistoricalRatesForTransactionDates() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let account = Account(name: "TWD Wallet", type: .cash, currencyCode: "TWD")
+        context.insert(account)
+
+        let calendar = Calendar(identifier: .gregorian)
+        let day1 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 1))!
+        let day2 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
+
+        context.insert(
+            Transaction(
+                amount: 3000,
+                currencyCode: "TWD",
+                type: .income,
+                date: day1,
+                account: account
+            )
+        )
+        context.insert(
+            Transaction(
+                amount: 3200,
+                currencyCode: "TWD",
+                type: .income,
+                date: day2,
+                account: account
+            )
+        )
+
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 30,
+                effectiveDate: day1
+            )
+        )
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: day2
+            )
+        )
+        try context.save()
+
+        UserCurrencyPreference.currencyCode = "USD"
+        let viewModel = ReportsViewModel(modelContext: context)
+        viewModel.selectedPeriod = .all
+        await viewModel.loadReports()
+
+        XCTAssertEqual(viewModel.totalIncome, 200)
+        XCTAssertEqual(viewModel.monthlyTrends.count, 1)
+        XCTAssertEqual(viewModel.monthlyTrends.first?.income, 200)
+    }
+
+    @MainActor
+    func testBudgetListTotalsConvertToDisplayCurrency() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF0000",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(category)
+
+        let account = Account(name: "TWD Wallet", type: .cash, currencyCode: "TWD")
+        context.insert(account)
+
+        let budget = Budget(
+            limitAmount: 3200,
+            currencyCode: "TWD",
+            period: .monthly,
+            category: category
+        )
+        context.insert(budget)
+
+        context.insert(
+            Transaction(
+                amount: 1600,
+                currencyCode: "TWD",
+                type: .expense,
+                date: .now,
+                account: account,
+                category: category
+            )
+        )
+
+        let calendar = Calendar(identifier: .gregorian)
+        let day = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: day
+            )
+        )
+        try context.save()
+
+        UserCurrencyPreference.currencyCode = "USD"
+        let viewModel = BudgetListViewModel(modelContext: context)
+        await viewModel.loadBudgets()
+
+        XCTAssertEqual(viewModel.totalBudgeted, 100)
+        XCTAssertEqual(viewModel.totalSpent, 50)
     }
 
     func testPerformanceExample() throws {

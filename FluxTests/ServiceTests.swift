@@ -4,15 +4,53 @@ import SwiftData
 
 @MainActor
 final class ServiceTests: XCTestCase {
+    private final class MockExchangeRateProvider: ExchangeRateProvider {
+        let providerName = "mock-provider"
+        private(set) var callCount = 0
+        private let snapshotDate: Date
+        private let rates: [String: Decimal]
+
+        init(snapshotDate: Date, rates: [String: Decimal]) {
+            self.snapshotDate = snapshotDate
+            self.rates = rates
+        }
+
+        func fetchRates(
+            baseCurrencyCode: String,
+            quoteCurrencyCodes: [String],
+            on date: Date?
+        ) async throws -> ExchangeRateSnapshot {
+            callCount += 1
+
+            let requestedRates = quoteCurrencyCodes.reduce(into: [String: Decimal]()) {
+                result,
+                quoteCode in
+                result[quoteCode] = rates[quoteCode] ?? 1
+            }
+
+            return ExchangeRateSnapshot(
+                baseCurrencyCode: baseCurrencyCode,
+                effectiveDate: date ?? snapshotDate,
+                rates: requestedRates,
+                provider: providerName
+            )
+        }
+    }
+
     var container: ModelContainer!
     var context: ModelContext!
+    var originalLastSuccessfulRateSyncDate: Date?
     
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
         context = container.mainContext
+        originalLastSuccessfulRateSyncDate = ExchangeRateSyncPreference.lastSuccessfulSyncDate
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
     }
     
     override func tearDown() async throws {
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = originalLastSuccessfulRateSyncDate
+        originalLastSuccessfulRateSyncDate = nil
         container = nil
         context = nil
     }
@@ -365,5 +403,65 @@ final class ServiceTests: XCTestCase {
         )
 
         XCTAssertNil(budget.category)
+    }
+
+    // MARK: - ExchangeRateRefreshScheduler Tests
+
+    func testExchangeRateRefreshSchedulerRefreshesWhenStale() async throws {
+        let now = Date(timeIntervalSince1970: 1_739_571_200) // 2025-02-15 UTC
+        let staleDate = now.addingTimeInterval(-(60 * 60 * 25))
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = staleDate
+
+        let provider = MockExchangeRateProvider(
+            snapshotDate: now,
+            rates: ["TWD": 32]
+        )
+        let scheduler = ExchangeRateRefreshScheduler(
+            refreshInterval: 60 * 60 * 24,
+            provider: provider
+        )
+
+        let refreshed = try await scheduler.refreshLatestRatesIfNeeded(
+            context: context,
+            baseCurrencyCode: "USD",
+            now: now
+        )
+
+        XCTAssertTrue(refreshed)
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertEqual(ExchangeRateSyncPreference.lastSuccessfulSyncDate, now)
+
+        var descriptor = FetchDescriptor<ExchangeRate>(
+            predicate: #Predicate<ExchangeRate> {
+                $0.baseCurrencyCode == "USD" && $0.quoteCurrencyCode == "TWD"
+            }
+        )
+        descriptor.fetchLimit = 1
+        XCTAssertEqual(try context.fetch(descriptor).first?.rate, 32)
+    }
+
+    func testExchangeRateRefreshSchedulerSkipsWhenRecent() async throws {
+        let now = Date(timeIntervalSince1970: 1_739_571_200) // 2025-02-15 UTC
+        let recentDate = now.addingTimeInterval(-(60 * 60))
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = recentDate
+
+        let provider = MockExchangeRateProvider(
+            snapshotDate: now,
+            rates: ["TWD": 32]
+        )
+        let scheduler = ExchangeRateRefreshScheduler(
+            refreshInterval: 60 * 60 * 24,
+            provider: provider
+        )
+
+        let refreshed = try await scheduler.refreshLatestRatesIfNeeded(
+            context: context,
+            baseCurrencyCode: "USD",
+            now: now
+        )
+
+        XCTAssertFalse(refreshed)
+        XCTAssertEqual(provider.callCount, 0)
+        XCTAssertEqual(ExchangeRateSyncPreference.lastSuccessfulSyncDate, recentDate)
     }
 }

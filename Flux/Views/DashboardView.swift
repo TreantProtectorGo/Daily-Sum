@@ -4,6 +4,7 @@ import SwiftData
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: DashboardViewModel?
+    @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
     
     @State private var showAddTransaction = false
     @State private var showAddAccount = false
@@ -11,6 +12,12 @@ struct DashboardView: View {
     @State private var selectedAccount: Account?
     @State private var selectedTransaction: Transaction?
     @State private var selectedBudget: Budget?
+
+    private var displayCurrencyCode: String {
+        UserCurrencyPreference.resolvedDisplayCurrencyCode(
+            preferredCurrencyCode: preferredCurrencyCode
+        )
+    }
     
     var body: some View {
         NavigationStack {
@@ -34,7 +41,7 @@ struct DashboardView: View {
                 .padding()
                 .padding(.bottom, 80)
             }
-            .navigationTitle(String(localized: "dashboard.title", defaultValue: "Dashboard"))
+            .navigationTitle(AppLocalization.string("dashboard.title", defaultValue: "Dashboard"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
@@ -42,7 +49,7 @@ struct DashboardView: View {
                     } label: {
                         Image(systemName: "gear")
                     }
-                    .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
+                    .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
                 }
             }
             .refreshable {
@@ -53,6 +60,11 @@ struct DashboardView: View {
                     viewModel = DashboardViewModel(modelContext: modelContext)
                 }
                 await viewModel?.loadData()
+            }
+            .onChange(of: preferredCurrencyCode) { _, _ in
+                Task {
+                    await viewModel?.loadData()
+                }
             }
             .sheet(isPresented: $showAddTransaction) {
                 TransactionEntrySheet(onSave: {
@@ -87,13 +99,13 @@ struct DashboardView: View {
             .overlay(alignment: .bottomTrailing) {
                 ExpandableFAB(items: [
                     .init(
-                        label: String(localized: "action.addTransaction", defaultValue: "Transaction"),
+                        label: AppLocalization.string("action.addTransaction", defaultValue: "Transaction"),
                         systemImage: "plus.circle"
                     ) {
                         showAddTransaction = true
                     },
                     .init(
-                        label: String(localized: "action.addAccount", defaultValue: "Account"),
+                        label: AppLocalization.string("action.addAccount", defaultValue: "Account"),
                         systemImage: "building.columns"
                     ) {
                         showAddAccount = true
@@ -111,11 +123,11 @@ struct DashboardView: View {
     private func balanceCard(viewModel: DashboardViewModel) -> some View {
         GlassCard(cornerRadius: 20, padding: 20) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(String(localized: "dashboard.totalBalance", defaultValue: "Total Balance"))
+                Text(AppLocalization.string("dashboard.totalBalance", defaultValue: "Total Balance"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 
-                Text(currency: viewModel.totalBalance, code: viewModel.defaultCurrencyCode)
+                Text(currency: viewModel.totalBalance, code: displayCurrencyCode)
                     .font(.system(size: 36, weight: .bold))
                 
                 if viewModel.hasAccounts {
@@ -143,14 +155,14 @@ struct DashboardView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.down.circle.fill")
                             .foregroundStyle(AppColors.income)
-                        Text(String(localized: "dashboard.income", defaultValue: "Income"))
+                        Text(AppLocalization.string("dashboard.income", defaultValue: "Income"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     
                     AmountText(
                         viewModel.monthlyIncome,
-                        currencyCode: viewModel.defaultCurrencyCode,
+                        currencyCode: displayCurrencyCode,
                         font: .title3,
                         fontWeight: .semibold
                     )
@@ -164,14 +176,14 @@ struct DashboardView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.up.circle.fill")
                             .foregroundStyle(AppColors.expense)
-                        Text(String(localized: "dashboard.expenses", defaultValue: "Expenses"))
+                        Text(AppLocalization.string("dashboard.expenses", defaultValue: "Expenses"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     
                     AmountText(
                         -viewModel.monthlyExpenses,
-                        currencyCode: viewModel.defaultCurrencyCode,
+                        currencyCode: displayCurrencyCode,
                         font: .title3,
                         fontWeight: .semibold
                     )
@@ -187,7 +199,7 @@ struct DashboardView: View {
     private func accountsSection(viewModel: DashboardViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             GlassSectionHeader(
-                String(localized: "dashboard.accounts", defaultValue: "Accounts"),
+                AppLocalization.string("dashboard.accounts", defaultValue: "Accounts"),
                 systemImage: "building.columns"
             )
             
@@ -205,7 +217,7 @@ struct DashboardView: View {
                             Text("All Accounts")
                         } label: {
                             HStack {
-                                Text(String(localized: "dashboard.viewAll", defaultValue: "View All"))
+                                Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
                                 Image(systemName: "chevron.right")
                             }
                             .font(.subheadline)
@@ -216,10 +228,10 @@ struct DashboardView: View {
                 }
             } else {
                 GlassEmptyState(
-                    title: String(localized: "empty.accounts.title", defaultValue: "No Accounts"),
-                    message: String(localized: "empty.accounts.message", defaultValue: "Add your accounts to start managing your finances."),
+                    title: AppLocalization.string("empty.accounts.title", defaultValue: "No Accounts"),
+                    message: AppLocalization.string("empty.accounts.message", defaultValue: "Add your accounts to start managing your finances."),
                     systemImage: "building.columns",
-                    actionTitle: String(localized: "empty.accounts.action", defaultValue: "Add Account")
+                    actionTitle: AppLocalization.string("empty.accounts.action", defaultValue: "Add Account")
                 ) {
                     showAddAccount = true
                 }
@@ -233,7 +245,7 @@ struct DashboardView: View {
     private func recentTransactionsSection(viewModel: DashboardViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             GlassSectionHeader(
-                String(localized: "dashboard.recentTransactions", defaultValue: "Recent Transactions"),
+                AppLocalization.string("dashboard.recentTransactions", defaultValue: "Recent Transactions"),
                 systemImage: "clock"
             )
             
@@ -250,7 +262,7 @@ struct DashboardView: View {
                             TransactionListView()
                         } label: {
                             HStack {
-                                Text(String(localized: "dashboard.viewAll", defaultValue: "View All"))
+                                Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
                                 Image(systemName: "chevron.right")
                             }
                             .font(.subheadline)
@@ -261,10 +273,10 @@ struct DashboardView: View {
                 }
             } else {
                 GlassEmptyState(
-                    title: String(localized: "empty.transactions.title", defaultValue: "No Transactions"),
-                    message: String(localized: "empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."),
+                    title: AppLocalization.string("empty.transactions.title", defaultValue: "No Transactions"),
+                    message: AppLocalization.string("empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."),
                     systemImage: "tray",
-                    actionTitle: String(localized: "empty.transactions.action", defaultValue: "Add Transaction")
+                    actionTitle: AppLocalization.string("empty.transactions.action", defaultValue: "Add Transaction")
                 ) {
                     showAddTransaction = true
                 }
@@ -278,7 +290,7 @@ struct DashboardView: View {
     private func budgetOverviewSection(viewModel: DashboardViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             GlassSectionHeader(
-                String(localized: "dashboard.budgets", defaultValue: "Budgets"),
+                AppLocalization.string("dashboard.budgets", defaultValue: "Budgets"),
                 systemImage: "chart.pie"
             )
             
@@ -291,7 +303,7 @@ struct DashboardView: View {
                     }
                     
                     HStack {
-                        Text(String(localized: "dashboard.viewAllInReports", defaultValue: "View all in Reports tab"))
+                        Text(AppLocalization.string("dashboard.viewAllInReports", defaultValue: "View all in Reports tab"))
                         Image(systemName: "arrow.right")
                     }
                     .font(.caption)
@@ -300,10 +312,10 @@ struct DashboardView: View {
                 }
             } else {
                 GlassEmptyState(
-                    title: String(localized: "empty.budgets.title", defaultValue: "No Budgets"),
-                    message: String(localized: "empty.budgets.message", defaultValue: "Create budgets to track your spending goals."),
+                    title: AppLocalization.string("empty.budgets.title", defaultValue: "No Budgets"),
+                    message: AppLocalization.string("empty.budgets.message", defaultValue: "Create budgets to track your spending goals."),
                     systemImage: "chart.pie",
-                    actionTitle: String(localized: "empty.budgets.action", defaultValue: "Create Budget")
+                    actionTitle: AppLocalization.string("empty.budgets.action", defaultValue: "Create Budget")
                 ) {
                     showAddBudget = true
                 }

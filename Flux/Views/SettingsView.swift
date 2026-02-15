@@ -23,7 +23,7 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle(String(localized: "settings.title", defaultValue: "Settings"))
+            .navigationTitle(AppLocalization.string("settings.title", defaultValue: "Settings"))
             .task {
                 if viewModel == nil {
                     viewModel = SettingsViewModel(modelContext: modelContext)
@@ -40,6 +40,7 @@ struct SettingsView: View {
         Form {
             // Currency Settings
             currencySection(viewModel: viewModel)
+            exchangeRateSection(viewModel: viewModel)
             languageSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
             
@@ -53,10 +54,10 @@ struct SettingsView: View {
             aboutSection(viewModel: viewModel)
         }
         .alert(
-            String(localized: "settings.clearData.title", defaultValue: "Do you want to clear all data?"),
+            AppLocalization.string("settings.clearData.title", defaultValue: "Do you want to clear all data?"),
             isPresented: $showClearDataConfirmation,
         ) {
-            Button(String(localized: "action.confirm", defaultValue: "Confirm"), role: .destructive) {
+            Button(AppLocalization.string("action.confirm", defaultValue: "Confirm"), role: .destructive) {
                 Task {
                     do {
                         try await viewModel.clearAllData()
@@ -66,15 +67,15 @@ struct SettingsView: View {
                     }
                 }
             }
-            Button(String(localized: "action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+            Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
         } message: {
-            Text(String(localized: "settings.clearData.message", defaultValue: "You cannot undo this action."))
+            Text(AppLocalization.string("settings.clearData.message", defaultValue: "You cannot undo this action."))
         }
         .alert(
-            String(localized: "error.title", defaultValue: "Error"),
+            AppLocalization.string("error.title", defaultValue: "Error"),
             isPresented: $showError
         ) {
-            Button(String(localized: "action.ok", defaultValue: "OK")) { }
+            Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
         } message: {
             Text(errorMessage)
         }
@@ -86,13 +87,13 @@ struct SettingsView: View {
     private func transactionDefaultsSection(viewModel: SettingsViewModel) -> some View {
         Section {
             Picker(
-                String(localized: "settings.defaultAccount", defaultValue: "Default Account"),
+                AppLocalization.string("settings.defaultAccount", defaultValue: "Default Account"),
                 selection: Binding(
                     get: { viewModel.defaultAccountId },
                     set: { viewModel.defaultAccountId = $0 }
                 )
             ) {
-                Text(String(localized: "settings.defaultAccount.none", defaultValue: "None"))
+                Text(AppLocalization.string("settings.defaultAccount.none", defaultValue: "None"))
                     .tag(nil as UUID?)
                 
                 ForEach(accounts) { account in
@@ -102,16 +103,16 @@ struct SettingsView: View {
             }
             
             Toggle(
-                String(localized: "settings.rememberLastAccount", defaultValue: "Remember Last Used Account"),
+                AppLocalization.string("settings.rememberLastAccount", defaultValue: "Remember Last Used Account"),
                 isOn: Binding(
                     get: { viewModel.rememberLastUsedAccount },
                     set: { viewModel.rememberLastUsedAccount = $0 }
                 )
             )
         } header: {
-            Text(String(localized: "settings.transactionDefaults", defaultValue: "Transaction Defaults"))
+            Text(AppLocalization.string("settings.transactionDefaults", defaultValue: "Transaction Defaults"))
         } footer: {
-            Text(String(localized: "settings.rememberLastAccount.footer", defaultValue: "When enabled, Add Transaction opens with your last used account. Otherwise it uses Default Account."))
+            Text(AppLocalization.string("settings.rememberLastAccount.footer", defaultValue: "When enabled, Add Transaction opens with your last used account. Otherwise it uses Default Account."))
         }
     }
     
@@ -119,9 +120,9 @@ struct SettingsView: View {
     
     @ViewBuilder
     private func currencySection(viewModel: SettingsViewModel) -> some View {
-        Section(String(localized: "settings.currency", defaultValue: "Currency")) {
+        Section(AppLocalization.string("settings.currency", defaultValue: "Currency")) {
             Picker(
-                String(localized: "settings.defaultCurrency", defaultValue: "Default Currency"),
+                AppLocalization.string("settings.defaultCurrency", defaultValue: "Default Currency"),
                 selection: Binding(
                     get: { viewModel.defaultCurrencyCode },
                     set: { viewModel.defaultCurrencyCode = $0 }
@@ -135,13 +136,60 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private func exchangeRateSection(viewModel: SettingsViewModel) -> some View {
+        Section(
+            AppLocalization.string("settings.exchangeRates", defaultValue: "Exchange Rates")
+        ) {
+            HStack {
+                Text(AppLocalization.string("settings.exchangeRate.source", defaultValue: "Source"))
+                Spacer()
+                Text(viewModel.exchangeRateProviderName.uppercased())
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text(AppLocalization.string("settings.exchangeRate.lastUpdated", defaultValue: "Last Updated"))
+                Spacer()
+                Text(lastUpdatedText(viewModel: viewModel))
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                Task {
+                    await viewModel.refreshExchangeRates(force: true)
+                    if let message = viewModel.errorMessage, !message.isEmpty {
+                        errorMessage = message
+                        showError = true
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(AppLocalization.string("settings.exchangeRate.refreshNow", defaultValue: "Refresh Now"))
+                    Spacer()
+                    if viewModel.isRefreshingRates {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+            }
+            .disabled(viewModel.isRefreshingRates)
+
+            if viewModel.isExchangeRateSyncStale {
+                Text(AppLocalization.string("settings.exchangeRate.staleWarning", defaultValue: "Rates may be outdated. Refresh to improve accuracy."))
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
     // MARK: - Language Section
 
     @ViewBuilder
     private func languageSection(viewModel: SettingsViewModel) -> some View {
         Section {
             Picker(
-                String(localized: "settings.defaultLanguage", defaultValue: "App Language"),
+                AppLocalization.string("settings.defaultLanguage", defaultValue: "App Language"),
                 selection: Binding(
                     get: { viewModel.appLanguage },
                     set: { viewModel.appLanguage = $0 }
@@ -153,9 +201,9 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text(String(localized: "settings.language", defaultValue: "Language"))
+            Text(AppLocalization.string("settings.language", defaultValue: "Language"))
         } footer: {
-            Text(String(localized: "settings.language.footer", defaultValue: "Choose the language used by the app interface."))
+            Text(AppLocalization.string("settings.language.footer", defaultValue: "Choose the language used by the app interface."))
         }
     }
     
@@ -163,27 +211,27 @@ struct SettingsView: View {
     
     @ViewBuilder
     private func dataSummarySection(viewModel: SettingsViewModel) -> some View {
-        Section(String(localized: "settings.dataSummary", defaultValue: "Data Summary")) {
+        Section(AppLocalization.string("settings.dataSummary", defaultValue: "Data Summary")) {
             dataRow(
-                label: String(localized: "settings.accounts", defaultValue: "Accounts"),
+                label: AppLocalization.string("settings.accounts", defaultValue: "Accounts"),
                 value: "\(viewModel.accountCount)",
                 systemImage: "building.columns"
             )
             
             dataRow(
-                label: String(localized: "settings.transactions", defaultValue: "Transactions"),
+                label: AppLocalization.string("settings.transactions", defaultValue: "Transactions"),
                 value: "\(viewModel.transactionCount)",
                 systemImage: "arrow.left.arrow.right"
             )
             
             dataRow(
-                label: String(localized: "settings.categories", defaultValue: "Categories"),
+                label: AppLocalization.string("settings.categories", defaultValue: "Categories"),
                 value: "\(viewModel.categoryCount)",
                 systemImage: "tag"
             )
             
             dataRow(
-                label: String(localized: "settings.budgets", defaultValue: "Budgets"),
+                label: AppLocalization.string("settings.budgets", defaultValue: "Budgets"),
                 value: "\(viewModel.budgetCount)",
                 systemImage: "chart.pie"
             )
@@ -203,12 +251,12 @@ struct SettingsView: View {
     
     @ViewBuilder
     private func dataManagementSection(viewModel: SettingsViewModel) -> some View {
-        Section(String(localized: "settings.dataManagement", defaultValue: "Data Management")) {
+        Section(AppLocalization.string("settings.dataManagement", defaultValue: "Data Management")) {
             // Clear all data
             Button(role: .destructive) {
                 showClearDataConfirmation = true
             } label: {
-                Text(String(localized: "settings.clearData", defaultValue: "Clear All Data"))
+                Text(AppLocalization.string("settings.clearData", defaultValue: "Clear All Data"))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
@@ -218,9 +266,9 @@ struct SettingsView: View {
     
     @ViewBuilder
     private func aboutSection(viewModel: SettingsViewModel) -> some View {
-        Section(String(localized: "settings.about", defaultValue: "About")) {
+        Section(AppLocalization.string("settings.about", defaultValue: "About")) {
             HStack {
-                Text(String(localized: "settings.version", defaultValue: "Version"))
+                Text(AppLocalization.string("settings.version", defaultValue: "Version"))
                 Spacer()
                 Text("\(viewModel.appVersion) (\(viewModel.buildNumber))")
                     .foregroundStyle(.secondary)
@@ -228,9 +276,9 @@ struct SettingsView: View {
             
             Label {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(String(localized: "settings.privacy.title", defaultValue: "Privacy First"))
+                    Text(AppLocalization.string("settings.privacy.title", defaultValue: "Privacy First"))
                         .font(.subheadline)
-                    Text(String(localized: "settings.privacy.message", defaultValue: "All data stored locally on device. iCloud Sync and premium features coming soon."))
+                    Text(AppLocalization.string("settings.privacy.message", defaultValue: "All data stored locally on device. iCloud Sync and premium features coming soon."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -239,6 +287,13 @@ struct SettingsView: View {
                     .foregroundStyle(.green)
             }
         }
+    }
+
+    private func lastUpdatedText(viewModel: SettingsViewModel) -> String {
+        guard let lastUpdated = viewModel.lastSuccessfulRateSyncDate else {
+            return AppLocalization.string("settings.exchangeRate.never", defaultValue: "Never")
+        }
+        return DateFormatterUtility.shared.formatDateWithTime(lastUpdated)
     }
 }
 

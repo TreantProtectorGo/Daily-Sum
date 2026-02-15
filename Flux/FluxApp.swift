@@ -55,12 +55,29 @@ struct FluxApp: App {
             if let container {
                 let generator = RecurringTransactionGenerator(context: container.mainContext)
                 let _ = try generator.generatePendingTransactions()
+                Task { @MainActor in
+                    await refreshExchangeRatesIfNeeded(in: container)
+                }
             }
             
             isLoading = false
         } catch {
             loadError = error
             isLoading = false
+        }
+    }
+
+    @MainActor
+    private func refreshExchangeRatesIfNeeded(in container: ModelContainer) async {
+        let scheduler = ExchangeRateRefreshScheduler()
+        do {
+            _ = try await scheduler.refreshLatestRatesIfNeeded(
+                context: container.mainContext,
+                baseCurrencyCode: UserCurrencyPreference.resolvedCurrencyCode
+            )
+        } catch {
+            // Keep startup resilient even when rate refresh fails (e.g. offline).
+            print("Exchange rate refresh failed: \(error.localizedDescription)")
         }
     }
 }

@@ -9,6 +9,11 @@ import SwiftData
 @MainActor
 final class ReportsViewModel {
     // MARK: - Types
+
+    private struct ConvertedTransaction {
+        let transaction: Transaction
+        let convertedAmount: Decimal
+    }
     
     struct CategorySummary: Identifiable {
         let id = UUID()
@@ -41,17 +46,17 @@ final class ReportsViewModel {
         var localizedName: String {
             switch self {
             case .month:
-                String(localized: "reports.period.thisMonth", defaultValue: "Month")
+                AppLocalization.string("reports.period.thisMonth", defaultValue: "Month")
             case .lastMonth:
-                String(localized: "reports.period.lastMonth", defaultValue: "Last")
+                AppLocalization.string("reports.period.lastMonth", defaultValue: "Last")
             case .quarter:
-                String(localized: "reports.period.last3Months", defaultValue: "Quarter")
+                AppLocalization.string("reports.period.last3Months", defaultValue: "Quarter")
             case .year:
-                String(localized: "reports.period.thisYear", defaultValue: "Year")
+                AppLocalization.string("reports.period.thisYear", defaultValue: "Year")
             case .all:
-                String(localized: "reports.period.all", defaultValue: "All")
+                AppLocalization.string("reports.period.all", defaultValue: "All")
             case .custom:
-                String(localized: "reports.period.custom", defaultValue: "Custom")
+                AppLocalization.string("reports.period.custom", defaultValue: "Custom")
             }
         }
         
@@ -95,6 +100,8 @@ final class ReportsViewModel {
     // MARK: - Properties
     
     private let modelContext: ModelContext
+    private let conversionService: CurrencyConversionService
+    private let conversionMode: ConversionMode
     
     var selectedPeriod: ReportPeriod = .month
     var customStartDate: Date = Date()
@@ -129,8 +136,14 @@ final class ReportsViewModel {
     
     // MARK: - Initialization
     
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        conversionService: CurrencyConversionService? = nil,
+        conversionMode: ConversionMode = .defaultForReports
+    ) {
         self.modelContext = modelContext
+        self.conversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        self.conversionMode = conversionMode
     }
     
     // MARK: - Period Selection
@@ -164,26 +177,31 @@ final class ReportsViewModel {
                 }
             )
             let transactions = try modelContext.fetch(descriptor)
+            let convertedTransactions = try await convertTransactions(transactions)
             
             // Calculate totals
-            totalIncome = transactions
-                .filter { $0.type == .income }
-                .reduce(Decimal.zero) { $0 + $1.amount }
+            totalIncome = convertedTransactions
+                .filter { $0.transaction.type == .income }
+                .reduce(Decimal.zero) { $0 + $1.convertedAmount }
             
-            totalExpenses = transactions
-                .filter { $0.type == .expense }
-                .reduce(Decimal.zero) { $0 + $1.amount }
+            totalExpenses = convertedTransactions
+                .filter { $0.transaction.type == .expense }
+                .reduce(Decimal.zero) { $0 + $1.convertedAmount }
             
             // Group expenses by category
-            let expenseTransactions = transactions.filter { $0.type == .expense }
+            let expenseTransactions = convertedTransactions.filter {
+                $0.transaction.type == .expense
+            }
             expensesByCategory = groupByCategory(expenseTransactions, total: totalExpenses)
             
             // Group income by category
-            let incomeTransactions = transactions.filter { $0.type == .income }
+            let incomeTransactions = convertedTransactions.filter {
+                $0.transaction.type == .income
+            }
             incomeByCategory = groupByCategory(incomeTransactions, total: totalIncome)
             
             // Calculate monthly trends
-            monthlyTrends = calculateMonthlyTrends(transactions)
+            monthlyTrends = calculateMonthlyTrends(convertedTransactions)
             
         } catch {
             errorMessage = error.localizedDescription
@@ -194,17 +212,24 @@ final class ReportsViewModel {
     
     // MARK: - Private Methods
     
-    private func groupByCategory(_ transactions: [Transaction], total: Decimal) -> [CategorySummary] {
-        let grouped = Dictionary(grouping: transactions) { $0.category?.id ?? UUID() }
+    private func groupByCategory(
+        _ transactions: [ConvertedTransaction],
+        total: Decimal
+    ) -> [CategorySummary] {
+        let grouped = Dictionary(grouping: transactions) { $0.transaction.category?.id ?? UUID() }
         
         return grouped.map { (_, categoryTransactions) in
-            let category = categoryTransactions.first?.category
-            let amount = categoryTransactions.reduce(Decimal.zero) { $0 + $1.amount }
+            let category = categoryTransactions.first?.transaction.category
+            let amount = categoryTransactions.reduce(Decimal.zero) { $0 + $1.convertedAmount }
             let percentage = total > 0 ? NSDecimalNumber(decimal: amount / total).doubleValue * 100 : 0
             
             return CategorySummary(
                 category: category,
-                categoryName: category?.displayName ?? String(localized: "category.uncategorized", defaultValue: "Uncategorized"),
+                categoryName: category?.displayName
+                    ?? AppLocalization.string(
+                        "category.uncategorized",
+                        defaultValue: "Uncategorized"
+                    ),
                 amount: amount,
                 percentage: percentage,
                 color: category?.color ?? .gray
@@ -213,24 +238,53 @@ final class ReportsViewModel {
         .sorted { $0.amount > $1.amount }
     }
     
-    private func calculateMonthlyTrends(_ transactions: [Transaction]) -> [MonthlyTrend] {
+    private func calculateMonthlyTrends(_ transactions: [ConvertedTransaction]) -> [MonthlyTrend] {
         let calendar = Calendar.current
         
         let grouped = Dictionary(grouping: transactions) { transaction in
-            calendar.date(from: calendar.dateComponents([.year, .month], from: transaction.date))!
+            calendar.date(
+                from: calendar.dateComponents([.year, .month], from: transaction.transaction.date)
+            )!
         }
         
         return grouped.map { (month, monthTransactions) in
             let income = monthTransactions
-                .filter { $0.type == .income }
-                .reduce(Decimal.zero) { $0 + $1.amount }
+                .filter { $0.transaction.type == .income }
+                .reduce(Decimal.zero) { $0 + $1.convertedAmount }
             
             let expenses = monthTransactions
-                .filter { $0.type == .expense }
-                .reduce(Decimal.zero) { $0 + $1.amount }
+                .filter { $0.transaction.type == .expense }
+                .reduce(Decimal.zero) { $0 + $1.convertedAmount }
             
             return MonthlyTrend(month: month, income: income, expenses: expenses)
         }
         .sorted { $0.month < $1.month }
+    }
+
+    private func convertTransactions(
+        _ transactions: [Transaction]
+    ) async throws -> [ConvertedTransaction] {
+        var converted: [ConvertedTransaction] = []
+        converted.reserveCapacity(transactions.count)
+
+        let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
+
+        for transaction in transactions {
+            let convertedAmount = try await conversionService.convert(
+                transaction.amount,
+                from: transaction.currencyCode,
+                to: displayCurrencyCode,
+                on: transaction.date,
+                mode: conversionMode
+            )
+            converted.append(
+                ConvertedTransaction(
+                    transaction: transaction,
+                    convertedAmount: convertedAmount
+                )
+            )
+        }
+
+        return converted
     }
 }

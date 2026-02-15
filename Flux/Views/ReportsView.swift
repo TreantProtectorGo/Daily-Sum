@@ -10,9 +10,9 @@ enum ReportsTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .reports:
-            String(localized: "reports.tab.reports", defaultValue: "Reports")
+            AppLocalization.string("reports.tab.reports", defaultValue: "Reports")
         case .budgets:
-            String(localized: "reports.tab.budgets", defaultValue: "Budgets")
+            AppLocalization.string("reports.tab.budgets", defaultValue: "Budgets")
         }
     }
     
@@ -26,12 +26,19 @@ enum ReportsTab: String, CaseIterable, Identifiable {
 
 struct ReportsView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
     @State private var selectedTab: ReportsTab = .reports
     private let showsTabPicker: Bool
     @State private var reportsViewModel: ReportsViewModel?
     @State private var budgetViewModel: BudgetListViewModel?
     @State private var showAddBudget = false
     @State private var selectedBudget: Budget?
+
+    private var displayCurrencyCode: String {
+        UserCurrencyPreference.resolvedDisplayCurrencyCode(
+            preferredCurrencyCode: preferredCurrencyCode
+        )
+    }
 
     init(initialTab: ReportsTab = .reports, showsTabPicker: Bool = true) {
         _selectedTab = State(initialValue: initialTab)
@@ -51,8 +58,8 @@ struct ReportsView: View {
             }
             .navigationTitle(
                 selectedTab == .budgets
-                    ? String(localized: "reports.tab.budgets", defaultValue: "Budgets")
-                    : String(localized: "reports.title", defaultValue: "Reports")
+                    ? AppLocalization.string("reports.tab.budgets", defaultValue: "Budgets")
+                    : AppLocalization.string("reports.title", defaultValue: "Reports")
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -61,7 +68,7 @@ struct ReportsView: View {
                     } label: {
                         Image(systemName: "gear")
                     }
-                    .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
+                    .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
                 }
             }
             .task {
@@ -78,6 +85,12 @@ struct ReportsView: View {
                 if selectedTab == .reports {
                     await reportsViewModel?.loadReports()
                 } else {
+                    await budgetViewModel?.loadBudgets()
+                }
+            }
+            .onChange(of: preferredCurrencyCode) { _, _ in
+                Task {
+                    await reportsViewModel?.loadReports()
                     await budgetViewModel?.loadBudgets()
                 }
             }
@@ -144,7 +157,7 @@ struct ReportsView: View {
                 
                 if !viewModel.expensesByCategory.isEmpty {
                     categoryBreakdownSection(
-                        title: String(localized: "reports.expensesByCategory", defaultValue: "Expenses by Category"),
+                        title: AppLocalization.string("reports.expensesByCategory", defaultValue: "Expenses by Category"),
                         categories: viewModel.expensesByCategory,
                         total: viewModel.totalExpenses
                     )
@@ -152,7 +165,7 @@ struct ReportsView: View {
                 
                 if !viewModel.incomeByCategory.isEmpty {
                     categoryBreakdownSection(
-                        title: String(localized: "reports.incomeByCategory", defaultValue: "Income by Category"),
+                        title: AppLocalization.string("reports.incomeByCategory", defaultValue: "Income by Category"),
                         categories: viewModel.incomeByCategory,
                         total: viewModel.totalIncome
                     )
@@ -185,7 +198,7 @@ struct ReportsView: View {
 
                 if !viewModel.activeBudgets.isEmpty {
                     budgetSection(
-                        title: String(localized: "budgets.list", defaultValue: "Budgets"),
+                        title: AppLocalization.string("budgets.list", defaultValue: "Budgets"),
                         budgets: viewModel.activeBudgets,
                         viewModel: viewModel
                     )
@@ -241,12 +254,12 @@ struct ReportsView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.down.circle.fill")
                                 .foregroundStyle(AppColors.income)
-                            Text(String(localized: "reports.totalIncome", defaultValue: "Total Income"))
+                            Text(AppLocalization.string("reports.totalIncome", defaultValue: "Total Income"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         
-                        Text(currency: viewModel.totalIncome, code: SupportedCurrency.defaultFromLocale.rawValue)
+                        Text(currency: viewModel.totalIncome, code: displayCurrencyCode)
                             .font(.title3)
                             .fontWeight(.bold)
                     }
@@ -258,12 +271,12 @@ struct ReportsView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.up.circle.fill")
                                 .foregroundStyle(AppColors.expense)
-                            Text(String(localized: "reports.totalExpenses", defaultValue: "Total Expenses"))
+                            Text(AppLocalization.string("reports.totalExpenses", defaultValue: "Total Expenses"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         
-                        Text(currency: viewModel.totalExpenses, code: SupportedCurrency.defaultFromLocale.rawValue)
+                        Text(currency: viewModel.totalExpenses, code: displayCurrencyCode)
                             .font(.title3)
                             .fontWeight(.bold)
                     }
@@ -274,13 +287,13 @@ struct ReportsView: View {
             HStack(spacing: 12) {
                 GlassCard(cornerRadius: 16, padding: 16) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(String(localized: "reports.netIncome", defaultValue: "Net Income"))
+                        Text(AppLocalization.string("reports.netIncome", defaultValue: "Net Income"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         
                         AmountText(
                             viewModel.netIncome,
-                            currencyCode: SupportedCurrency.defaultFromLocale.rawValue,
+                            currencyCode: displayCurrencyCode,
                             showSign: true,
                             font: .title3,
                             fontWeight: .bold
@@ -291,7 +304,7 @@ struct ReportsView: View {
                 
                 GlassCard(cornerRadius: 16, padding: 16) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(String(localized: "reports.savingsRate", defaultValue: "Savings Rate"))
+                        Text(AppLocalization.string("reports.savingsRate", defaultValue: "Savings Rate"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         
@@ -328,7 +341,7 @@ struct ReportsView: View {
                     ForEach(categories.prefix(5)) { category in
                         CategoryBreakdownRow(
                             category: category,
-                            currencyCode: SupportedCurrency.defaultFromLocale.rawValue
+                            currencyCode: displayCurrencyCode
                         )
                     }
                     
@@ -348,7 +361,7 @@ struct ReportsView: View {
     @ViewBuilder
     private func monthlyTrendsSection(viewModel: ReportsViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(String(localized: "reports.monthlyTrends", defaultValue: "Monthly Trends"))
+            Text(AppLocalization.string("reports.monthlyTrends", defaultValue: "Monthly Trends"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
@@ -358,7 +371,7 @@ struct ReportsView: View {
                     ForEach(viewModel.monthlyTrends.suffix(6)) { trend in
                         MonthlyTrendRow(
                             trend: trend,
-                            currencyCode: SupportedCurrency.defaultFromLocale.rawValue
+                            currencyCode: displayCurrencyCode
                         )
                     }
                 }
@@ -372,11 +385,11 @@ struct ReportsView: View {
             VStack(spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(String(localized: "budgets.totalSpent", defaultValue: "Total Spent"))
+                        Text(AppLocalization.string("budgets.totalSpent", defaultValue: "Total Spent"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         
-                        Text(CurrencyFormatter.shared.format(viewModel.totalSpent, currencyCode: SupportedCurrency.defaultFromLocale.rawValue))
+                        Text(CurrencyFormatter.shared.format(viewModel.totalSpent, currencyCode: displayCurrencyCode))
                             .font(.title2)
                             .fontWeight(.bold)
                     }
@@ -384,11 +397,11 @@ struct ReportsView: View {
                     Spacer()
                     
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text(String(localized: "budgets.totalBudget", defaultValue: "Total Budget"))
+                        Text(AppLocalization.string("budgets.totalBudget", defaultValue: "Total Budget"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         
-                        Text(CurrencyFormatter.shared.format(viewModel.totalBudgeted, currencyCode: SupportedCurrency.defaultFromLocale.rawValue))
+                        Text(CurrencyFormatter.shared.format(viewModel.totalBudgeted, currencyCode: displayCurrencyCode))
                             .font(.title2)
                             .fontWeight(.bold)
                     }
@@ -409,7 +422,7 @@ struct ReportsView: View {
                 HStack {
                     budgetStatBadge(
                         value: viewModel.budgetsOverLimit,
-                        label: String(localized: "budgets.overLimit", defaultValue: "Over Limit"),
+                        label: AppLocalization.string("budgets.overLimit", defaultValue: "Over Limit"),
                         color: AppColors.budgetDanger
                     )
                     
@@ -417,7 +430,7 @@ struct ReportsView: View {
                     
                     budgetStatBadge(
                         value: viewModel.budgetsNearLimit,
-                        label: String(localized: "budgets.nearLimit", defaultValue: "Near Limit"),
+                        label: AppLocalization.string("budgets.nearLimit", defaultValue: "Near Limit"),
                         color: AppColors.budgetWarning
                     )
                     
@@ -425,7 +438,7 @@ struct ReportsView: View {
                     
                     budgetStatBadge(
                         value: viewModel.activeBudgets.count - viewModel.budgetsOverLimit - viewModel.budgetsNearLimit,
-                        label: String(localized: "budgets.onTrack", defaultValue: "On Track"),
+                        label: AppLocalization.string("budgets.onTrack", defaultValue: "On Track"),
                         color: AppColors.budgetSafe
                     )
                 }
@@ -465,7 +478,7 @@ struct ReportsView: View {
                         Task { try? await viewModel.deleteBudget(budget) }
                     } label: {
                         Label(
-                            String(localized: "action.delete", defaultValue: "Delete"),
+                            AppLocalization.string("action.delete", defaultValue: "Delete"),
                             systemImage: "trash"
                         )
                     }
@@ -482,13 +495,13 @@ struct ReportsView: View {
     private var budgetEmptyState: some View {
         ContentUnavailableView {
             Label(
-                String(localized: "empty.budgets.title", defaultValue: "No Budgets"),
+                AppLocalization.string("empty.budgets.title", defaultValue: "No Budgets"),
                 systemImage: "chart.pie"
             )
         } description: {
-            Text(String(localized: "empty.budgets.message", defaultValue: "Create budgets to track your spending goals."))
+            Text(AppLocalization.string("empty.budgets.message", defaultValue: "Create budgets to track your spending goals."))
         } actions: {
-            Button(String(localized: "empty.budgets.action", defaultValue: "Create Budget")) {
+            Button(AppLocalization.string("empty.budgets.action", defaultValue: "Create Budget")) {
                 showAddBudget = true
             }
             .buttonStyle(.fluxGlassProminent)
@@ -549,7 +562,7 @@ struct MonthlyTrendRow: View {
     
     var body: some View {
         HStack {
-            Text(trend.month.formatted(.dateTime.month(.abbreviated).year()))
+            Text(DateFormatterUtility.shared.formatReportMonth(trend.month))
                 .font(.subheadline)
                 .frame(width: 80, alignment: .leading)
             
@@ -559,7 +572,7 @@ struct MonthlyTrendRow: View {
                 Text(currency: trend.income, code: currencyCode)
                     .font(.caption)
                     .foregroundStyle(AppColors.income)
-                Text(String(localized: "reports.income", defaultValue: "Income"))
+                Text(AppLocalization.string("reports.income", defaultValue: "Income"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -569,7 +582,7 @@ struct MonthlyTrendRow: View {
                 Text(currency: trend.expenses, code: currencyCode)
                     .font(.caption)
                     .foregroundStyle(AppColors.expense)
-                Text(String(localized: "reports.expenses", defaultValue: "Expenses"))
+                Text(AppLocalization.string("reports.expenses", defaultValue: "Expenses"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -583,7 +596,7 @@ struct MonthlyTrendRow: View {
                     font: .caption,
                     fontWeight: .semibold
                 )
-                Text(String(localized: "reports.net", defaultValue: "Net"))
+                Text(AppLocalization.string("reports.net", defaultValue: "Net"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -611,7 +624,7 @@ struct BudgetRowCard: View {
                     } else {
                         Image(systemName: "chart.pie.fill")
                             .foregroundStyle(.secondary)
-                        Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
+                        Text(AppLocalization.string("budget.allCategories", defaultValue: "All Categories"))
                             .font(.subheadline)
                             .fontWeight(.semibold)
                     }
@@ -644,7 +657,7 @@ struct BudgetRowCard: View {
                 onTap()
             } label: {
                 Label(
-                    String(localized: "action.edit", defaultValue: "Edit"),
+                    AppLocalization.string("action.edit", defaultValue: "Edit"),
                     systemImage: "pencil"
                 )
             }
@@ -653,21 +666,21 @@ struct BudgetRowCard: View {
                 showDeleteConfirmation = true
             } label: {
                 Label(
-                    String(localized: "action.delete", defaultValue: "Delete"),
+                    AppLocalization.string("action.delete", defaultValue: "Delete"),
                     systemImage: "trash"
                 )
             }
         }
         .confirmationDialog(
-            String(localized: "budget.deleteConfirmation.title", defaultValue: "Delete Budget?"),
+            AppLocalization.string("budget.deleteConfirmation.title", defaultValue: "Delete Budget?"),
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button(String(localized: "action.delete", defaultValue: "Delete"), role: .destructive) {
+            Button(AppLocalization.string("action.delete", defaultValue: "Delete"), role: .destructive) {
                 onDelete()
             }
         } message: {
-            Text(String(localized: "budget.deleteConfirmation.message", defaultValue: "This action cannot be undone."))
+            Text(AppLocalization.string("budget.deleteConfirmation.message", defaultValue: "This action cannot be undone."))
         }
     }
 }

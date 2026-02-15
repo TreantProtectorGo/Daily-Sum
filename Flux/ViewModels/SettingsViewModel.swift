@@ -9,18 +9,36 @@ private let kDefaultCurrencyCode = "flux.defaultCurrencyCode"
 private let kDefaultTransactionAccountId = "flux.defaultTransactionAccountId"
 private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransactionAccount"
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
+private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
 
 /// Global accessor for user's preferred currency code
 /// Use this in views that need the default currency without SettingsViewModel
 enum UserCurrencyPreference {
+    static let storageKey = kDefaultCurrencyCode
+
     static var currencyCode: String {
         get {
-            UserDefaults.standard.string(forKey: kDefaultCurrencyCode) 
+            UserDefaults.standard.string(forKey: storageKey)
                 ?? SupportedCurrency.defaultFromLocale.rawValue
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: kDefaultCurrencyCode)
+            UserDefaults.standard.set(newValue, forKey: storageKey)
         }
+    }
+
+    static var resolvedCurrencyCode: String {
+        resolvedDisplayCurrencyCode(preferredCurrencyCode: currencyCode)
+    }
+
+    static var supportedCurrency: SupportedCurrency {
+        SupportedCurrency(rawValue: resolvedCurrencyCode) ?? .defaultFromLocale
+    }
+
+    static func resolvedDisplayCurrencyCode(preferredCurrencyCode: String) -> String {
+        if SupportedCurrency(rawValue: preferredCurrencyCode) != nil {
+            return preferredCurrencyCode
+        }
+        return SupportedCurrency.defaultFromLocale.rawValue
     }
 }
 
@@ -60,10 +78,22 @@ enum TransactionAccountPreference {
     }
 }
 
+enum ExchangeRateSyncPreference {
+    static var lastSuccessfulSyncDate: Date? {
+        get {
+            UserDefaults.standard.object(forKey: kLastSuccessfulRateSyncDate) as? Date
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: kLastSuccessfulRateSyncDate)
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class SettingsViewModel {
     private let modelContext: ModelContext
+    private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     
     var regionalSettings = RegionalSettings.shared
     
@@ -96,6 +126,7 @@ final class SettingsViewModel {
     var transactionCount: Int = 0
     var categoryCount: Int = 0
     var budgetCount: Int = 0
+    var isRefreshingRates = false
     
     var isLoading = false
     var errorMessage: String?
@@ -111,9 +142,28 @@ final class SettingsViewModel {
     var availableCurrencies: [SupportedCurrency] {
         SupportedCurrency.allCases
     }
+
+    var exchangeRateProviderName: String {
+        exchangeRateRefreshScheduler.providerName
+    }
+
+    var lastSuccessfulRateSyncDate: Date? {
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate
+    }
+
+    var isExchangeRateSyncStale: Bool {
+        exchangeRateRefreshScheduler.shouldRefresh(
+            lastSuccessfulSyncDate: lastSuccessfulRateSyncDate
+        )
+    }
     
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil
+    ) {
         self.modelContext = modelContext
+        self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
+            ?? ExchangeRateRefreshScheduler()
         // Load persisted currency preference on init
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
@@ -140,6 +190,21 @@ final class SettingsViewModel {
         
         isLoading = false
     }
+
+    func refreshExchangeRates(force: Bool = true) async {
+        isRefreshingRates = true
+        defer { isRefreshingRates = false }
+
+        do {
+            _ = try await exchangeRateRefreshScheduler.refreshLatestRatesIfNeeded(
+                context: modelContext,
+                baseCurrencyCode: defaultCurrencyCode,
+                force: force
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     
     func clearAllData() async throws {
         try modelContext.delete(model: Transaction.self)
@@ -147,6 +212,8 @@ final class SettingsViewModel {
         try modelContext.delete(model: Account.self)
         try modelContext.delete(model: Category.self)
         try modelContext.delete(model: Currency.self)
+        try modelContext.delete(model: ExchangeRate.self)
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
         
         let seeder = DefaultDataSeeder(context: modelContext)
         try await seeder.seedIfNeeded()
