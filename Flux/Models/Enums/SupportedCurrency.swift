@@ -81,7 +81,10 @@ enum SupportedCurrency: String, Codable, CaseIterable, Hashable, Identifiable {
     var symbol: String { config.symbol }
     
     var localizedName: String {
-        String(localized: String.LocalizationValue(stringLiteral: config.nameKey))
+        AppLocalization.string(
+            key: config.nameKey,
+            defaultValue: rawValue
+        )
     }
     
     var displayName: String { localizedName }

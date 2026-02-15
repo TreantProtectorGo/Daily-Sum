@@ -48,7 +48,7 @@ struct DateRangePicker: View {
         VStack(spacing: 12) {
             // Start date
             HStack {
-                Text(String(localized: "date.from", defaultValue: "From"))
+                Text(AppLocalization.string("date.from", defaultValue: "From"))
                     .foregroundStyle(.secondary)
                 
                 Spacer()
@@ -66,7 +66,7 @@ struct DateRangePicker: View {
             
             // End date
             HStack {
-                Text(String(localized: "date.to", defaultValue: "To"))
+                Text(AppLocalization.string("date.to", defaultValue: "To"))
                     .foregroundStyle(.secondary)
                 
                 Spacer()
@@ -105,17 +105,17 @@ struct QuickDateSelection: View {
         var localizedName: String {
             switch self {
             case .today:
-                String(localized: "date.quick.today", defaultValue: "Today")
+                AppLocalization.string("date.quick.today", defaultValue: "Today")
             case .thisWeek:
-                String(localized: "date.quick.thisWeek", defaultValue: "This Week")
+                AppLocalization.string("date.quick.thisWeek", defaultValue: "This Week")
             case .thisMonth:
-                String(localized: "date.quick.thisMonth", defaultValue: "This Month")
+                AppLocalization.string("date.quick.thisMonth", defaultValue: "This Month")
             case .lastMonth:
-                String(localized: "date.quick.lastMonth", defaultValue: "Last Month")
+                AppLocalization.string("date.quick.lastMonth", defaultValue: "Last Month")
             case .thisYear:
-                String(localized: "date.quick.thisYear", defaultValue: "This Year")
+                AppLocalization.string("date.quick.thisYear", defaultValue: "This Year")
             case .custom:
-                String(localized: "date.quick.custom", defaultValue: "Custom")
+                AppLocalization.string("date.quick.custom", defaultValue: "Custom")
             }
         }
         

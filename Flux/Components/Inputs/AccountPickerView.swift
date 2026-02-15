@@ -37,7 +37,7 @@ struct AccountPickerView: View {
                             .font(.title3)
                             .foregroundStyle(.secondary)
                             .frame(width: 32, height: 32)
-                        Text(String(localized: "account.select", defaultValue: "Select Account"))
+                        Text(AppLocalization.string("account.select", defaultValue: "Select Account"))
                             .font(.headline)
                             .foregroundStyle(.secondary)
                     }
@@ -130,8 +130,8 @@ struct InlineAccountPicker: View {
     @Query(sort: \Account.createdAt) private var accounts: [Account]
     
     var body: some View {
-        Picker(String(localized: "account.label", defaultValue: "Account"), selection: $selectedAccount) {
-            Text(String(localized: "account.none", defaultValue: "None"))
+        Picker(AppLocalization.string("account.label", defaultValue: "Account"), selection: $selectedAccount) {
+            Text(AppLocalization.string("account.none", defaultValue: "None"))
                 .tag(nil as Account?)
             
             ForEach(accounts) { account in

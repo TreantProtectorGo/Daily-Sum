@@ -14,13 +14,13 @@ struct DateFormatterUtility {
     // MARK: - Display Formatting
     
     /// Formats a date for display in transaction lists
-    func formatTransactionDate(_ date: Date, locale: Locale = .current) -> String {
+    func formatTransactionDate(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
         let now = Date.now
         
         if calendar.isDateInToday(date) {
-            return String(localized: "date.today", defaultValue: "Today")
+            return AppLocalization.string("date.today", defaultValue: "Today")
         } else if calendar.isDateInYesterday(date) {
-            return String(localized: "date.yesterday", defaultValue: "Yesterday")
+            return AppLocalization.string("date.yesterday", defaultValue: "Yesterday")
         } else if calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear) {
             // Same week - show day name
             return date.formatted(.dateTime.weekday(.wide).locale(locale))
@@ -34,7 +34,7 @@ struct DateFormatterUtility {
     }
     
     /// Formats a date with time for detailed view
-    func formatDateWithTime(_ date: Date, locale: Locale = .current) -> String {
+    func formatDateWithTime(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
         date.formatted(
             .dateTime
             .year()
@@ -47,17 +47,22 @@ struct DateFormatterUtility {
     }
     
     /// Formats just the time portion
-    func formatTime(_ date: Date, locale: Locale = .current) -> String {
+    func formatTime(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
         date.formatted(.dateTime.hour().minute().locale(locale))
     }
     
     /// Formats a month/year for budget and report headers
-    func formatMonthYear(_ date: Date, locale: Locale = .current) -> String {
+    func formatMonthYear(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
         date.formatted(.dateTime.year().month(.wide).locale(locale))
+    }
+
+    /// Formats month/year labels used in reports trend rows.
+    func formatReportMonth(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
+        date.formatted(.dateTime.month(.abbreviated).year().locale(locale))
     }
     
     /// Formats a week range for weekly views
-    func formatWeekRange(_ date: Date, locale: Locale = .current) -> String {
+    func formatWeekRange(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
         guard let weekStart = calendar.date(
             from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
         ),
@@ -74,7 +79,7 @@ struct DateFormatterUtility {
     // MARK: - Relative Formatting
     
     /// Formats a relative date (e.g., "2 days ago", "in 3 weeks")
-    func formatRelative(_ date: Date, locale: Locale = .current) -> String {
+    func formatRelative(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = locale
         formatter.unitsStyle = .full

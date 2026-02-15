@@ -17,13 +17,13 @@ enum RecurrenceRule: Codable, Equatable {
     var localizedDescription: String {
         switch self {
         case .daily:
-            String(localized: "recurrence.daily", defaultValue: "Daily")
+            AppLocalization.string("recurrence.daily", defaultValue: "Daily")
         case .weekly:
-            String(localized: "recurrence.weekly", defaultValue: "Weekly")
+            AppLocalization.string("recurrence.weekly", defaultValue: "Weekly")
         case .monthly:
-            String(localized: "recurrence.monthly", defaultValue: "Monthly")
+            AppLocalization.string("recurrence.monthly", defaultValue: "Monthly")
         case .yearly:
-            String(localized: "recurrence.yearly", defaultValue: "Yearly")
+            AppLocalization.string("recurrence.yearly", defaultValue: "Yearly")
         case .custom(let interval, let unit):
             "Every \(interval) \(unit.rawValue)"
         }

@@ -18,19 +18,19 @@ enum CategoryPickerMode {
         switch self {
         case .transaction(let type):
             return type == .expense
-                ? String(localized: "category.select.expense", defaultValue: "Select Category")
-                : String(localized: "category.select.income", defaultValue: "Select Category")
+                ? AppLocalization.string("category.select.expense", defaultValue: "Select Category")
+                : AppLocalization.string("category.select.income", defaultValue: "Select Category")
         case .budgetExpense:
-            return String(localized: "budget.category.select", defaultValue: "Select Budget Category")
+            return AppLocalization.string("budget.category.select", defaultValue: "Select Budget Category")
         }
     }
 
     var placeholderTitle: String {
         switch self {
         case .transaction:
-            return String(localized: "category.none", defaultValue: "No Category")
+            return AppLocalization.string("category.none", defaultValue: "No Category")
         case .budgetExpense:
-            return String(localized: "budget.allCategories", defaultValue: "All Categories")
+            return AppLocalization.string("budget.allCategories", defaultValue: "All Categories")
         }
     }
 
@@ -224,8 +224,8 @@ struct InlineCategoryPicker: View {
     }
     
     var body: some View {
-        Picker(String(localized: "category.label", defaultValue: "Category"), selection: $selectedCategory) {
-            Text(String(localized: "category.none", defaultValue: "None"))
+        Picker(AppLocalization.string("category.label", defaultValue: "Category"), selection: $selectedCategory) {
+            Text(AppLocalization.string("category.none", defaultValue: "None"))
                 .tag(nil as Category?)
             
             ForEach(categories) { category in

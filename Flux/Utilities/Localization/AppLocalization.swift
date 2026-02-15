@@ -1,0 +1,76 @@
+import Foundation
+
+enum AppLocalization {
+    private static var selectedLanguage: AppLanguage {
+        AppLanguagePreference.language
+    }
+
+    static var locale: Locale {
+        if let localeIdentifier = selectedLanguage.localeIdentifier {
+            return Locale(identifier: localeIdentifier)
+        }
+        return .autoupdatingCurrent
+    }
+
+    private static var bundle: Bundle {
+        guard let localeIdentifier = selectedLanguage.localeIdentifier else {
+            return .main
+        }
+
+        for identifier in localizationCandidates(for: localeIdentifier) {
+            if let path = Bundle.main.path(forResource: identifier, ofType: "lproj"),
+               let localizedBundle = Bundle(path: path) {
+                return localizedBundle
+            }
+        }
+
+        return .main
+    }
+
+    private static func localizationCandidates(for localeIdentifier: String) -> [String] {
+        var candidates = [localeIdentifier]
+        let separators = CharacterSet(charactersIn: "-_")
+        let components = localeIdentifier.components(separatedBy: separators)
+        if let languageCode = components.first, languageCode != localeIdentifier {
+            candidates.append(languageCode)
+        }
+        return candidates
+    }
+
+    static func string(
+        _ key: String,
+        defaultValue: String,
+        table: String? = nil
+    ) -> String {
+        bundle.localizedString(forKey: key, value: defaultValue, table: table)
+    }
+
+    static func string(_ key: String, table: String) -> String {
+        bundle.localizedString(forKey: key, value: nil, table: table)
+    }
+
+    static func formatted(
+        _ key: String,
+        defaultValue: String,
+        table: String? = nil,
+        _ arguments: CVarArg...
+    ) -> String {
+        let format = string(key, defaultValue: defaultValue, table: table)
+        return String(format: format, locale: locale, arguments: arguments)
+    }
+
+    static func string(
+        key: String,
+        defaultValue: String,
+        table: String? = nil
+    ) -> String {
+        string(key, defaultValue: defaultValue, table: table)
+    }
+
+    static func string(
+        key: String,
+        table: String
+    ) -> String {
+        string(key, table: table)
+    }
+}

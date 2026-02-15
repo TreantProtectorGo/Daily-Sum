@@ -43,7 +43,7 @@ struct BudgetProgressView: View {
                         Text(category.displayName)
                             .font(.headline)
                     } else {
-                        Text(String(localized: "budget.allCategories", defaultValue: "All Categories"))
+                        Text(AppLocalization.string("budget.allCategories", defaultValue: "All Categories"))
                             .font(.headline)
                     }
                 }
@@ -85,7 +85,7 @@ struct BudgetProgressView: View {
                 
                 Spacer()
                 
-                Text(String(localized: "budget.remaining", defaultValue: "Remaining: ") + 
+                Text(AppLocalization.string("budget.remaining", defaultValue: "Remaining: ") + 
                      CurrencyFormatter.shared.format(remainingAmount, currencyCode: budget.currencyCode))
                     .font(isCompact ? .caption2 : .caption)
                     .foregroundStyle(remainingAmount >= 0 ? .secondary : regionalSettings.lossColor)
@@ -100,11 +100,23 @@ struct BudgetProgressView: View {
     private var statusText: String {
         let percentage = Int(progress * 100)
         if progress >= 1.0 {
-            return String(localized: "budget.status.overBudget", defaultValue: "\(percentage)% - Over Budget!")
+            return AppLocalization.formatted(
+                "budget.status.overBudget",
+                defaultValue: "%lld%% - Over Budget!",
+                Int64(percentage)
+            )
         } else if progress >= 0.8 {
-            return String(localized: "budget.status.nearLimit", defaultValue: "\(percentage)% - Near Limit")
+            return AppLocalization.formatted(
+                "budget.status.nearLimit",
+                defaultValue: "%lld%% - Near Limit",
+                Int64(percentage)
+            )
         } else {
-            return String(localized: "budget.status.onTrack", defaultValue: "\(percentage)% - On Track")
+            return AppLocalization.formatted(
+                "budget.status.onTrack",
+                defaultValue: "%lld%% - On Track",
+                Int64(percentage)
+            )
         }
     }
 }

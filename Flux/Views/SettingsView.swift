@@ -5,6 +5,9 @@ import SwiftData
 
 /// App settings including regional preferences and data management
 struct SettingsView: View {
+    private let autoPopWhenTabSwitch: Bool
+
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: SettingsViewModel?
     @Query(sort: \Account.createdAt) private var accounts: [Account]
@@ -12,6 +15,10 @@ struct SettingsView: View {
     @State private var showClearDataConfirmation = false
     @State private var showError = false
     @State private var errorMessage = ""
+
+    init(autoPopWhenTabSwitch: Bool = false) {
+        self.autoPopWhenTabSwitch = autoPopWhenTabSwitch
+    }
     
     var body: some View {
         NavigationStack {
@@ -29,6 +36,12 @@ struct SettingsView: View {
                     viewModel = SettingsViewModel(modelContext: modelContext)
                 }
                 await viewModel?.loadSettings()
+            }
+            .onDisappear {
+                guard autoPopWhenTabSwitch else { return }
+                DispatchQueue.main.async {
+                    dismiss()
+                }
             }
         }
     }

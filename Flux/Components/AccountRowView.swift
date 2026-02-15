@@ -81,7 +81,7 @@ struct AccountSummaryCard: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(String(localized: "account.balance", defaultValue: "Balance"))
+                    Text(AppLocalization.string("account.balance", defaultValue: "Balance"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(CurrencyFormatter.shared.format(account.currentBalance, currencyCode: account.currencyCode))

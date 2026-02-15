@@ -45,7 +45,7 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        SettingsView()
+                        SettingsView(autoPopWhenTabSwitch: true)
                     } label: {
                         Image(systemName: "gear")
                     }

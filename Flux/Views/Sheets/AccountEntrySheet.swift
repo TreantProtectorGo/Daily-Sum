@@ -12,7 +12,7 @@ struct AccountEntrySheet: View {
     
     @State private var name: String = ""
     @State private var accountType: AccountType = .cash
-    @State private var selectedCurrency: SupportedCurrency = .defaultFromLocale
+    @State private var selectedCurrency: SupportedCurrency = UserCurrencyPreference.supportedCurrency
     @State private var initialBalance: Decimal = 0
     
     @State private var isSaving = false
@@ -39,8 +39,8 @@ struct AccountEntrySheet: View {
                 }
             }
             .navigationTitle(isEditing 
-                ? String(localized: "account.edit.title", defaultValue: "Edit Account")
-                : String(localized: "account.add.title", defaultValue: "Add Account"))
+                ? AppLocalization.string("account.edit.title", defaultValue: "Edit Account")
+                : AppLocalization.string("account.add.title", defaultValue: "Add Account"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -49,7 +49,7 @@ struct AccountEntrySheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -58,7 +58,7 @@ struct AccountEntrySheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(String(localized: "action.save", defaultValue: "Save"))
+                    .accessibilityLabel(AppLocalization.string("action.save", defaultValue: "Save"))
                     .disabled(!isFormValid || isSaving)
                 }
             }
@@ -66,34 +66,34 @@ struct AccountEntrySheet: View {
                 loadExistingAccount()
             }
             .alert(
-                String(localized: "error.title", defaultValue: "Error"),
+                AppLocalization.string("error.title", defaultValue: "Error"),
                 isPresented: $showError
             ) {
-                Button(String(localized: "action.ok", defaultValue: "OK")) { }
+                Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
             } message: {
                 Text(errorMessage)
             }
         }
         .presentationDetents([.medium, .large])
         .alert(
-            String(localized: "account.delete.confirm.title", defaultValue: "Do you want to delete this Account?"),
+            AppLocalization.string("account.delete.confirm.title", defaultValue: "Do you want to delete this Account?"),
             isPresented: $showDeleteConfirmation,
         ) {
-            Button(String(localized: "action.confirm", defaultValue: "Confirm"), role: .destructive) {
+            Button(AppLocalization.string("action.confirm", defaultValue: "Confirm"), role: .destructive) {
                 deleteAccount()
             }
-            Button(String(localized: "action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+            Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
         } message: {
-            Text(String(localized: "account.delete.confirm.message", defaultValue: "You cannot undo this action."))
+            Text(AppLocalization.string("account.delete.confirm.message", defaultValue: "You cannot undo this action."))
         }
     }
     
     // MARK: - Form Sections
     
     private var basicInfoSection: some View {
-        Section(String(localized: "account.info", defaultValue: "Account Info")) {
+        Section(AppLocalization.string("account.info", defaultValue: "Account Info")) {
             TextField(
-                String(localized: "account.name", defaultValue: "Account Name"),
+                AppLocalization.string("account.name", defaultValue: "Account Name"),
                 text: $name
             )
             .textInputAutocapitalization(.words)
@@ -101,8 +101,8 @@ struct AccountEntrySheet: View {
     }
     
     private var accountTypeSection: some View {
-        Section(String(localized: "account.type", defaultValue: "Account Type")) {
-            Picker(String(localized: "account.type", defaultValue: "Type"), selection: $accountType) {
+        Section(AppLocalization.string("account.type", defaultValue: "Account Type")) {
+            Picker(AppLocalization.string("account.type", defaultValue: "Type"), selection: $accountType) {
                 ForEach(AccountType.allCases, id: \.self) { type in
                     HStack {
                         Image(systemName: type.defaultIcon)
@@ -116,13 +116,13 @@ struct AccountEntrySheet: View {
     }
     
     private var balanceSection: some View {
-        Section(String(localized: "account.balance", defaultValue: "Balance")) {
+        Section(AppLocalization.string("account.balance", defaultValue: "Balance")) {
             currencyPicker
             
             HStack {
                 Text(isEditing 
-                    ? String(localized: "account.currentBalance", defaultValue: "Current Balance")
-                    : String(localized: "account.initialBalance", defaultValue: "Initial Balance"))
+                    ? AppLocalization.string("account.currentBalance", defaultValue: "Current Balance")
+                    : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance"))
                 Spacer()
                 TextField("0", value: $initialBalance, format: .number)
                     .keyboardType(.decimalPad)
@@ -134,7 +134,7 @@ struct AccountEntrySheet: View {
     
     @ViewBuilder
     private var currencyPicker: some View {
-        Picker(String(localized: "account.currency", defaultValue: "Currency"), selection: $selectedCurrency) {
+        Picker(AppLocalization.string("account.currency", defaultValue: "Currency"), selection: $selectedCurrency) {
             ForEach(SupportedCurrency.allCases, id: \.self) { (currency: SupportedCurrency) in
                 Text("\(currency.symbol) \(currency.rawValue) - \(currency.displayName)")
                     .tag(currency)
@@ -148,11 +148,11 @@ struct AccountEntrySheet: View {
             Button(role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
-                Text(String(localized: "account.delete", defaultValue: "Delete Account Permanently"))
+                Text(AppLocalization.string("account.delete", defaultValue: "Delete Account Permanently"))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         } footer: {
-            Text(String(localized: "account.delete.footer", defaultValue: "Use this only if you are sure. Deleting an account removes all its transactions."))
+            Text(AppLocalization.string("account.delete.footer", defaultValue: "Use this only if you are sure. Deleting an account removes all its transactions."))
         }
     }
     
@@ -196,7 +196,7 @@ struct AccountEntrySheet: View {
                 _ = try service.adjustCurrentBalance(
                     existing,
                     to: targetCurrentBalance,
-                    note: String(localized: "account.balanceAdjustment.note", defaultValue: "Manual balance adjustment")
+                    note: AppLocalization.string("account.balanceAdjustment.note", defaultValue: "Manual balance adjustment")
                 )
             } else {
                 try service.create(

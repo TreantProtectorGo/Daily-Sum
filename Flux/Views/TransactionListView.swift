@@ -33,7 +33,7 @@ struct TransactionListView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(String(localized: "transactions.title", defaultValue: "Transactions"))
+        .navigationTitle(AppLocalization.string("transactions.title", defaultValue: "Transactions"))
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -41,16 +41,16 @@ struct TransactionListView: View {
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease")
                 }
-                .accessibilityLabel(String(localized: "action.filters", defaultValue: "Filters"))
+                .accessibilityLabel(AppLocalization.string("action.filters", defaultValue: "Filters"))
             }
 
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
-                    SettingsView()
+                    SettingsView(autoPopWhenTabSwitch: true)
                 } label: {
                     Image(systemName: "gear")
                 }
-                .accessibilityLabel(String(localized: "tab.settings", defaultValue: "Settings"))
+                .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
             }
         }
         .task {
@@ -127,7 +127,7 @@ struct TransactionListView: View {
                                     }
                                 } label: {
                                     Label(
-                                        String(localized: "action.delete", defaultValue: "Delete"),
+                                        AppLocalization.string("action.delete", defaultValue: "Delete"),
                                         systemImage: "trash"
                                     )
                                 }
@@ -154,13 +154,13 @@ struct TransactionListView: View {
         if viewModel.hasFilters {
             ContentUnavailableView {
                 Label(
-                    String(localized: "transactions.noResults.title", defaultValue: "No Results"),
+                    AppLocalization.string("transactions.noResults.title", defaultValue: "No Results"),
                     systemImage: "magnifyingglass"
                 )
             } description: {
-                Text(String(localized: "transactions.noResults.message", defaultValue: "Try adjusting your filters or search terms."))
+                Text(AppLocalization.string("transactions.noResults.message", defaultValue: "Try adjusting your filters or search terms."))
             } actions: {
-                Button(String(localized: "transactions.clearFilters", defaultValue: "Clear Filters")) {
+                Button(AppLocalization.string("transactions.clearFilters", defaultValue: "Clear Filters")) {
                     viewModel.clearFilters()
                 }
                 .buttonStyle(.fluxGlass)
@@ -168,14 +168,14 @@ struct TransactionListView: View {
         } else {
             ContentUnavailableView {
                 Label(
-                    String(localized: "empty.transactions.title", defaultValue: "No Transactions"),
+                    AppLocalization.string("empty.transactions.title", defaultValue: "No Transactions"),
                     systemImage: "tray"
                 )
             } description: {
-                Text(String(localized: "empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."))
+                Text(AppLocalization.string("empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."))
             } actions: {
                 if !isSearchContext {
-                    Button(String(localized: "empty.transactions.action", defaultValue: "Add Transaction")) {
+                    Button(AppLocalization.string("empty.transactions.action", defaultValue: "Add Transaction")) {
                         showAddTransaction = true
                     }
                     .buttonStyle(.fluxGlassProminent)
@@ -189,9 +189,9 @@ struct TransactionListView: View {
     private func formatSectionDate(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
-            return String(localized: "date.today", defaultValue: "Today")
+            return AppLocalization.string("date.today", defaultValue: "Today")
         } else if calendar.isDateInYesterday(date) {
-            return String(localized: "date.yesterday", defaultValue: "Yesterday")
+            return AppLocalization.string("date.yesterday", defaultValue: "Yesterday")
         } else {
             return date.formatted(.dateTime.month().day().year())
         }
@@ -219,9 +219,9 @@ struct TransactionFiltersSheet: View {
         NavigationStack {
             Form {
                 // Account
-                Section(String(localized: "filter.account", defaultValue: "Account")) {
-                    Picker(String(localized: "filter.account", defaultValue: "Account"), selection: $viewModel.selectedAccount) {
-                        Text(String(localized: "filter.all", defaultValue: "All"))
+                Section(AppLocalization.string("filter.account", defaultValue: "Account")) {
+                    Picker(AppLocalization.string("filter.account", defaultValue: "Account"), selection: $viewModel.selectedAccount) {
+                        Text(AppLocalization.string("filter.all", defaultValue: "All"))
                             .tag(nil as Account?)
                         
                         ForEach(accounts) { account in
@@ -232,9 +232,9 @@ struct TransactionFiltersSheet: View {
                 }
                 
                 // Date Range
-                Section(String(localized: "filter.dateRange", defaultValue: "Date Range")) {
+                Section(AppLocalization.string("filter.dateRange", defaultValue: "Date Range")) {
                     DatePicker(
-                        String(localized: "filter.from", defaultValue: "From"),
+                        AppLocalization.string("filter.from", defaultValue: "From"),
                         selection: Binding(
                             get: { viewModel.startDate ?? Date.distantPast },
                             set: { viewModel.startDate = $0 }
@@ -243,7 +243,7 @@ struct TransactionFiltersSheet: View {
                     )
                     
                     DatePicker(
-                        String(localized: "filter.to", defaultValue: "To"),
+                        AppLocalization.string("filter.to", defaultValue: "To"),
                         selection: Binding(
                             get: { viewModel.endDate ?? Date() },
                             set: { viewModel.endDate = $0 }
@@ -252,7 +252,7 @@ struct TransactionFiltersSheet: View {
                     )
                     
                     if viewModel.startDate != nil || viewModel.endDate != nil {
-                        Button(String(localized: "filter.clearDates", defaultValue: "Clear Dates")) {
+                        Button(AppLocalization.string("filter.clearDates", defaultValue: "Clear Dates")) {
                             viewModel.startDate = nil
                             viewModel.endDate = nil
                         }
@@ -264,8 +264,8 @@ struct TransactionFiltersSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Picker(String(localized: "filter.type", defaultValue: "Transaction Type"), selection: $viewModel.selectedType) {
-                        Text(String(localized: "filter.all", defaultValue: "All"))
+                    Picker(AppLocalization.string("filter.type", defaultValue: "Transaction Type"), selection: $viewModel.selectedType) {
+                        Text(AppLocalization.string("filter.all", defaultValue: "All"))
                             .tag(nil as TransactionType?)
                         
                         ForEach(TransactionType.allCases, id: \.self) { type in
@@ -283,7 +283,7 @@ struct TransactionFiltersSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -293,12 +293,12 @@ struct TransactionFiltersSheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(String(localized: "action.apply", defaultValue: "Apply"))
+                    .accessibilityLabel(AppLocalization.string("action.apply", defaultValue: "Apply"))
                 }
                 
                 ToolbarItem(placement: .bottomBar) {
                     if viewModel.hasFilters {
-                        Button(String(localized: "filter.clearAll", defaultValue: "Clear All Filters")) {
+                        Button(AppLocalization.string("filter.clearAll", defaultValue: "Clear All Filters")) {
                             viewModel.clearFilters()
                             dismiss()
                         }

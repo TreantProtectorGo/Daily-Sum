@@ -77,4 +77,59 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(AppLanguage.from(rawValue: nil), .system)
         XCTAssertEqual(AppLanguage.from(rawValue: "invalid"), .system)
     }
+
+    func testLocalizedValuesFollowSelectedAppLanguage() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        AppLanguagePreference.language = .english
+        XCTAssertEqual(TransactionType.income.localizedName, "Income")
+        XCTAssertEqual(SupportedCurrency.USD.localizedName, "US Dollar")
+
+        AppLanguagePreference.language = .simplifiedChinese
+        XCTAssertEqual(TransactionType.income.localizedName, "收入")
+        XCTAssertEqual(SupportedCurrency.USD.localizedName, "美元")
+    }
+
+    func testLegacySystemCategoryNameIsLocalizedInEnglishMode() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        AppLanguagePreference.language = .english
+
+        let legacyCategory = Category(
+            nameKey: "外食",
+            icon: "cup.and.saucer.fill",
+            colorHex: "#F8B500",
+            type: .expense,
+            isSystemDefault: true
+        )
+
+        XCTAssertEqual(legacyCategory.displayName, "Dining Out")
+    }
+
+    func testReportMonthFormattingFollowsSelectedAppLanguage() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        let date = Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 1, day: 15)
+        )!
+
+        AppLanguagePreference.language = .english
+        let englishLabel = DateFormatterUtility.shared.formatReportMonth(date)
+
+        AppLanguagePreference.language = .simplifiedChinese
+        let simplifiedChineseLabel = DateFormatterUtility.shared.formatReportMonth(date)
+
+        XCTAssertNotEqual(englishLabel, simplifiedChineseLabel)
+        XCTAssertEqual(
+            englishLabel,
+            date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "en")))
+        )
+        XCTAssertEqual(
+            simplifiedChineseLabel,
+            date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "zh-Hans")))
+        )
+    }
 }

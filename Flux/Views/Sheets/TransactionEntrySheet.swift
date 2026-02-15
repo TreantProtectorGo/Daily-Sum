@@ -50,7 +50,7 @@ struct TransactionEntrySheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .principal) {
@@ -64,7 +64,7 @@ struct TransactionEntrySheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(String(localized: "action.save", defaultValue: "Save"))
+                    .accessibilityLabel(AppLocalization.string("action.save", defaultValue: "Save"))
                     .disabled(!isFormValid || isSaving)
                 }
             }
@@ -79,10 +79,10 @@ struct TransactionEntrySheet: View {
                 applyPreferredAccountIfNeeded()
             }
             .alert(
-                String(localized: "error.title", defaultValue: "Error"),
+                AppLocalization.string("error.title", defaultValue: "Error"),
                 isPresented: $showError
             ) {
-                Button(String(localized: "action.ok", defaultValue: "OK")) { }
+                Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
             } message: {
                 Text(errorMessage)
             }
@@ -93,7 +93,7 @@ struct TransactionEntrySheet: View {
     // MARK: - Form Sections
     
     private var transactionTypePicker: some View {
-        Picker(String(localized: "transaction.type", defaultValue: "Type"), selection: $transactionType) {
+        Picker(AppLocalization.string("transaction.type", defaultValue: "Type"), selection: $transactionType) {
             ForEach(TransactionType.allCases, id: \.self) { type in
                 Text(type.localizedName)
                     .tag(type)
@@ -107,10 +107,10 @@ struct TransactionEntrySheet: View {
     }
     
     private var amountSection: some View {
-        Section(String(localized: "transaction.amount", defaultValue: "Amount")) {
+        Section(AppLocalization.string("transaction.amount", defaultValue: "Amount")) {
             AmountInputView(
                 amount: $amount,
-                currencyCode: selectedAccount?.currencyCode ?? SupportedCurrency.defaultFromLocale.rawValue,
+                currencyCode: selectedAccount?.currencyCode ?? UserCurrencyPreference.resolvedCurrencyCode,
                 autoFocus: false
             )
             .listRowInsets(EdgeInsets())
@@ -126,11 +126,11 @@ struct TransactionEntrySheet: View {
             )
 
             if accounts.isEmpty {
-                Text(String(localized: "transaction.noAccounts", defaultValue: "No accounts available. Please create an account first."))
+                Text(AppLocalization.string("transaction.noAccounts", defaultValue: "No accounts available. Please create an account first."))
                     .foregroundStyle(.secondary)
             } else {
-                Picker(String(localized: "transaction.account", defaultValue: "Account"), selection: $selectedAccount) {
-                    Text(String(localized: "transaction.selectAccount", defaultValue: "Select Account"))
+                Picker(AppLocalization.string("transaction.account", defaultValue: "Account"), selection: $selectedAccount) {
+                    Text(AppLocalization.string("transaction.selectAccount", defaultValue: "Select Account"))
                         .tag(nil as Account?)
                     
                     ForEach(accounts) { account in
@@ -145,19 +145,19 @@ struct TransactionEntrySheet: View {
             }
 
             DatePicker(
-                String(localized: "transaction.date", defaultValue: "Date"),
+                AppLocalization.string("transaction.date", defaultValue: "Date"),
                 selection: $date,
                 displayedComponents: .date
             )
         } header: {
-            Text(String(localized: "transaction.details", defaultValue: "Details"))
+            Text(AppLocalization.string("transaction.details", defaultValue: "Details"))
         }
     }
     
     private var notesSection: some View {
-        Section(String(localized: "transaction.notes", defaultValue: "Notes")) {
+        Section(AppLocalization.string("transaction.notes", defaultValue: "Notes")) {
             TextField(
-                String(localized: "transaction.notes.placeholder", defaultValue: "Add notes..."),
+                AppLocalization.string("transaction.notes.placeholder", defaultValue: "Add notes..."),
                 text: $notes,
                 axis: .vertical
             )

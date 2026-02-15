@@ -33,13 +33,25 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .system:
-            return String(localized: "settings.language.system", defaultValue: "System Default")
+            return AppLocalization.string(
+                "settings.language.system",
+                defaultValue: "System Default"
+            )
         case .english:
-            return "English"
+            return AppLocalization.string(
+                "settings.language.english",
+                defaultValue: "English"
+            )
         case .simplifiedChinese:
-            return "简体中文"
+            return AppLocalization.string(
+                "settings.language.simplifiedChinese",
+                defaultValue: "Simplified Chinese"
+            )
         case .traditionalChinese:
-            return "繁體中文"
+            return AppLocalization.string(
+                "settings.language.traditionalChinese",
+                defaultValue: "Traditional Chinese"
+            )
         }
     }
 }

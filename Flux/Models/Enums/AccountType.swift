@@ -10,13 +10,13 @@ enum AccountType: String, Codable, CaseIterable {
     var localizedName: String {
         switch self {
         case .cash:
-            String(localized: "account.type.cash", defaultValue: "Cash")
+            AppLocalization.string("account.type.cash", defaultValue: "Cash")
         case .bank:
-            String(localized: "account.type.bank", defaultValue: "Bank Account")
+            AppLocalization.string("account.type.bank", defaultValue: "Bank Account")
         case .creditCard:
-            String(localized: "account.type.creditCard", defaultValue: "Credit Card")
+            AppLocalization.string("account.type.creditCard", defaultValue: "Credit Card")
         case .investment:
-            String(localized: "account.type.investment", defaultValue: "Investment")
+            AppLocalization.string("account.type.investment", defaultValue: "Investment")
         }
     }
     

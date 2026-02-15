@@ -9,10 +9,11 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
+    @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
     
     var body: some View {
         MainTabView()
+            .id("main-tab-\(appLanguageCode)")
     }
 }
 

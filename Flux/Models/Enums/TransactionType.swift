@@ -8,9 +8,9 @@ enum TransactionType: String, Codable, CaseIterable {
     var localizedName: String {
         switch self {
         case .income:
-            String(localized: "transaction.type.income", defaultValue: "Income")
+            AppLocalization.string("transaction.type.income", defaultValue: "Income")
         case .expense:
-            String(localized: "transaction.type.expense", defaultValue: "Expense")
+            AppLocalization.string("transaction.type.expense", defaultValue: "Expense")
         }
     }
 }

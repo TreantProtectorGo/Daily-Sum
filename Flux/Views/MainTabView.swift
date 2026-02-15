@@ -2,13 +2,20 @@ import SwiftUI
 import SwiftData
 
 struct MainTabView: View {
-    @State private var selectedTab: AppTab = .dashboard
-    @State private var searchText: String = ""
+    @SceneStorage("mainTab.selectedTab") private var selectedTabRawValue = AppTab.dashboard.rawValue
+    @SceneStorage("mainTab.searchText") private var searchText = ""
+
+    private var selectedTabBinding: Binding<AppTab> {
+        Binding(
+            get: { AppTab(rawValue: selectedTabRawValue) ?? .dashboard },
+            set: { selectedTabRawValue = $0.rawValue }
+        )
+    }
     
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: selectedTabBinding) {
             Tab(
-                String(localized: "tab.dashboard", defaultValue: "Dashboard"),
+                AppLocalization.string("tab.dashboard", defaultValue: "Dashboard"),
                 systemImage: "house.fill",
                 value: .dashboard
             ) {
@@ -16,7 +23,7 @@ struct MainTabView: View {
             }
             
             Tab(
-                String(localized: "tab.transactions", defaultValue: "Transactions"),
+                AppLocalization.string("tab.transactions", defaultValue: "Transactions"),
                 systemImage: "list.bullet.rectangle",
                 value: .transactions
             ) {
@@ -26,7 +33,7 @@ struct MainTabView: View {
             }
             
             Tab(
-                String(localized: "tab.reports", defaultValue: "Reports"),
+                AppLocalization.string("tab.reports", defaultValue: "Reports"),
                 systemImage: "chart.bar.fill",
                 value: .reports
             ) {
@@ -34,7 +41,7 @@ struct MainTabView: View {
             }
             
             Tab(
-                String(localized: "reports.tab.budgets", defaultValue: "Budgets"),
+                AppLocalization.string("reports.tab.budgets", defaultValue: "Budgets"),
                 systemImage: "chart.pie.fill",
                 value: .budgets
             ) {
@@ -47,7 +54,7 @@ struct MainTabView: View {
                     TransactionListView(searchText: $searchText)
                     .searchable(
                         text: $searchText,
-                        prompt: String(localized: "search.prompt", defaultValue: "Search accounts, transactions, budgets...")
+                        prompt: AppLocalization.string("search.prompt", defaultValue: "Search accounts, transactions, budgets...")
                     )
                 }
             }
@@ -69,15 +76,15 @@ enum AppTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .dashboard:
-            String(localized: "tab.dashboard", defaultValue: "Dashboard")
+            AppLocalization.string("tab.dashboard", defaultValue: "Dashboard")
         case .transactions:
-            String(localized: "tab.transactions", defaultValue: "Transactions")
+            AppLocalization.string("tab.transactions", defaultValue: "Transactions")
         case .reports:
-            String(localized: "tab.reports", defaultValue: "Reports")
+            AppLocalization.string("tab.reports", defaultValue: "Reports")
         case .budgets:
-            String(localized: "reports.tab.budgets", defaultValue: "Budgets")
+            AppLocalization.string("reports.tab.budgets", defaultValue: "Budgets")
         case .search:
-            String(localized: "tab.search", defaultValue: "Search")
+            AppLocalization.string("tab.search", defaultValue: "Search")
         }
     }
     

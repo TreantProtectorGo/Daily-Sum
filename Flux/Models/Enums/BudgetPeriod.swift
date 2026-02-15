@@ -8,9 +8,9 @@ enum BudgetPeriod: String, Codable, CaseIterable {
     var localizedName: String {
         switch self {
         case .weekly:
-            String(localized: "budget.period.weekly", defaultValue: "Weekly")
+            AppLocalization.string("budget.period.weekly", defaultValue: "Weekly")
         case .monthly:
-            String(localized: "budget.period.monthly", defaultValue: "Monthly")
+            AppLocalization.string("budget.period.monthly", defaultValue: "Monthly")
         }
     }
     

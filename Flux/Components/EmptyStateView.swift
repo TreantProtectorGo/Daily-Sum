@@ -102,10 +102,10 @@ extension EmptyStateView {
     /// Empty state for no transactions
     static func noTransactions(action: @escaping () -> Void) -> EmptyStateView {
         EmptyStateView(
-            title: String(localized: "empty.transactions.title", defaultValue: "No Transactions"),
-            message: String(localized: "empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."),
+            title: AppLocalization.string("empty.transactions.title", defaultValue: "No Transactions"),
+            message: AppLocalization.string("empty.transactions.message", defaultValue: "Start tracking your finances by adding your first transaction."),
             systemImage: "tray",
-            actionTitle: String(localized: "empty.transactions.action", defaultValue: "Add Transaction"),
+            actionTitle: AppLocalization.string("empty.transactions.action", defaultValue: "Add Transaction"),
             action: action
         )
     }
@@ -113,10 +113,10 @@ extension EmptyStateView {
     /// Empty state for no accounts
     static func noAccounts(action: @escaping () -> Void) -> EmptyStateView {
         EmptyStateView(
-            title: String(localized: "empty.accounts.title", defaultValue: "No Accounts"),
-            message: String(localized: "empty.accounts.message", defaultValue: "Add your accounts to start managing your finances."),
+            title: AppLocalization.string("empty.accounts.title", defaultValue: "No Accounts"),
+            message: AppLocalization.string("empty.accounts.message", defaultValue: "Add your accounts to start managing your finances."),
             systemImage: "building.columns",
-            actionTitle: String(localized: "empty.accounts.action", defaultValue: "Add Account"),
+            actionTitle: AppLocalization.string("empty.accounts.action", defaultValue: "Add Account"),
             action: action
         )
     }
@@ -124,10 +124,10 @@ extension EmptyStateView {
     /// Empty state for no budgets
     static func noBudgets(action: @escaping () -> Void) -> EmptyStateView {
         EmptyStateView(
-            title: String(localized: "empty.budgets.title", defaultValue: "No Budgets"),
-            message: String(localized: "empty.budgets.message", defaultValue: "Create budgets to track your spending goals."),
+            title: AppLocalization.string("empty.budgets.title", defaultValue: "No Budgets"),
+            message: AppLocalization.string("empty.budgets.message", defaultValue: "Create budgets to track your spending goals."),
             systemImage: "chart.pie",
-            actionTitle: String(localized: "empty.budgets.action", defaultValue: "Create Budget"),
+            actionTitle: AppLocalization.string("empty.budgets.action", defaultValue: "Create Budget"),
             action: action
         )
     }
@@ -135,8 +135,8 @@ extension EmptyStateView {
     /// Empty state for no data in a time period
     static func noDataForPeriod() -> EmptyStateView {
         EmptyStateView(
-            title: String(localized: "empty.period.title", defaultValue: "No Data"),
-            message: String(localized: "empty.period.message", defaultValue: "There's no data for the selected time period."),
+            title: AppLocalization.string("empty.period.title", defaultValue: "No Data"),
+            message: AppLocalization.string("empty.period.message", defaultValue: "There's no data for the selected time period."),
             systemImage: "calendar.badge.exclamationmark"
         )
     }
@@ -144,8 +144,8 @@ extension EmptyStateView {
     /// Empty state for search results
     static func noSearchResults(query: String) -> EmptyStateView {
         EmptyStateView(
-            title: String(localized: "empty.search.title", defaultValue: "No Results"),
-            message: String(localized: "empty.search.message", defaultValue: "No results found for your search."),
+            title: AppLocalization.string("empty.search.title", defaultValue: "No Results"),
+            message: AppLocalization.string("empty.search.message", defaultValue: "No results found for your search."),
             systemImage: "magnifyingglass"
         )
     }

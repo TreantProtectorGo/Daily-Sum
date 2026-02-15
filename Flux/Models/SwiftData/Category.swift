@@ -68,10 +68,14 @@ final class Category {
     var displayName: String {
         if isSystemDefault {
             // System categories use localization keys from CategoryLocalizations table
-            String(localized: String.LocalizationValue(nameKey), table: "CategoryLocalizations")
+            let resolvedKey = Self.resolveSystemCategoryKey(nameKey)
+            return AppLocalization.string(
+                key: resolvedKey,
+                table: "CategoryLocalizations"
+            )
         } else {
             // User-created categories store raw names
-            nameKey
+            return nameKey
         }
     }
     
@@ -93,6 +97,76 @@ final class Category {
     /// Whether this is a subcategory
     var isSubcategory: Bool {
         parentCategory != nil
+    }
+
+    // MARK: - Legacy System Category Resolution
+
+    /// Canonical category localization keys used by system-provided categories.
+    private static let systemCategoryKeys: [String] = [
+        // Expense
+        "category.expense.food",
+        "category.expense.transport",
+        "category.expense.shopping",
+        "category.expense.entertainment",
+        "category.expense.bills",
+        "category.expense.health",
+        "category.expense.education",
+        "category.expense.travel",
+        "category.expense.groceries",
+        "category.expense.dining",
+        "category.expense.coffee",
+        "category.expense.subscriptions",
+        "category.expense.housing",
+        "category.expense.personalCare",
+        "category.expense.gifts",
+        // Income
+        "category.income.salary",
+        "category.income.freelance",
+        "category.income.investment",
+        "category.income.gift",
+        "category.income.refund"
+    ]
+
+    /// Lookup for matching legacy localized names back to canonical keys.
+    private static let legacyNameToKey: [String: String] = {
+        var map: [String: String] = [:]
+        let locales = ["en", "zh-Hans", "zh-Hant"]
+
+        for key in systemCategoryKeys {
+            map[normalizedLookupKey(for: key)] = key
+
+            for locale in locales {
+                guard let path = Bundle.main.path(forResource: locale, ofType: "lproj"),
+                      let bundle = Bundle(path: path) else {
+                    continue
+                }
+
+                let localized = bundle.localizedString(
+                    forKey: key,
+                    value: nil,
+                    table: "CategoryLocalizations"
+                )
+                if localized != key {
+                    map[normalizedLookupKey(for: localized)] = key
+                }
+            }
+        }
+
+        return map
+    }()
+
+    private static func resolveSystemCategoryKey(_ value: String) -> String {
+        let normalizedValue = normalizedLookupKey(for: value)
+        if let canonical = legacyNameToKey[normalizedValue] {
+            return canonical
+        }
+        return value
+    }
+
+    private static func normalizedLookupKey(for value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 }
 

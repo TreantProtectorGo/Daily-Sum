@@ -15,7 +15,7 @@ struct TransactionRowView: View {
             
             // Details
             VStack(alignment: .leading, spacing: 2) {
-                Text(transaction.category?.displayName ?? String(localized: "transaction.uncategorized", defaultValue: "Uncategorized"))
+                Text(transaction.category?.displayName ?? AppLocalization.string("transaction.uncategorized", defaultValue: "Uncategorized"))
                     .font(.headline)
                     .lineLimit(1)
                 

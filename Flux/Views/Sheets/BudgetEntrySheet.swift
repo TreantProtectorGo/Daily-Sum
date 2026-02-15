@@ -13,7 +13,7 @@ struct BudgetEntrySheet: View {
     @State private var limitAmount: Decimal = 0
     @State private var period: BudgetPeriod = .monthly
     @State private var selectedCategory: Category?
-    @State private var currencyCode: String = UserCurrencyPreference.currencyCode
+    @State private var currencyCode: String = UserCurrencyPreference.resolvedCurrencyCode
     @State private var alertThreshold: Decimal = 0.8
     @State private var alertsEnabled: Bool = true
     
@@ -40,8 +40,8 @@ struct BudgetEntrySheet: View {
                 statusSection
             }
             .navigationTitle(isEditing 
-                ? String(localized: "budget.edit.title", defaultValue: "Edit Budget")
-                : String(localized: "budget.add.title", defaultValue: "Create Budget"))
+                ? AppLocalization.string("budget.edit.title", defaultValue: "Edit Budget")
+                : AppLocalization.string("budget.add.title", defaultValue: "Create Budget"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -50,7 +50,7 @@ struct BudgetEntrySheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(String(localized: "action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -59,7 +59,7 @@ struct BudgetEntrySheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(String(localized: "action.save", defaultValue: "Save"))
+                    .accessibilityLabel(AppLocalization.string("action.save", defaultValue: "Save"))
                     .disabled(!isFormValid || isSaving)
                 }
             }
@@ -67,10 +67,10 @@ struct BudgetEntrySheet: View {
                 loadExistingBudget()
             }
             .alert(
-                String(localized: "error.title", defaultValue: "Error"),
+                AppLocalization.string("error.title", defaultValue: "Error"),
                 isPresented: $showError
             ) {
-                Button(String(localized: "action.ok", defaultValue: "OK")) { }
+                Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
             } message: {
                 Text(errorMessage)
             }
@@ -81,8 +81,8 @@ struct BudgetEntrySheet: View {
     // MARK: - Form Sections
     
     private var amountSection: some View {
-        Section(String(localized: "budget.amount", defaultValue: "Amount & Period")) {
-            Picker(String(localized: "budget.period", defaultValue: "Period"), selection: $period) {
+        Section(AppLocalization.string("budget.amount", defaultValue: "Amount & Period")) {
+            Picker(AppLocalization.string("budget.period", defaultValue: "Period"), selection: $period) {
                 ForEach(BudgetPeriod.allCases, id: \.self) { period in
                     Text(period.localizedName)
                         .tag(period)
@@ -90,7 +90,7 @@ struct BudgetEntrySheet: View {
             }
             
             HStack {
-                Text(String(localized: "budget.limit", defaultValue: "Spending Limit"))
+                Text(AppLocalization.string("budget.limit", defaultValue: "Spending Limit"))
                 Spacer()
                 TextField("0", value: $limitAmount, format: .number)
                     .keyboardType(.decimalPad)
@@ -98,7 +98,7 @@ struct BudgetEntrySheet: View {
                     .frame(width: 120)
             }
             
-            Picker(String(localized: "budget.currency", defaultValue: "Currency"), selection: $currencyCode) {
+            Picker(AppLocalization.string("budget.currency", defaultValue: "Currency"), selection: $currencyCode) {
                 ForEach(currencyOptions, id: \.self) { currency in
                     Text("\(currency.symbol) \(currency.rawValue) - \(currency.displayName)")
                         .tag(currency.rawValue)
@@ -114,12 +114,12 @@ struct BudgetEntrySheet: View {
                 mode: .budgetExpense
             )
         } header: {
-            Text(String(localized: "budget.category.section", defaultValue: "Category"))
+            Text(AppLocalization.string("budget.category.section", defaultValue: "Category"))
         } footer: {
             if selectedCategory == nil {
-                Text(String(localized: "budget.category.footer.all", defaultValue: "This budget tracks all expense categories."))
+                Text(AppLocalization.string("budget.category.footer.all", defaultValue: "This budget tracks all expense categories."))
             } else {
-                Text(String(localized: "budget.category.footer", defaultValue: "Select a category for this budget."))
+                Text(AppLocalization.string("budget.category.footer", defaultValue: "Select a category for this budget."))
             }
         }
     }
@@ -127,7 +127,7 @@ struct BudgetEntrySheet: View {
     private var statusSection: some View {
         Section {
             Toggle(
-                String(localized: "budget.alertsEnabled", defaultValue: "Enable Alerts"),
+                AppLocalization.string("budget.alertsEnabled", defaultValue: "Enable Alerts"),
                 isOn: $alertsEnabled
             )
         }

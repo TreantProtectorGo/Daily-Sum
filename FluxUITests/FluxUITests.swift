@@ -49,6 +49,28 @@ final class FluxUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsDoesNotPersistWhenSwitchingTabs() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+
+        let settingsButton = app.navigationBars.buttons["Settings"].firstMatch
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
+        settingsButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 2))
+
+        app.tabBars.buttons["Transactions"].tap()
+
+        let dashboardTab = app.tabBars.buttons["Dashboard"]
+        XCTAssertTrue(dashboardTab.waitForExistence(timeout: 2))
+        dashboardTab.tap()
+
+        XCTAssertTrue(app.navigationBars["Dashboard"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.navigationBars["Settings"].exists)
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
