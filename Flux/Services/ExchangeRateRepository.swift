@@ -28,7 +28,7 @@ final class ExchangeRateRepository {
         provider: (any ExchangeRateProvider)? = nil
     ) {
         self.context = context
-        self.provider = provider ?? FrankfurterExchangeRateProvider()
+        self.provider = provider ?? HKMAExchangeRateProvider()
     }
 
     @discardableResult

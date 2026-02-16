@@ -37,21 +37,55 @@ enum ExchangeRateProviderError: LocalizedError {
     }
 }
 
-struct FrankfurterExchangeRateProvider: ExchangeRateProvider {
+struct HKMAExchangeRateProvider: ExchangeRateProvider {
     private struct APIResponse: Decodable {
-        let base: String
-        let date: String
-        let rates: [String: Double]
+        let result: ResultPayload
     }
 
-    let providerName = "frankfurter"
+    private struct ResultPayload: Decodable {
+        let records: [Record]
+    }
+
+    private struct Record: Decodable {
+        let endOfDay: String
+        let usd: Double?
+        let gbp: Double?
+        let jpy: Double?
+        let cad: Double?
+        let aud: Double?
+        let sgd: Double?
+        let twd: Double?
+        let chf: Double?
+        let cny: Double?
+        let krw: Double?
+        let eur: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case endOfDay = "end_of_day"
+            case usd
+            case gbp
+            case jpy
+            case cad
+            case aud
+            case sgd
+            case twd
+            case chf
+            case cny
+            case krw
+            case eur
+        }
+    }
+
+    let providerName = "hkma"
 
     private let session: URLSession
     private let baseURL: URL
 
     init(
         session: URLSession = .shared,
-        baseURL: URL = URL(string: "https://api.frankfurter.app")!
+        baseURL: URL = URL(
+            string: "https://api.hkma.gov.hk/public/market-data-and-statistics/monthly-statistical-bulletin/er-ir/er-eeri-daily"
+        )!
     ) {
         self.session = session
         self.baseURL = baseURL
@@ -76,11 +110,78 @@ struct FrankfurterExchangeRateProvider: ExchangeRateProvider {
             )
         }
 
-        guard let url = buildURL(
+        let record = try await fetchRecord(on: date)
+        let hkdRates = hkdPerUnitForeignCurrency(from: record)
+
+        guard let baseToHKD = hkdRates[normalizedBase], baseToHKD > 0 else {
+            throw ExchangeRateProviderError.invalidResponse
+        }
+
+        let rates = try normalizedQuotes.reduce(into: [String: Decimal]()) { partialResult, quote in
+            guard let quoteToHKD = hkdRates[quote], quoteToHKD > 0 else {
+                throw ExchangeRateProviderError.invalidResponse
+            }
+            let rate = baseToHKD / quoteToHKD
+            partialResult[quote] = NSDecimalNumber(value: rate).decimalValue
+        }
+
+        guard let effectiveDate = Self.apiDateFormatter.date(from: record.endOfDay) else {
+            throw ExchangeRateProviderError.invalidDateFormat
+        }
+
+        return ExchangeRateSnapshot(
             baseCurrencyCode: normalizedBase,
-            quoteCurrencyCodes: normalizedQuotes,
-            date: date
-        ) else {
+            effectiveDate: normalizedDay(effectiveDate),
+            rates: rates,
+            provider: providerName
+        )
+    }
+
+    private func fetchRecord(on date: Date?) async throws -> Record {
+        if date == nil {
+            let firstPage = try await fetchPage(offset: 0)
+            guard let latest = firstPage.first else {
+                throw ExchangeRateProviderError.invalidResponse
+            }
+            return latest
+        }
+
+        let targetDate = normalizedDay(date ?? .now)
+        var offset = 0
+
+        while true {
+            let records = try await fetchPage(offset: offset)
+            if records.isEmpty {
+                throw ExchangeRateProviderError.invalidResponse
+            }
+
+            var oldestRecordDate: Date?
+
+            for record in records {
+                guard let recordDate = Self.apiDateFormatter.date(from: record.endOfDay) else {
+                    throw ExchangeRateProviderError.invalidDateFormat
+                }
+
+                oldestRecordDate = recordDate
+                if recordDate <= targetDate {
+                    return record
+                }
+            }
+
+            guard let oldestRecordDate else {
+                throw ExchangeRateProviderError.invalidResponse
+            }
+
+            if normalizedDay(oldestRecordDate) <= targetDate {
+                throw ExchangeRateProviderError.invalidResponse
+            }
+
+            offset += records.count
+        }
+    }
+
+    private func fetchPage(offset: Int) async throws -> [Record] {
+        guard let url = buildURL(offset: offset) else {
             throw ExchangeRateProviderError.invalidRequest
         }
 
@@ -93,43 +194,38 @@ struct FrankfurterExchangeRateProvider: ExchangeRateProvider {
         }
 
         let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
-        guard let effectiveDate = Self.apiDateFormatter.date(from: decoded.date) else {
-            throw ExchangeRateProviderError.invalidDateFormat
-        }
-
-        let rates = decoded.rates.reduce(into: [String: Decimal]()) { partialResult, item in
-            partialResult[item.key.uppercased()] = NSDecimalNumber(value: item.value).decimalValue
-        }
-
-        return ExchangeRateSnapshot(
-            baseCurrencyCode: decoded.base.uppercased(),
-            effectiveDate: normalizedDay(effectiveDate),
-            rates: rates,
-            provider: providerName
-        )
+        return decoded.result.records
     }
 
-    private func buildURL(
-        baseCurrencyCode: String,
-        quoteCurrencyCodes: [String],
-        date: Date?
-    ) -> URL? {
-        var url = baseURL
-        if let date {
-            url.append(path: Self.apiDateFormatter.string(from: normalizedDay(date)))
-        } else {
-            url.append(path: "latest")
-        }
-
-        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+    private func buildURL(offset: Int) -> URL? {
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             return nil
         }
+
         components.queryItems = [
-            URLQueryItem(name: "from", value: baseCurrencyCode),
-            URLQueryItem(name: "to", value: quoteCurrencyCodes.joined(separator: ","))
+            URLQueryItem(name: "offset", value: String(offset))
+        ]
+        return components.url
+    }
+
+    private func hkdPerUnitForeignCurrency(from record: Record) -> [String: Double] {
+        var rates: [String: Double] = [
+            "HKD": 1
         ]
 
-        return components.url
+        if let usd = record.usd { rates["USD"] = usd }
+        if let gbp = record.gbp { rates["GBP"] = gbp }
+        if let jpy = record.jpy { rates["JPY"] = jpy }
+        if let cad = record.cad { rates["CAD"] = cad }
+        if let aud = record.aud { rates["AUD"] = aud }
+        if let sgd = record.sgd { rates["SGD"] = sgd }
+        if let twd = record.twd { rates["TWD"] = twd }
+        if let chf = record.chf { rates["CHF"] = chf }
+        if let cny = record.cny { rates["CNY"] = cny }
+        if let krw = record.krw { rates["KRW"] = krw }
+        if let eur = record.eur { rates["EUR"] = eur }
+
+        return rates
     }
 
     private static let apiDateFormatter: DateFormatter = {

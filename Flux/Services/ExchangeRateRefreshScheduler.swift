@@ -11,7 +11,7 @@ final class ExchangeRateRefreshScheduler {
         provider: (any ExchangeRateProvider)? = nil
     ) {
         self.refreshInterval = refreshInterval
-        self.provider = provider ?? FrankfurterExchangeRateProvider()
+        self.provider = provider ?? HKMAExchangeRateProvider()
     }
 
     var providerName: String {
