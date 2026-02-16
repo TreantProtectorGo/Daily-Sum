@@ -90,9 +90,13 @@ enum SupportedCurrency: String, Codable, CaseIterable, Hashable, Identifiable {
     var displayName: String { localizedName }
     
     var decimalPlaces: Int { config.decimalPlaces }
+
+    static func currency(forRegionCode regionCode: String) -> SupportedCurrency? {
+        regionToCurrency[regionCode.uppercased()]
+    }
     
     static var defaultFromLocale: SupportedCurrency {
         let regionCode = Locale.current.region?.identifier ?? "US"
-        return regionToCurrency[regionCode] ?? .USD
+        return currency(forRegionCode: regionCode) ?? .USD
     }
 }

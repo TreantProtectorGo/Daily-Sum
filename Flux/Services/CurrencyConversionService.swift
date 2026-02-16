@@ -1,8 +1,25 @@
 import Foundation
 import SwiftData
 
+struct CurrencyConversionQuote {
+    let convertedAmount: Decimal
+    let rate: Decimal
+    let effectiveDate: Date
+    let provider: String
+}
+
+protocol CurrencyQuoteProviding {
+    func convertWithQuote(
+        _ amount: Decimal,
+        from sourceCurrencyCode: String,
+        to targetCurrencyCode: String,
+        on date: Date,
+        mode: ConversionMode
+    ) async throws -> CurrencyConversionQuote
+}
+
 @MainActor
-final class CurrencyConversionService {
+final class CurrencyConversionService: CurrencyQuoteProviding {
     private struct RateCacheKey: Hashable {
         let sourceCurrencyCode: String
         let targetCurrencyCode: String
@@ -11,7 +28,7 @@ final class CurrencyConversionService {
     }
 
     private let repository: ExchangeRateRepository
-    private var rateCache: [RateCacheKey: Decimal] = [:]
+    private var quoteCache: [RateCacheKey: ExchangeRateQuote] = [:]
 
     init(context: ModelContext, repository: ExchangeRateRepository? = nil) {
         self.repository = repository ?? ExchangeRateRepository(context: context)
@@ -24,6 +41,22 @@ final class CurrencyConversionService {
         on date: Date = .now,
         mode: ConversionMode = .latest
     ) async throws -> Decimal {
+        try await convertWithQuote(
+            amount,
+            from: sourceCurrencyCode,
+            to: targetCurrencyCode,
+            on: date,
+            mode: mode
+        ).convertedAmount
+    }
+
+    func convertWithQuote(
+        _ amount: Decimal,
+        from sourceCurrencyCode: String,
+        to targetCurrencyCode: String,
+        on date: Date = .now,
+        mode: ConversionMode = .latest
+    ) async throws -> CurrencyConversionQuote {
         let source = sourceCurrencyCode.uppercased()
         let target = targetCurrencyCode.uppercased()
         let normalizedDate = mode == .latest ? .distantPast : normalizedDay(date)
@@ -34,21 +67,26 @@ final class CurrencyConversionService {
             mode: mode
         )
 
-        let rate: Decimal
-        if let cached = rateCache[cacheKey] {
-            rate = cached
+        let rateQuote: ExchangeRateQuote
+        if let cached = quoteCache[cacheKey] {
+            rateQuote = cached
         } else {
-            rate = try await repository.rate(
+            rateQuote = try await repository.quote(
                 from: source,
                 to: target,
                 on: date,
                 mode: mode
             )
-            rateCache[cacheKey] = rate
+            quoteCache[cacheKey] = rateQuote
         }
 
-        let converted = amount * rate
-        return round(converted, currencyCode: target)
+        let converted = round(amount * rateQuote.rate, currencyCode: target)
+        return CurrencyConversionQuote(
+            convertedAmount: converted,
+            rate: rateQuote.rate,
+            effectiveDate: rateQuote.effectiveDate,
+            provider: rateQuote.provider
+        )
     }
 
     private func round(_ amount: Decimal, currencyCode: String) -> Decimal {

@@ -1,6 +1,12 @@
 import Foundation
 import SwiftData
 
+struct ExchangeRateQuote {
+    let rate: Decimal
+    let effectiveDate: Date
+    let provider: String
+}
+
 @MainActor
 final class ExchangeRateRepository {
     enum Error: LocalizedError {
@@ -19,10 +25,10 @@ final class ExchangeRateRepository {
 
     init(
         context: ModelContext,
-        provider: any ExchangeRateProvider = FrankfurterExchangeRateProvider()
+        provider: (any ExchangeRateProvider)? = nil
     ) {
         self.context = context
-        self.provider = provider
+        self.provider = provider ?? FrankfurterExchangeRateProvider()
     }
 
     @discardableResult
@@ -45,30 +51,56 @@ final class ExchangeRateRepository {
         on date: Date,
         mode: ConversionMode
     ) async throws -> Decimal {
+        try await quote(
+            from: sourceCurrencyCode,
+            to: targetCurrencyCode,
+            on: date,
+            mode: mode
+        ).rate
+    }
+
+    func quote(
+        from sourceCurrencyCode: String,
+        to targetCurrencyCode: String,
+        on date: Date,
+        mode: ConversionMode
+    ) async throws -> ExchangeRateQuote {
         let source = sourceCurrencyCode.uppercased()
         let target = targetCurrencyCode.uppercased()
         if source == target {
-            return 1
+            return ExchangeRateQuote(
+                rate: 1,
+                effectiveDate: normalizedDay(date),
+                provider: "identity"
+            )
         }
 
         let normalizedDate = normalizedDay(date)
 
-        if let rate = try storedRate(
+        if let direct = try storedRateRecord(
             baseCurrencyCode: source,
             quoteCurrencyCode: target,
             on: normalizedDate,
             mode: mode
         ) {
-            return rate
+            return ExchangeRateQuote(
+                rate: direct.rate,
+                effectiveDate: direct.effectiveDate,
+                provider: direct.provider
+            )
         }
 
-        if let inverseRate = try storedRate(
+        if let inverse = try storedRateRecord(
             baseCurrencyCode: target,
             quoteCurrencyCode: source,
             on: normalizedDate,
             mode: mode
-        ), inverseRate > 0 {
-            return 1 / inverseRate
+        ), inverse.rate > 0 {
+            return ExchangeRateQuote(
+                rate: 1 / inverse.rate,
+                effectiveDate: inverse.effectiveDate,
+                provider: inverse.provider
+            )
         }
 
         let snapshot = try await provider.fetchRates(
@@ -78,33 +110,41 @@ final class ExchangeRateRepository {
         )
         try upsert(snapshot)
 
-        if let rate = try storedRate(
+        if let direct = try storedRateRecord(
             baseCurrencyCode: source,
             quoteCurrencyCode: target,
             on: normalizedDate,
             mode: mode
         ) {
-            return rate
+            return ExchangeRateQuote(
+                rate: direct.rate,
+                effectiveDate: direct.effectiveDate,
+                provider: direct.provider
+            )
         }
 
-        if let inverseRate = try storedRate(
+        if let inverse = try storedRateRecord(
             baseCurrencyCode: target,
             quoteCurrencyCode: source,
             on: normalizedDate,
             mode: mode
-        ), inverseRate > 0 {
-            return 1 / inverseRate
+        ), inverse.rate > 0 {
+            return ExchangeRateQuote(
+                rate: 1 / inverse.rate,
+                effectiveDate: inverse.effectiveDate,
+                provider: inverse.provider
+            )
         }
 
         throw Error.missingRatePair(base: source, quote: target)
     }
 
-    private func storedRate(
+    private func storedRateRecord(
         baseCurrencyCode: String,
         quoteCurrencyCode: String,
         on date: Date,
         mode: ConversionMode
-    ) throws -> Decimal? {
+    ) throws -> ExchangeRate? {
         var descriptor: FetchDescriptor<ExchangeRate>
 
         switch mode {
@@ -135,7 +175,7 @@ final class ExchangeRateRepository {
         }
 
         descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first?.rate
+        return try context.fetch(descriptor).first
     }
 
     private func upsert(_ snapshot: ExchangeRateSnapshot) throws {

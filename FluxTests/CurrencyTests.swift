@@ -182,6 +182,46 @@ final class CurrencyTests: XCTestCase {
 
         XCTAssertEqual(converted, 320)
     }
+
+    func testCurrencyConversionServiceConvertWithQuoteIncludesRateMetadata() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let day1 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 1))!
+        let day2 = calendar.date(from: DateComponents(year: 2026, month: 2, day: 2))!
+
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 30,
+                effectiveDate: day1,
+                provider: "older-provider"
+            )
+        )
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: day2,
+                provider: "latest-provider"
+            )
+        )
+        try context.save()
+
+        let conversionService = CurrencyConversionService(context: context)
+        let quote = try await conversionService.convertWithQuote(
+            10,
+            from: "USD",
+            to: "TWD",
+            on: day1,
+            mode: .latest
+        )
+
+        XCTAssertEqual(quote.convertedAmount, 320)
+        XCTAssertEqual(quote.rate, 32)
+        XCTAssertEqual(quote.effectiveDate, day2)
+        XCTAssertEqual(quote.provider, "latest-provider")
+    }
 }
 
 // Helper for Decimal comparison with tolerance

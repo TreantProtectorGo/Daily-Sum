@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Query(sort: \Account.createdAt) private var accounts: [Account]
     
     @State private var showClearDataConfirmation = false
+    @State private var showExchangeCalculator = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -91,6 +92,9 @@ struct SettingsView: View {
             Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
         } message: {
             Text(errorMessage)
+        }
+        .sheet(isPresented: $showExchangeCalculator) {
+            ExchangeCalculatorSheet()
         }
     }
     
@@ -188,11 +192,46 @@ struct SettingsView: View {
             }
             .disabled(viewModel.isRefreshingRates)
 
+            Toggle(
+                AppLocalization.string(
+                    "settings.exchangeRate.useLocationDefaults",
+                    defaultValue: "Use location-based travel currency defaults"
+                ),
+                isOn: Binding(
+                    get: { viewModel.useLocationDefaults },
+                    set: { newValue in
+                        Task {
+                            await viewModel.setUseLocationDefaults(newValue)
+                        }
+                    }
+                )
+            )
+
+            Button {
+                showExchangeCalculator = true
+            } label: {
+                Text(
+                    AppLocalization.string(
+                        "settings.exchangeRate.openCalculator",
+                        defaultValue: "Open Exchange Calculator"
+                    )
+                )
+            }
+
             if viewModel.isExchangeRateSyncStale {
                 Text(AppLocalization.string("settings.exchangeRate.staleWarning", defaultValue: "Rates may be outdated. Refresh to improve accuracy."))
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
+
+            Text(
+                AppLocalization.string(
+                    "settings.exchangeRate.useLocationDefaults.footer",
+                    defaultValue: "When enabled, the calculator can use your current region currency as the target."
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

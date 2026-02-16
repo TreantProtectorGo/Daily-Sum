@@ -11,11 +11,15 @@ import SwiftData
 
 final class FluxTests: XCTestCase {
     private var originalPreferredCurrencyCode: String?
+    private var originalUseLocationDefaults: Bool?
 
     override func setUpWithError() throws {
         originalPreferredCurrencyCode = UserDefaults.standard.string(
             forKey: UserCurrencyPreference.storageKey
         )
+        originalUseLocationDefaults = UserDefaults.standard.object(
+            forKey: TravelCurrencyPreference.storageKey
+        ) as? Bool
     }
 
     override func tearDownWithError() throws {
@@ -23,6 +27,22 @@ final class FluxTests: XCTestCase {
             originalPreferredCurrencyCode,
             forKey: UserCurrencyPreference.storageKey
         )
+        if let originalUseLocationDefaults {
+            UserDefaults.standard.set(
+                originalUseLocationDefaults,
+                forKey: TravelCurrencyPreference.storageKey
+            )
+        } else {
+            UserDefaults.standard.removeObject(forKey: TravelCurrencyPreference.storageKey)
+        }
+    }
+
+    func testTravelCurrencyPreferencePersistsValue() {
+        TravelCurrencyPreference.useLocationDefaults = false
+        XCTAssertFalse(TravelCurrencyPreference.useLocationDefaults)
+
+        TravelCurrencyPreference.useLocationDefaults = true
+        XCTAssertTrue(TravelCurrencyPreference.useLocationDefaults)
     }
 
     func testTransactionAccountPreferencePersistsValues() throws {

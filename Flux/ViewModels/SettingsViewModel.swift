@@ -10,6 +10,7 @@ private let kDefaultTransactionAccountId = "flux.defaultTransactionAccountId"
 private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransactionAccount"
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
+private let kUseLocationDefaults = "flux.useLocationDefaults"
 
 /// Global accessor for user's preferred currency code
 /// Use this in views that need the default currency without SettingsViewModel
@@ -89,11 +90,25 @@ enum ExchangeRateSyncPreference {
     }
 }
 
+enum TravelCurrencyPreference {
+    static let storageKey = kUseLocationDefaults
+
+    static var useLocationDefaults: Bool {
+        get {
+            UserDefaults.standard.object(forKey: storageKey) as? Bool ?? false
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: storageKey)
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class SettingsViewModel {
     private let modelContext: ModelContext
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
+    private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
     
     var regionalSettings = RegionalSettings.shared
     
@@ -119,6 +134,12 @@ final class SettingsViewModel {
     var appLanguage: AppLanguage {
         didSet {
             AppLanguagePreference.language = appLanguage
+        }
+    }
+
+    var useLocationDefaults: Bool {
+        didSet {
+            TravelCurrencyPreference.useLocationDefaults = useLocationDefaults
         }
     }
     
@@ -159,16 +180,20 @@ final class SettingsViewModel {
     
     init(
         modelContext: ModelContext,
-        exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil
+        exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
+        travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil
     ) {
         self.modelContext = modelContext
         self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
             ?? ExchangeRateRefreshScheduler()
+        self.travelCurrencyLocationService = travelCurrencyLocationService
+            ?? TravelCurrencyLocationService()
         // Load persisted currency preference on init
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
         self.appLanguage = AppLanguagePreference.language
+        self.useLocationDefaults = TravelCurrencyPreference.useLocationDefaults
     }
     
     func loadSettings() async {
@@ -204,6 +229,13 @@ final class SettingsViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func setUseLocationDefaults(_ enabled: Bool) async {
+        if enabled {
+            _ = await travelCurrencyLocationService.requestAuthorizationIfNeeded()
+        }
+        useLocationDefaults = enabled
     }
     
     func clearAllData() async throws {
