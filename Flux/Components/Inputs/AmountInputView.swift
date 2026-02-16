@@ -8,6 +8,8 @@ struct AmountInputView: View {
     let currencyCode: String
     let placeholder: String
     let autoFocus: Bool
+    let useGlassBackground: Bool
+    let useOuterPadding: Bool
     
     @State private var textValue: String = ""
     @State private var hasAttemptedAutoFocus = false
@@ -17,15 +19,32 @@ struct AmountInputView: View {
         amount: Binding<Decimal>,
         currencyCode: String,
         placeholder: String = "0.00",
-        autoFocus: Bool = false
+        autoFocus: Bool = false,
+        useGlassBackground: Bool = true,
+        useOuterPadding: Bool = true
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
         self.placeholder = placeholder
         self.autoFocus = autoFocus
+        self.useGlassBackground = useGlassBackground
+        self.useOuterPadding = useOuterPadding
     }
     
     var body: some View {
+        Group {
+            if useGlassBackground {
+                inputContent
+                    .padding(useOuterPadding ? 16 : 0)
+                    .glassBackground(cornerRadius: 12, isInteractive: true)
+            } else {
+                inputContent
+                    .padding(useOuterPadding ? 16 : 0)
+            }
+        }
+    }
+
+    private var inputContent: some View {
         HStack(spacing: 8) {
             // Currency symbol
             Text(currencySymbol)
@@ -53,8 +72,6 @@ struct AmountInputView: View {
                     }
                 }
         }
-        .padding()
-        .glassBackground(cornerRadius: 12, isInteractive: true)
     }
     
     private var currencySymbol: String {

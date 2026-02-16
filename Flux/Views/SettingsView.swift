@@ -159,13 +159,6 @@ struct SettingsView: View {
             AppLocalization.string("settings.exchangeRates", defaultValue: "Exchange Rates")
         ) {
             HStack {
-                Text(AppLocalization.string("settings.exchangeRate.source", defaultValue: "Source"))
-                Spacer()
-                Text(viewModel.exchangeRateProviderName.uppercased())
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
                 Text(AppLocalization.string("settings.exchangeRate.lastUpdated", defaultValue: "Last Updated"))
                 Spacer()
                 Text(lastUpdatedText(viewModel: viewModel))
