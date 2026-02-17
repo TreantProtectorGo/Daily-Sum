@@ -92,7 +92,7 @@ struct TransactionListView: View {
                     showAddTransaction = true
                 }
                 .accessibilityIdentifier("transactions.addButton")
-                .padding(.trailing, 20)
+                .padding(.trailing, 25)
                 .padding(.bottom, 20)
             }
         }
