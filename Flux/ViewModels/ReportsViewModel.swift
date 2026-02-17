@@ -24,6 +24,13 @@ final class ReportsViewModel {
         let color: Color
     }
     
+    struct CategoryChartSlice: Identifiable {
+        let id = UUID()
+        let name: String
+        let amount: Decimal
+        let color: Color
+    }
+
     struct MonthlyTrend: Identifiable {
         let id = UUID()
         let month: Date
@@ -78,14 +85,17 @@ final class ReportsViewModel {
                 return (start, end)
                 
             case .quarter:
-                let currentMonth = calendar.component(.month, from: now)
-                let quarterStartMonth = ((currentMonth - 1) / 3) * 3 + 1
-                let year = calendar.component(.year, from: now)
-                let start = calendar.date(from: DateComponents(year: year, month: quarterStartMonth, day: 1))!
+               let currentMonthStart = calendar.date(
+                    from: calendar.dateComponents([.year, .month], from: now)
+                )!
+                let start = calendar.date(byAdding: .month, value: -2, to: currentMonthStart)!
                 return (start, now)
                 
             case .year:
-                let start = calendar.date(from: calendar.dateComponents([.year], from: now))!
+                let currentMonthStart = calendar.date(
+                    from: calendar.dateComponents([.year, .month], from: now)
+                )!
+                let start = calendar.date(byAdding: .month, value: -11, to: currentMonthStart)!
                 return (start, now)
                 
             case .all:
@@ -238,6 +248,45 @@ final class ReportsViewModel {
         .sorted { $0.amount > $1.amount }
     }
     
+     static func categoryChartSlices(
+        from categories: [CategorySummary],
+        maxVisibleCategories: Int = 5,
+        otherCategoryName: String,
+        otherColor: Color = .gray
+    ) -> [CategoryChartSlice] {
+        guard categories.count > maxVisibleCategories else {
+            return categories.map {
+                CategoryChartSlice(
+                    name: $0.categoryName,
+                    amount: $0.amount,
+                    color: $0.color
+                )
+            }
+        }
+
+        let head = categories.prefix(maxVisibleCategories).map {
+            CategoryChartSlice(
+                name: $0.categoryName,
+                amount: $0.amount,
+                color: $0.color
+            )
+        }
+
+        let otherAmount = categories
+            .dropFirst(maxVisibleCategories)
+            .reduce(Decimal.zero) { $0 + $1.amount }
+
+        guard otherAmount > .zero else { return head }
+
+        return head + [
+            CategoryChartSlice(
+                name: otherCategoryName,
+                amount: otherAmount,
+                color: otherColor
+            )
+        ]
+    }
+
     private func calculateMonthlyTrends(_ transactions: [ConvertedTransaction]) -> [MonthlyTrend] {
         let calendar = Calendar.current
         
@@ -288,3 +337,5 @@ final class ReportsViewModel {
         return converted
     }
 }
+
+

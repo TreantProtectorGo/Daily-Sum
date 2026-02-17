@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 enum ReportsTab: String, CaseIterable, Identifiable {
     case reports
@@ -158,16 +159,14 @@ struct ReportsView: View {
                 if !viewModel.expensesByCategory.isEmpty {
                     categoryBreakdownSection(
                         title: AppLocalization.string("reports.expensesByCategory", defaultValue: "Expenses by Category"),
-                        categories: viewModel.expensesByCategory,
-                        total: viewModel.totalExpenses
+                        categories: viewModel.expensesByCategory
                     )
                 }
                 
                 if !viewModel.incomeByCategory.isEmpty {
                     categoryBreakdownSection(
                         title: AppLocalization.string("reports.incomeByCategory", defaultValue: "Income by Category"),
-                        categories: viewModel.incomeByCategory,
-                        total: viewModel.totalIncome
+                        categories: viewModel.incomeByCategory
                     )
                 }
                 
@@ -327,9 +326,22 @@ struct ReportsView: View {
     @ViewBuilder
     private func categoryBreakdownSection(
         title: String,
-        categories: [ReportsViewModel.CategorySummary],
-        total: Decimal
+        categories: [ReportsViewModel.CategorySummary]
     ) -> some View {
+        let chartSlices = ReportsViewModel.categoryChartSlices(
+            from: categories,
+            maxVisibleCategories: 5,
+            otherCategoryName: AppLocalization.string(
+                "reports.category.other",
+                defaultValue: "Other"
+            )
+        )
+        let leadingCategoryName = categories.first?.categoryName
+            ?? AppLocalization.string(
+                "category.uncategorized",
+                defaultValue: "Uncategorized"
+            )
+
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.headline)
@@ -338,6 +350,15 @@ struct ReportsView: View {
             
             GlassCard(cornerRadius: 16, padding: 16) {
                 VStack(spacing: 16) {
+                    CategoryDonutChart(
+                        slices: chartSlices,
+                        centerTitle: AppLocalization.string(
+                            "reports.category.top",
+                            defaultValue: "Top Category"
+                        ),
+                        centerValue: leadingCategoryName
+                    )
+
                     ForEach(categories.prefix(5)) { category in
                         CategoryBreakdownRow(
                             category: category,
@@ -551,6 +572,71 @@ struct CategoryBreakdownRow: View {
             }
             .frame(height: 4)
         }
+    }
+}
+
+struct CategoryDonutChart: View {
+    let slices: [ReportsViewModel.CategoryChartSlice]
+    let centerTitle: String
+    let centerValue: String
+
+    private var hasData: Bool {
+        slices.contains { $0.amount > .zero }
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Chart(slices) { slice in
+                SectorMark(
+                    angle: .value("Amount", max(doubleAmount(slice.amount), 0)),
+                    innerRadius: .ratio(0.62),
+                    angularInset: 2
+                )
+                .foregroundStyle(slice.color)
+            }
+            .frame(height: 240)
+            .chartLegend(.hidden)
+            .chartBackground { chartProxy in
+                GeometryReader { geometry in
+                    if let plotFrame = chartProxy.plotFrame {
+                        let frame = geometry[plotFrame]
+                        VStack(spacing: 2) {
+                            Text(centerTitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(centerValue)
+                                .font(.headline)
+                                .bold()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        .position(x: frame.midX, y: frame.midY)
+                    }
+                }
+            }
+
+            if hasData {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(slices) { slice in
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(slice.color)
+                                    .frame(width: 8, height: 8)
+                                Text(slice.name)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
+        }
+    }
+
+    private func doubleAmount(_ amount: Decimal) -> Double {
+        NSDecimalNumber(decimal: amount).doubleValue
     }
 }
 

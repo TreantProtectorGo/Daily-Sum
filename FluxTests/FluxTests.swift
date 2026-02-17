@@ -7,6 +7,7 @@
 
 import XCTest
 import SwiftData
+import SwiftUI
 @testable import Flux
 
 final class FluxTests: XCTestCase {
@@ -108,7 +109,7 @@ final class FluxTests: XCTestCase {
         )
         XCTAssertEqual(
             quarterRange.start,
-            calendar.date(from: DateComponents(year: 2026, month: 7, day: 1))
+            calendar.date(from: DateComponents(year: 2026, month: 6, day: 1))
         )
         XCTAssertEqual(quarterRange.end, referenceDate)
         
@@ -118,7 +119,7 @@ final class FluxTests: XCTestCase {
         )
         XCTAssertEqual(
             yearRange.start,
-            calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))
+            calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))
         )
         XCTAssertEqual(yearRange.end, referenceDate)
         
@@ -352,6 +353,94 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(viewModel.monthlyTrends.first?.income, 200)
     }
 
+    @MainActor
+    func testReportsAllPeriodIncludesPreviousYearTransactions() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let account = Account(name: "USD Wallet", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let calendar = Calendar(identifier: .gregorian)
+        let dec2025 = calendar.date(from: DateComponents(year: 2025, month: 12, day: 10))!
+        let jan2026 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 12))!
+
+        context.insert(
+            Transaction(
+                amount: 100,
+                currencyCode: "USD",
+                type: .expense,
+                date: dec2025,
+                account: account
+            )
+        )
+        context.insert(
+            Transaction(
+                amount: 50,
+                currencyCode: "USD",
+                type: .expense,
+                date: jan2026,
+                account: account
+            )
+        )
+
+        try context.save()
+
+        UserCurrencyPreference.currencyCode = "USD"
+        let viewModel = ReportsViewModel(modelContext: context)
+        viewModel.selectedPeriod = .all
+        await viewModel.loadReports()
+
+        XCTAssertEqual(viewModel.totalExpenses, 150)
+    }
+    
+    @MainActor
+    func testCategoryChartSlicesRollupTailCategoriesIntoOtherSegment() {
+        let categories: [ReportsViewModel.CategorySummary] = [
+            .init(category: nil, categoryName: "Food", amount: 45, percentage: 45, color: .red),
+            .init(category: nil, categoryName: "Transport", amount: 25, percentage: 25, color: .blue),
+            .init(category: nil, categoryName: "Shopping", amount: 10, percentage: 10, color: .green),
+            .init(category: nil, categoryName: "Bills", amount: 8, percentage: 8, color: .orange),
+            .init(category: nil, categoryName: "Health", amount: 6, percentage: 6, color: .pink),
+            .init(category: nil, categoryName: "Other A", amount: 4, percentage: 4, color: .purple),
+            .init(category: nil, categoryName: "Other B", amount: 2, percentage: 2, color: .teal)
+        ]
+
+        let slices = ReportsViewModel.categoryChartSlices(
+            from: categories,
+            maxVisibleCategories: 5,
+            otherCategoryName: "Other",
+            otherColor: .gray
+        )
+
+        XCTAssertEqual(slices.count, 6)
+        XCTAssertEqual(slices[0].name, "Food")
+        XCTAssertEqual(slices[4].name, "Health")
+        XCTAssertEqual(slices[5].name, "Other")
+        XCTAssertEqual(slices[5].amount, 6)
+    }
+
+    @MainActor
+    func testCategoryChartSlicesKeepOriginalOrderWhenAtOrUnderLimit() {
+        let categories: [ReportsViewModel.CategorySummary] = [
+            .init(category: nil, categoryName: "Food", amount: 60, percentage: 60, color: .red),
+            .init(category: nil, categoryName: "Transport", amount: 40, percentage: 40, color: .blue)
+        ]
+
+        let slices = ReportsViewModel.categoryChartSlices(
+            from: categories,
+            maxVisibleCategories: 5,
+            otherCategoryName: "Other",
+            otherColor: .gray
+        )
+
+        XCTAssertEqual(slices.count, 2)
+        XCTAssertEqual(slices[0].name, "Food")
+        XCTAssertEqual(slices[1].name, "Transport")
+        XCTAssertEqual(slices[0].amount, 60)
+        XCTAssertEqual(slices[1].amount, 40)
+    }
+    
     @MainActor
     func testBudgetListTotalsConvertToDisplayCurrency() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
