@@ -34,6 +34,7 @@ struct ReportsView: View {
     @State private var budgetViewModel: BudgetListViewModel?
     @State private var showAddBudget = false
     @State private var selectedBudget: Budget?
+    @State private var selectedCategoryBreakdownType: ReportsViewModel.CategoryBreakdownType = .expense
 
     private var displayCurrencyCode: String {
         UserCurrencyPreference.resolvedDisplayCurrencyCode(
@@ -155,19 +156,14 @@ struct ReportsView: View {
                 periodSelector(viewModel: viewModel)
                 
                 summarySection(viewModel: viewModel)
-                
-                if !viewModel.expensesByCategory.isEmpty {
-                    categoryBreakdownSection(
-                        title: AppLocalization.string("reports.expensesByCategory", defaultValue: "Expenses by Category"),
-                        categories: viewModel.expensesByCategory
-                    )
-                }
-                
-                if !viewModel.incomeByCategory.isEmpty {
-                    categoryBreakdownSection(
-                        title: AppLocalization.string("reports.incomeByCategory", defaultValue: "Income by Category"),
-                        categories: viewModel.incomeByCategory
-                    )
+
+                let availableBreakdowns = ReportsViewModel.availableCategoryBreakdownTypes(
+                    expenseCategories: viewModel.expensesByCategory,
+                    incomeCategories: viewModel.incomeByCategory
+                )
+
+                if !availableBreakdowns.isEmpty {
+                    categoryBreakdownSection(viewModel: viewModel)
                 }
                 
                 if !viewModel.monthlyTrends.isEmpty {
@@ -325,9 +321,20 @@ struct ReportsView: View {
     
     @ViewBuilder
     private func categoryBreakdownSection(
-        title: String,
-        categories: [ReportsViewModel.CategorySummary]
+        viewModel: ReportsViewModel
     ) -> some View {
+        let availableBreakdowns = ReportsViewModel.availableCategoryBreakdownTypes(
+            expenseCategories: viewModel.expensesByCategory,
+            incomeCategories: viewModel.incomeByCategory
+        )
+        let resolvedBreakdown = availableBreakdowns.contains(selectedCategoryBreakdownType)
+            ? selectedCategoryBreakdownType
+            : (availableBreakdowns.first ?? .expense)
+        let categories = ReportsViewModel.categoriesForBreakdown(
+            resolvedBreakdown,
+            expenseCategories: viewModel.expensesByCategory,
+            incomeCategories: viewModel.incomeByCategory
+        )
         let chartSlices = ReportsViewModel.categoryChartSlices(
             from: categories,
             maxVisibleCategories: 5,
@@ -342,37 +349,57 @@ struct ReportsView: View {
                 defaultValue: "Uncategorized"
             )
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-            
-            GlassCard(cornerRadius: 16, padding: 16) {
-                VStack(spacing: 16) {
-                    CategoryDonutChart(
-                        slices: chartSlices,
-                        centerTitle: AppLocalization.string(
-                            "reports.category.top",
-                            defaultValue: "Top Category"
-                        ),
-                        centerValue: leadingCategoryName
-                    )
-
-                    ForEach(categories.prefix(5)) { category in
-                        CategoryBreakdownRow(
-                            category: category,
-                            currencyCode: displayCurrencyCode
-                        )
-                    }
-                    
-                    if categories.count > 5 {
-                        HStack {
-                            Text("And \(categories.count - 5) more...")
+        GlassCard(cornerRadius: 16, padding: 16) {
+            VStack(spacing: 16) {
+                HStack(spacing: 8) {
+                    ForEach(availableBreakdowns) { breakdownType in
+                        Button {
+                            selectedCategoryBreakdownType = breakdownType
+                        } label: {
+                            Label(breakdownType.localizedName, systemImage: breakdownType.iconName)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
+                                .fontWeight(.semibold)
+                                .foregroundStyle(
+                                    resolvedBreakdown == breakdownType
+                                        ? Color.primary
+                                        : Color.secondary
+                                )
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    resolvedBreakdown == breakdownType
+                                        ? Color.primary.opacity(0.12)
+                                        : Color.secondary.opacity(0.12)
+                                )
+                                .clipShape(.capsule)
                         }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer()
+                }
+
+                CategoryDonutChart(
+                    slices: chartSlices,
+                    centerTitle: AppLocalization.string(
+                        "reports.category.top",
+                        defaultValue: "Top Category"
+                    ),
+                    centerValue: leadingCategoryName
+                )
+
+                ForEach(categories.prefix(5)) { category in
+                    CategoryBreakdownRow(
+                        category: category,
+                        currencyCode: displayCurrencyCode
+                    )
+                }
+                
+                if categories.count > 5 {
+                    HStack {
+                        Text("And \(categories.count - 5) more...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
                     }
                 }
             }

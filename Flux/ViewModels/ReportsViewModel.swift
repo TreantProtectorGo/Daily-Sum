@@ -23,6 +23,31 @@ final class ReportsViewModel {
         let percentage: Double
         let color: Color
     }
+
+    enum CategoryBreakdownType: String, CaseIterable, Identifiable {
+        case expense
+        case income
+
+        var id: String { rawValue }
+
+        var localizedName: String {
+            switch self {
+            case .expense:
+                AppLocalization.string("reports.expenses", defaultValue: "Expenses")
+            case .income:
+                AppLocalization.string("reports.income", defaultValue: "Income")
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .expense:
+                "arrow.up.circle.fill"
+            case .income:
+                "arrow.down.circle.fill"
+            }
+        }
+    }
     
     struct CategoryChartSlice: Identifiable {
         let id = UUID()
@@ -247,6 +272,33 @@ final class ReportsViewModel {
         }
         .sorted { $0.amount > $1.amount }
     }
+
+    static func availableCategoryBreakdownTypes(
+        expenseCategories: [CategorySummary],
+        incomeCategories: [CategorySummary]
+    ) -> [CategoryBreakdownType] {
+        var types: [CategoryBreakdownType] = []
+        if !expenseCategories.isEmpty {
+            types.append(.expense)
+        }
+        if !incomeCategories.isEmpty {
+            types.append(.income)
+        }
+        return types
+    }
+
+    static func categoriesForBreakdown(
+        _ type: CategoryBreakdownType,
+        expenseCategories: [CategorySummary],
+        incomeCategories: [CategorySummary]
+    ) -> [CategorySummary] {
+        switch type {
+        case .expense:
+            expenseCategories
+        case .income:
+            incomeCategories
+        }
+    }
     
      static func categoryChartSlices(
         from categories: [CategorySummary],
@@ -337,5 +389,4 @@ final class ReportsViewModel {
         return converted
     }
 }
-
 

@@ -395,6 +395,60 @@ final class FluxTests: XCTestCase {
     }
     
     @MainActor
+    func testAvailableCategoryBreakdownTypesReflectAvailableData() {
+        let expenseCategories: [ReportsViewModel.CategorySummary] = [
+            .init(category: nil, categoryName: "Food", amount: 30, percentage: 60, color: .red)
+        ]
+        let incomeCategories: [ReportsViewModel.CategorySummary] = [
+            .init(category: nil, categoryName: "Salary", amount: 100, percentage: 100, color: .green)
+        ]
+
+        let both = ReportsViewModel.availableCategoryBreakdownTypes(
+            expenseCategories: expenseCategories,
+            incomeCategories: incomeCategories
+        )
+        XCTAssertEqual(both, [.expense, .income])
+
+        let onlyIncome = ReportsViewModel.availableCategoryBreakdownTypes(
+            expenseCategories: [],
+            incomeCategories: incomeCategories
+        )
+        XCTAssertEqual(onlyIncome, [.income])
+
+        let none = ReportsViewModel.availableCategoryBreakdownTypes(
+            expenseCategories: [],
+            incomeCategories: []
+        )
+        XCTAssertTrue(none.isEmpty)
+    }
+
+    @MainActor
+    func testCategoriesForBreakdownReturnMatchingData() {
+        let expenseCategories: [ReportsViewModel.CategorySummary] = [
+            .init(category: nil, categoryName: "Food", amount: 30, percentage: 60, color: .red)
+        ]
+        let incomeCategories: [ReportsViewModel.CategorySummary] = [
+            .init(category: nil, categoryName: "Salary", amount: 100, percentage: 100, color: .green)
+        ]
+
+        let expenseResult = ReportsViewModel.categoriesForBreakdown(
+            .expense,
+            expenseCategories: expenseCategories,
+            incomeCategories: incomeCategories
+        )
+        XCTAssertEqual(expenseResult.count, 1)
+        XCTAssertEqual(expenseResult.first?.categoryName, "Food")
+
+        let incomeResult = ReportsViewModel.categoriesForBreakdown(
+            .income,
+            expenseCategories: expenseCategories,
+            incomeCategories: incomeCategories
+        )
+        XCTAssertEqual(incomeResult.count, 1)
+        XCTAssertEqual(incomeResult.first?.categoryName, "Salary")
+    }
+
+    @MainActor
     func testCategoryChartSlicesRollupTailCategoriesIntoOtherSegment() {
         let categories: [ReportsViewModel.CategorySummary] = [
             .init(category: nil, categoryName: "Food", amount: 45, percentage: 45, color: .red),
