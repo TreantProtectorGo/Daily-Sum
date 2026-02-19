@@ -57,6 +57,7 @@ struct SettingsView: View {
             exchangeRateSection(viewModel: viewModel)
             languageSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
+            reportsSection(viewModel: viewModel)
             
             // Data Summary
             dataSummarySection(viewModel: viewModel)
@@ -130,6 +131,36 @@ struct SettingsView: View {
             Text(AppLocalization.string("settings.transactionDefaults", defaultValue: "Transaction Defaults"))
         } footer: {
             Text(AppLocalization.string("settings.rememberLastAccount.footer", defaultValue: "When enabled, Add Transaction opens with your last used account. Otherwise it uses Default Account."))
+        }
+    }
+
+    @ViewBuilder
+    private func reportsSection(viewModel: SettingsViewModel) -> some View {
+        Section {
+            Picker(
+                AppLocalization.string(
+                    "settings.reports.categoryRows",
+                    defaultValue: "Category Rows"
+                ),
+                selection: Binding(
+                    get: { viewModel.reportsCategoryRowLimit },
+                    set: { viewModel.reportsCategoryRowLimit = $0 }
+                )
+            ) {
+                ForEach(ReportsCategoryRowLimitPreference.supportedValues, id: \.self) { rowLimit in
+                    Text("\(rowLimit)")
+                        .tag(rowLimit)
+                }
+            }
+        } header: {
+            Text(AppLocalization.string("settings.reports", defaultValue: "Reports"))
+        } footer: {
+            Text(
+                AppLocalization.string(
+                    "settings.reports.categoryRows.footer",
+                    defaultValue: "Controls how many category rows are shown by default in Reports before you tap Show more."
+                )
+            )
         }
     }
     

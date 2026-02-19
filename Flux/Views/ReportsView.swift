@@ -28,6 +28,7 @@ enum ReportsTab: String, CaseIterable, Identifiable {
 struct ReportsView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
+    @AppStorage(ReportsCategoryRowLimitPreference.storageKey) private var categoryRowLimit = ReportsCategoryRowLimitPreference.defaultValue
     @State private var selectedTab: ReportsTab = .reports
     private let showsTabPicker: Bool
     @State private var reportsViewModel: ReportsViewModel?
@@ -35,6 +36,7 @@ struct ReportsView: View {
     @State private var showAddBudget = false
     @State private var selectedBudget: Budget?
     @State private var selectedCategoryBreakdownType: ReportsViewModel.CategoryBreakdownType = .expense
+    @State private var isCategoryRowsExpanded = false
 
     private var displayCurrencyCode: String {
         UserCurrencyPreference.resolvedDisplayCurrencyCode(
@@ -95,6 +97,19 @@ struct ReportsView: View {
                     await reportsViewModel?.loadReports()
                     await budgetViewModel?.loadBudgets()
                 }
+            }
+            .onChange(of: selectedCategoryBreakdownType) { _, _ in
+                isCategoryRowsExpanded = false
+            }
+            .onChange(of: categoryRowLimit) { _, newValue in
+                let normalized = ReportsCategoryRowLimitPreference.normalized(newValue)
+                if normalized != newValue {
+                    categoryRowLimit = normalized
+                }
+                isCategoryRowsExpanded = false
+            }
+            .onChange(of: reportsViewModel?.selectedPeriod) { _, _ in
+                isCategoryRowsExpanded = false
             }
             .sheet(isPresented: $showAddBudget) {
                 BudgetEntrySheet(onSave: {
@@ -335,6 +350,12 @@ struct ReportsView: View {
             expenseCategories: viewModel.expensesByCategory,
             incomeCategories: viewModel.incomeByCategory
         )
+        let normalizedLimit = ReportsCategoryRowLimitPreference.normalized(categoryRowLimit)
+        let rowsDisplayState = ReportsViewModel.categoryRowsDisplayState(
+            from: categories,
+            rowLimit: normalizedLimit,
+            isExpanded: isCategoryRowsExpanded
+        )
         let chartSlices = ReportsViewModel.categoryChartSlices(
             from: categories,
             maxVisibleCategories: 5,
@@ -387,18 +408,56 @@ struct ReportsView: View {
                     centerValue: leadingCategoryName
                 )
 
-                ForEach(categories.prefix(5)) { category in
-                    CategoryBreakdownRow(
-                        category: category,
-                        currencyCode: displayCurrencyCode
-                    )
+                ForEach(rowsDisplayState.visible) { category in
+                    NavigationLink {
+                        ReportCategoryDetailView(
+                            title: category.categoryName,
+                            breakdownType: resolvedBreakdown,
+                            categoryID: category.category?.id,
+                            dateRange: viewModel.dateRange
+                        )
+                    } label: {
+                        CategoryBreakdownRow(
+                            category: category,
+                            currencyCode: displayCurrencyCode
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
-                
-                if categories.count > 5 {
+
+                if rowsDisplayState.hiddenCount > 0 && !isCategoryRowsExpanded {
                     HStack {
-                        Text("And \(categories.count - 5) more...")
+                        Button {
+                            isCategoryRowsExpanded = true
+                        } label: {
+                            Text(
+                                AppLocalization.formatted(
+                                    "reports.category.expand",
+                                    defaultValue: "Show %lld more",
+                                    Int64(rowsDisplayState.hiddenCount)
+                                )
+                            )
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                } else if isCategoryRowsExpanded && categories.count > normalizedLimit {
+                    HStack {
+                        Button {
+                            isCategoryRowsExpanded = false
+                        } label: {
+                            Text(
+                                AppLocalization.string(
+                                    "reports.category.collapse",
+                                    defaultValue: "Show less"
+                                )
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
                         Spacer()
                     }
                 }
@@ -553,6 +612,142 @@ struct ReportsView: View {
                 showAddBudget = true
             }
             .buttonStyle(.fluxGlassProminent)
+        }
+    }
+}
+
+struct ReportCategoryDetailView: View {
+    let title: String
+    let breakdownType: ReportsViewModel.CategoryBreakdownType
+    let categoryID: UUID?
+    let dateRange: (start: Date, end: Date)
+
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var transactions: [Transaction] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private struct DailyTransactionGroup: Identifiable {
+        let date: Date
+        let transactions: [Transaction]
+
+        var id: Date { date }
+    }
+
+    private var groupedTransactions: [DailyTransactionGroup] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: transactions) { transaction in
+            calendar.startOfDay(for: transaction.date)
+        }
+        return grouped.keys.sorted(by: >).map { date in
+            DailyTransactionGroup(
+                date: date,
+                transactions: grouped[date, default: []].sorted { $0.date > $1.date }
+            )
+        }
+    }
+
+    private var taskID: String {
+        [
+            breakdownType.rawValue,
+            categoryID?.uuidString ?? "uncategorized",
+            String(dateRange.start.timeIntervalSince1970),
+            String(dateRange.end.timeIntervalSince1970)
+        ].joined(separator: "|")
+    }
+
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let errorMessage {
+                ContentUnavailableView {
+                    Label(
+                        AppLocalization.string("error.title", defaultValue: "Error"),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                } description: {
+                    Text(errorMessage)
+                }
+            } else if transactions.isEmpty {
+                ContentUnavailableView {
+                    Label(title, systemImage: "tray")
+                } description: {
+                    Text(
+                        AppLocalization.string(
+                            "reports.category.detail.empty",
+                            defaultValue: "No transactions in this category for the selected period."
+                        )
+                    )
+                }
+            } else {
+                List {
+                    ForEach(groupedTransactions) { group in
+                        Section {
+                            ForEach(group.transactions) { transaction in
+                                TransactionRowView(transaction: transaction)
+                            }
+                        } header: {
+                            Text(sectionTitle(for: group.date))
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: taskID) {
+            await loadTransactions()
+        }
+    }
+
+    private func sectionTitle(for date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return AppLocalization.string("date.today", defaultValue: "Today")
+        }
+        if calendar.isDateInYesterday(date) {
+            return AppLocalization.string("date.yesterday", defaultValue: "Yesterday")
+        }
+        return date.formatted(.dateTime.month().day().year())
+    }
+
+    private func loadTransactions() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let startDate = dateRange.start
+            let endDate = dateRange.end
+            let descriptor = FetchDescriptor<Transaction>(
+                predicate: #Predicate<Transaction> {
+                    !$0.isRecurringTemplate
+                    && $0.date >= startDate
+                    && $0.date <= endDate
+                },
+                sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
+            )
+
+            let fetched = try modelContext.fetch(descriptor)
+            let transactionType: TransactionType = breakdownType == .expense ? .expense : .income
+            transactions = fetched.filter { transaction in
+                guard transaction.type == transactionType else {
+                    return false
+                }
+                if let categoryID {
+                    return transaction.category?.id == categoryID
+                }
+                return transaction.category == nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            transactions = []
         }
     }
 }

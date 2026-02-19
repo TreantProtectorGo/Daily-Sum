@@ -56,6 +56,11 @@ final class ReportsViewModel {
         let color: Color
     }
 
+    struct CategoryRowsDisplayState {
+        let visible: [CategorySummary]
+        let hiddenCount: Int
+    }
+
     struct MonthlyTrend: Identifiable {
         let id = UUID()
         let month: Date
@@ -299,6 +304,21 @@ final class ReportsViewModel {
             incomeCategories
         }
     }
+
+    static func categoryRowsDisplayState(
+        from categories: [CategorySummary],
+        rowLimit: Int,
+        isExpanded: Bool
+    ) -> CategoryRowsDisplayState {
+        guard !isExpanded else {
+            return CategoryRowsDisplayState(visible: categories, hiddenCount: 0)
+        }
+
+        let normalizedLimit = max(1, rowLimit)
+        let visible = Array(categories.prefix(normalizedLimit))
+        let hiddenCount = max(0, categories.count - visible.count)
+        return CategoryRowsDisplayState(visible: visible, hiddenCount: hiddenCount)
+    }
     
      static func categoryChartSlices(
         from categories: [CategorySummary],
@@ -389,4 +409,3 @@ final class ReportsViewModel {
         return converted
     }
 }
-

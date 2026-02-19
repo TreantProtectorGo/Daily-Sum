@@ -11,6 +11,7 @@ private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransact
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
 private let kUseLocationDefaults = "flux.useLocationDefaults"
+private let kReportsCategoryRowLimit = "flux.reports.categoryRowLimit"
 
 /// Global accessor for user's preferred currency code
 /// Use this in views that need the default currency without SettingsViewModel
@@ -103,6 +104,28 @@ enum TravelCurrencyPreference {
     }
 }
 
+enum ReportsCategoryRowLimitPreference {
+    static let storageKey = kReportsCategoryRowLimit
+    static let defaultValue = 5
+    static let supportedValues = [3, 5, 8, 12]
+
+    static func normalized(_ value: Int) -> Int {
+        supportedValues.contains(value) ? value : defaultValue
+    }
+
+    static var rowLimit: Int {
+        get {
+            normalized(
+                UserDefaults.standard.object(forKey: storageKey) as? Int
+                    ?? defaultValue
+            )
+        }
+        set {
+            UserDefaults.standard.set(normalized(newValue), forKey: storageKey)
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class SettingsViewModel {
@@ -140,6 +163,12 @@ final class SettingsViewModel {
     var useLocationDefaults: Bool {
         didSet {
             TravelCurrencyPreference.useLocationDefaults = useLocationDefaults
+        }
+    }
+
+    var reportsCategoryRowLimit: Int {
+        didSet {
+            ReportsCategoryRowLimitPreference.rowLimit = reportsCategoryRowLimit
         }
     }
     
@@ -194,6 +223,7 @@ final class SettingsViewModel {
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
         self.appLanguage = AppLanguagePreference.language
         self.useLocationDefaults = TravelCurrencyPreference.useLocationDefaults
+        self.reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
     }
     
     func loadSettings() async {

@@ -494,6 +494,81 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(slices[0].amount, 60)
         XCTAssertEqual(slices[1].amount, 40)
     }
+
+    @MainActor
+    func testCategoryRowsDisplayStateCollapsedShowsConfiguredLimitAndHiddenCount() {
+        let categories: [ReportsViewModel.CategorySummary] = (1...7).map { index in
+            .init(
+                category: nil,
+                categoryName: "Category \(index)",
+                amount: Decimal(index),
+                percentage: Double(index),
+                color: .blue
+            )
+        }
+
+        let state = ReportsViewModel.categoryRowsDisplayState(
+            from: categories,
+            rowLimit: 5,
+            isExpanded: false
+        )
+
+        XCTAssertEqual(state.visible.count, 5)
+        XCTAssertEqual(state.visible.first?.categoryName, "Category 1")
+        XCTAssertEqual(state.visible.last?.categoryName, "Category 5")
+        XCTAssertEqual(state.hiddenCount, 2)
+    }
+
+    @MainActor
+    func testCategoryRowsDisplayStateExpandedShowsAllRows() {
+        let categories: [ReportsViewModel.CategorySummary] = (1...7).map { index in
+            .init(
+                category: nil,
+                categoryName: "Category \(index)",
+                amount: Decimal(index),
+                percentage: Double(index),
+                color: .green
+            )
+        }
+
+        let state = ReportsViewModel.categoryRowsDisplayState(
+            from: categories,
+            rowLimit: 5,
+            isExpanded: true
+        )
+
+        XCTAssertEqual(state.visible.count, 7)
+        XCTAssertEqual(state.hiddenCount, 0)
+    }
+
+    func testReportsCategoryRowLimitPreferenceNormalizesUnsupportedValueToDefault() {
+        XCTAssertEqual(
+            ReportsCategoryRowLimitPreference.normalized(9),
+            ReportsCategoryRowLimitPreference.defaultValue
+        )
+    }
+
+    @MainActor
+    func testCategoryRowsDisplayStateNormalizesZeroLimitToAtLeastOneVisibleRow() {
+        let categories: [ReportsViewModel.CategorySummary] = (1...3).map { index in
+            .init(
+                category: nil,
+                categoryName: "Category \(index)",
+                amount: Decimal(index),
+                percentage: Double(index),
+                color: .orange
+            )
+        }
+
+        let state = ReportsViewModel.categoryRowsDisplayState(
+            from: categories,
+            rowLimit: 0,
+            isExpanded: false
+        )
+
+        XCTAssertEqual(state.visible.count, 1)
+        XCTAssertEqual(state.hiddenCount, 2)
+    }
     
     @MainActor
     func testBudgetListTotalsConvertToDisplayCurrency() async throws {
