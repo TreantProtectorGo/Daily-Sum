@@ -421,7 +421,11 @@ struct ReportsView: View {
                             category: category,
                             currencyCode: displayCurrencyCode
                         )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                     .buttonStyle(.plain)
                 }
 
@@ -757,43 +761,31 @@ struct CategoryBreakdownRow: View {
     let currencyCode: String
     
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Circle()
-                    .fill(category.color)
-                    .frame(width: 12, height: 12)
-                
-                Text(category.categoryName)
-                    .font(.subheadline)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(currency: category.amount, code: currencyCode)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    Text(category.percentage, format: .number.precision(.fractionLength(1)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    + Text("%")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        HStack {
+            Circle()
+                .fill(category.color)
+                .frame(width: 12, height: 12)
             
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.secondary.opacity(0.2))
-                    
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(category.color)
-                        .frame(width: geometry.size.width * CGFloat(category.percentage / 100))
-                }
+            Text(category.categoryName)
+                .font(.subheadline)
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(currency: category.amount, code: currencyCode)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(category.percentage, format: .number.precision(.fractionLength(1)))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                + Text("%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .frame(height: 4)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
 
