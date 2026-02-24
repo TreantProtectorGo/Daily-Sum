@@ -69,12 +69,16 @@ final class Account {
     
     /// Calculates the current balance based on initial balance and transactions
     var currentBalance: Decimal {
+        let now = Date.now
         let transactionSum = transactions.reduce(Decimal.zero) { sum, transaction in
+            guard !transaction.isRecurringTemplate, transaction.date <= now else {
+                return sum
+            }
             switch transaction.type {
             case .income:
-                sum + transaction.amount
+                return sum + transaction.amount
             case .expense:
-                sum - transaction.amount
+                return sum - transaction.amount
             }
         }
         return initialBalance + transactionSum

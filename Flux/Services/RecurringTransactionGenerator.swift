@@ -4,29 +4,30 @@ import SwiftData
 /// Generates transaction instances from recurring templates
 @MainActor
 struct RecurringTransactionGenerator {
+    static let defaultLookAheadDays = 30
+
     private let context: ModelContext
-    private let transactionService: TransactionService
-    
-    /// Number of days ahead to generate recurring transactions
-    var lookAheadDays: Int = 30
-    
+
+    /// Number of days ahead to generate scheduled transactions.
+    var lookAheadDays: Int = Self.defaultLookAheadDays
+
     init(context: ModelContext) {
         self.context = context
-        self.transactionService = TransactionService(context: context)
     }
-    
-    /// Generates all pending recurring transactions up to the look-ahead date
+
+    /// Generates all pending scheduled transactions up to the look-ahead date
     @discardableResult
     func generatePendingTransactions() throws -> [Transaction] {
+        let transactionService = TransactionService(context: context)
         let templates = try transactionService.fetchRecurringTemplates()
         let cutoffDate = Calendar.current.date(
             byAdding: .day,
             value: lookAheadDays,
             to: Date.now
         )!
-        
+
         var generatedTransactions: [Transaction] = []
-        
+
         for template in templates {
             let generated = try generateTransactions(
                 from: template,
@@ -34,15 +35,11 @@ struct RecurringTransactionGenerator {
             )
             generatedTransactions.append(contentsOf: generated)
         }
-        
-        if !generatedTransactions.isEmpty {
-            try context.save()
-        }
-        
+
         return generatedTransactions
     }
-    
-    /// Generates transactions from a single template up to a cutoff date
+
+    /// Generates transactions from a single template up to a cutoff date.
     func generateTransactions(
         from template: Transaction,
         upTo cutoffDate: Date
@@ -51,88 +48,162 @@ struct RecurringTransactionGenerator {
               let rule = template.recurrenceRule else {
             return []
         }
-        
-        // Find the last generated transaction for this template
-        let lastGenerated = try findLastGeneratedTransaction(for: template)
-        
-        // Determine the start date for generation
-        let startDate: Date
-        if let last = lastGenerated {
-            startDate = rule.nextDate(from: last.date)
-        } else {
-            // First generation - start from template date
-            startDate = template.date
-        }
-        
-        // Generate transactions
+
+        let allGenerated = try fetchGeneratedTransactions(for: template)
+        let lastGenerated = allGenerated.max(by: { $0.date < $1.date })
+        var existingDays = Set(allGenerated.map { dayKey(for: $0.date) })
+        let skippedDays = try fetchSkippedDayKeys(forTemplateId: template.id)
+
+        let dueDay = min(max(template.dueDayOfMonth ?? Calendar.current.component(.day, from: template.date), 1), 31)
+        let startDate = nextGenerationStartDate(
+            for: template,
+            lastGenerated: lastGenerated,
+            dueDay: dueDay,
+            recurrenceRule: rule
+        )
+
         var generated: [Transaction] = []
         var currentDate = startDate
-        
+
         while currentDate <= cutoffDate {
-            // Check if already generated for this date
-            let alreadyExists = try checkIfExists(
-                templateId: template.id,
-                date: currentDate
-            )
-            
-            if !alreadyExists {
-                let transaction = Transaction.fromTemplate(template, forDate: currentDate)
+            let currentDayKey = dayKey(for: currentDate)
+            let alreadyExists = existingDays.contains(currentDayKey)
+            let isSkipped = skippedDays.contains(currentDayKey)
+
+            if !alreadyExists && !isSkipped {
+                let transaction = Transaction.fromTemplate(
+                    template,
+                    forDate: currentDate
+                )
                 context.insert(transaction)
                 generated.append(transaction)
+                existingDays.insert(currentDayKey)
             }
-            
-            currentDate = rule.nextDate(from: currentDate)
+
+            currentDate = nextOccurrenceDate(
+                after: currentDate,
+                dueDay: dueDay,
+                recurrenceRule: rule
+            )
         }
-        
+
+        if !generated.isEmpty {
+            try context.save()
+        }
+
         return generated
     }
-    
-    /// Finds the most recent generated transaction for a template
-    private func findLastGeneratedTransaction(for template: Transaction) throws -> Transaction? {
+
+    private func fetchGeneratedTransactions(for template: Transaction) throws -> [Transaction] {
         let templateId = template.id
         let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate { $0.recurringTemplateId == templateId },
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
+            predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId },
+            sortBy: [SortDescriptor(\.date)]
         )
-        var limitedDescriptor = descriptor
-        limitedDescriptor.fetchLimit = 1
-        
-        return try context.fetch(limitedDescriptor).first
+        return try context.fetch(descriptor)
     }
-    
-    /// Checks if a transaction was already generated for a specific date
-    private func checkIfExists(templateId: UUID, date: Date) throws -> Bool {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate {
-                $0.recurringTemplateId == templateId &&
-                $0.date >= startOfDay &&
-                $0.date < endOfDay
+
+    private func fetchSkippedDayKeys(forTemplateId templateId: UUID) throws -> Set<Date> {
+        let descriptor = FetchDescriptor<ScheduledOccurrenceException>(
+            predicate: #Predicate<ScheduledOccurrenceException> { $0.templateId == templateId }
+        )
+        let exceptions = try context.fetch(descriptor)
+        return Set(exceptions.map(\.occurrenceDate))
+    }
+
+    private func nextGenerationStartDate(
+        for template: Transaction,
+        lastGenerated: Transaction?,
+        dueDay: Int,
+        recurrenceRule: RecurrenceRule
+    ) -> Date {
+        if let lastGenerated {
+            return nextOccurrenceDate(
+                after: lastGenerated.date,
+                dueDay: dueDay,
+                recurrenceRule: recurrenceRule
+            )
+        }
+
+        if recurrenceRule == .monthly {
+            let aligned = clampedMonthlyDate(
+                inMonthOf: template.date,
+                dueDay: dueDay,
+                timeSource: template.date
+            )
+            if aligned < template.date {
+                return nextMonthlyDate(after: aligned, dueDay: dueDay)
             }
-        )
-        
-        return try context.fetchCount(descriptor) > 0
+            return aligned
+        }
+
+        return template.date
     }
-    
+
+    private func nextOccurrenceDate(
+        after date: Date,
+        dueDay: Int,
+        recurrenceRule: RecurrenceRule
+    ) -> Date {
+        if recurrenceRule == .monthly {
+            return nextMonthlyDate(after: date, dueDay: dueDay)
+        }
+        return recurrenceRule.nextDate(from: date)
+    }
+
+    private func nextMonthlyDate(after date: Date, dueDay: Int, calendar: Calendar = .current) -> Date {
+        guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: date) else {
+            return date
+        }
+        return clampedMonthlyDate(inMonthOf: nextMonth, dueDay: dueDay, timeSource: date, calendar: calendar)
+    }
+
+    private func clampedMonthlyDate(
+        inMonthOf referenceDate: Date,
+        dueDay: Int,
+        timeSource: Date,
+        calendar: Calendar = .current
+    ) -> Date {
+        let monthComponents = calendar.dateComponents([.year, .month], from: referenceDate)
+        guard
+            let year = monthComponents.year,
+            let month = monthComponents.month,
+            let startOfMonth = calendar.date(from: DateComponents(year: year, month: month, day: 1)),
+            let dayRange = calendar.range(of: .day, in: .month, for: startOfMonth)
+        else {
+            return referenceDate
+        }
+
+        let maxDay = dayRange.count
+        let clampedDay = min(max(dueDay, 1), maxDay)
+        var timeComponents = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: timeSource)
+        timeComponents.year = year
+        timeComponents.month = month
+        timeComponents.day = clampedDay
+
+        return calendar.date(from: timeComponents) ?? referenceDate
+    }
+
     /// Deletes all generated transactions for a template (when template is modified/deleted)
     func deleteFutureGeneratedTransactions(for template: Transaction) throws {
         let templateId = template.id
         let now = Date.now
-        
         let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate {
+            predicate: #Predicate<Transaction> {
                 $0.recurringTemplateId == templateId && $0.date > now
             }
         )
-        
         let futureTransactions = try context.fetch(descriptor)
         for transaction in futureTransactions {
             context.delete(transaction)
         }
-        
-        try context.save()
+
+        if !futureTransactions.isEmpty {
+            try context.save()
+        }
+    }
+
+    private func dayKey(for date: Date, calendar: Calendar = .current) -> Date {
+        calendar.startOfDay(for: date)
     }
 }

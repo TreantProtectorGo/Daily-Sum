@@ -95,7 +95,7 @@ final class DashboardViewModel {
             
             var monthlyTransactionDescriptor = FetchDescriptor<Transaction>(
                 predicate: #Predicate<Transaction> { 
-                    !$0.isRecurringTemplate && $0.date >= startOfMonth 
+                    !$0.isRecurringTemplate && $0.date >= startOfMonth && $0.date <= now
                 }
             )
             let monthlyTransactions = try modelContext.fetch(monthlyTransactionDescriptor)

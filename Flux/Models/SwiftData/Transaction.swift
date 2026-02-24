@@ -28,16 +28,31 @@ final class Transaction {
     @Attribute(.externalStorage)
     var receiptImageData: Data?
     
-    /// Whether this is a recurring transaction template
+    /// Whether this is a scheduled transaction template
     var isRecurringTemplate: Bool
     
-    /// Recurrence rule if this is a recurring transaction
+    /// Recurrence rule if this is a scheduled transaction template
     var recurrenceRule: RecurrenceRule?
-    
-    /// Reference to the template if this was generated from a recurring transaction
+
+    /// Stored raw value for scheduled plan type.
+    var schedulePlanTypeRawValue: String?
+
+    /// Monthly due day anchor used by scheduled templates (1...31)
+    var dueDayOfMonth: Int?
+
+    /// Reminder lead time in days for scheduled plans
+    var reminderLeadDays: Int?
+
+    /// Legacy installment metadata kept for migration compatibility.
+    var installmentTotalCount: Int?
+
+    /// Legacy installment sequence kept for migration compatibility.
+    var installmentSequenceNumber: Int?
+
+    /// Reference to the template if this was generated from a scheduled transaction
     var recurringTemplateId: UUID?
     
-    /// Date when this instance was generated (for recurring transactions)
+    /// Date when this instance was generated (for scheduled transactions)
     var generatedDate: Date?
     
     /// The account this transaction belongs to
@@ -58,6 +73,11 @@ final class Transaction {
         receiptImageData: Data? = nil,
         isRecurringTemplate: Bool = false,
         recurrenceRule: RecurrenceRule? = nil,
+        schedulePlanType: SchedulePlanType? = nil,
+        dueDayOfMonth: Int? = nil,
+        reminderLeadDays: Int? = nil,
+        installmentTotalCount: Int? = nil,
+        installmentSequenceNumber: Int? = nil,
         recurringTemplateId: UUID? = nil,
         generatedDate: Date? = nil,
         account: Account? = nil,
@@ -72,6 +92,11 @@ final class Transaction {
         self.receiptImageData = receiptImageData
         self.isRecurringTemplate = isRecurringTemplate
         self.recurrenceRule = recurrenceRule
+        self.schedulePlanTypeRawValue = schedulePlanType?.rawValue
+        self.dueDayOfMonth = dueDayOfMonth
+        self.reminderLeadDays = reminderLeadDays
+        self.installmentTotalCount = installmentTotalCount
+        self.installmentSequenceNumber = installmentSequenceNumber
         self.recurringTemplateId = recurringTemplateId
         self.generatedDate = generatedDate
         self.account = account
@@ -92,7 +117,35 @@ final class Transaction {
     var isGeneratedFromRecurring: Bool {
         recurringTemplateId != nil
     }
-    
+
+    var resolvedSchedulePlanType: SchedulePlanType? {
+        if let schedulePlanType {
+            return schedulePlanType
+        }
+        if isRecurringTemplate || isGeneratedFromRecurring {
+            return .recurring
+        }
+        return nil
+    }
+
+    var isUpcoming: Bool {
+        date > .now
+    }
+
+    var isFutureGeneratedScheduled: Bool {
+        isGeneratedFromRecurring && isUpcoming
+    }
+
+    var schedulePlanType: SchedulePlanType? {
+        get {
+            guard let schedulePlanTypeRawValue else { return nil }
+            return SchedulePlanType(rawValue: schedulePlanTypeRawValue)
+        }
+        set {
+            schedulePlanTypeRawValue = newValue?.rawValue
+        }
+    }
+
     /// Currency symbol for display
     var currencySymbol: String {
         SupportedCurrency(rawValue: currencyCode)?.symbol ?? currencyCode
@@ -105,8 +158,12 @@ final class Transaction {
     
     // MARK: - Factory Methods
     
-    /// Creates a new transaction instance from a recurring template
-    static func fromTemplate(_ template: Transaction, forDate date: Date) -> Transaction {
+    /// Creates a new transaction instance from a scheduled template
+    static func fromTemplate(
+        _ template: Transaction,
+        forDate date: Date,
+        installmentSequenceNumber: Int? = nil
+    ) -> Transaction {
         Transaction(
             amount: template.amount,
             currencyCode: template.currencyCode,
@@ -114,6 +171,12 @@ final class Transaction {
             date: date,
             notes: template.notes,
             isRecurringTemplate: false,
+            recurrenceRule: template.recurrenceRule,
+            schedulePlanType: template.resolvedSchedulePlanType,
+            dueDayOfMonth: template.dueDayOfMonth,
+            reminderLeadDays: template.reminderLeadDays,
+            installmentTotalCount: template.installmentTotalCount,
+            installmentSequenceNumber: installmentSequenceNumber,
             recurringTemplateId: template.id,
             generatedDate: .now,
             account: template.account,

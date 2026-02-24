@@ -1,9 +1,42 @@
 import XCTest
 import SwiftData
+import UserNotifications
 @testable import Flux
 
 @MainActor
 final class ServiceTests: XCTestCase {
+    private final class MockUserNotificationCenter: UserNotificationCenterProtocol {
+        var authorizationStatus: UNAuthorizationStatus = .authorized
+        private(set) var addedRequests: [UNNotificationRequest] = []
+        private(set) var removedIdentifiers: [String] = []
+        private(set) var removedAllPending = false
+
+        func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool {
+            authorizationStatus = .authorized
+            return true
+        }
+
+        func authorizationStatusValue() async -> UNAuthorizationStatus {
+            authorizationStatus
+        }
+
+        func add(_ request: UNNotificationRequest) async throws {
+            addedRequests.append(request)
+        }
+
+        func pendingNotificationRequests() async -> [UNNotificationRequest] {
+            addedRequests
+        }
+
+        func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+            removedIdentifiers.append(contentsOf: identifiers)
+        }
+
+        func removeAllPendingNotificationRequests() {
+            removedAllPending = true
+        }
+    }
+
     private final class MockExchangeRateProvider: ExchangeRateProvider {
         let providerName = "mock-provider"
         private(set) var callCount = 0
@@ -40,17 +73,25 @@ final class ServiceTests: XCTestCase {
     var container: ModelContainer!
     var context: ModelContext!
     var originalLastSuccessfulRateSyncDate: Date?
+    var originalInstallmentPurgeFlag: Any?
     
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
         context = container.mainContext
         originalLastSuccessfulRateSyncDate = ExchangeRateSyncPreference.lastSuccessfulSyncDate
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
+        originalInstallmentPurgeFlag = UserDefaults.standard.object(forKey: "flux.installment.purge.v1.done")
     }
     
     override func tearDown() async throws {
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = originalLastSuccessfulRateSyncDate
         originalLastSuccessfulRateSyncDate = nil
+        if let originalInstallmentPurgeFlag {
+            UserDefaults.standard.set(originalInstallmentPurgeFlag, forKey: "flux.installment.purge.v1.done")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "flux.installment.purge.v1.done")
+        }
+        originalInstallmentPurgeFlag = nil
         container = nil
         context = nil
     }
@@ -127,7 +168,413 @@ final class ServiceTests: XCTestCase {
         let limited = try service.fetch(limit: 2)
         XCTAssertEqual(limited.count, 2)
     }
-    
+
+    func testRecurringGeneratorMonthlyDayAnchorsToMonthEnd() throws {
+        let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+        let generator = RecurringTransactionGenerator(context: context)
+        let calendar = Calendar(identifier: .gregorian)
+        let startDate = calendar.date(from: DateComponents(year: 2026, month: 1, day: 31))!
+        let cutoffDate = calendar.date(from: DateComponents(year: 2026, month: 4, day: 2))!
+
+        let template = Transaction(
+            amount: 55,
+            currencyCode: "USD",
+            type: .expense,
+            date: startDate,
+            notes: "Utility Bill",
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: 31,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil
+        )
+        context.insert(template)
+        try context.save()
+
+        let generated = try generator.generateTransactions(from: template, upTo: cutoffDate)
+        let days = generated.map {
+            calendar.component(.day, from: $0.date)
+        }
+
+        XCTAssertEqual(days, [31, 28, 31])
+    }
+
+    func testGeneratorSkipsOccurrenceExceptions() throws {
+        let account = Account(name: "Credit Card", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let generator = RecurringTransactionGenerator(context: context)
+        let calendar = Calendar(identifier: .gregorian)
+        let startDate = calendar.date(from: DateComponents(year: 2026, month: 1, day: 15))!
+        let cutoffDate = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))!
+
+        let template = Transaction(
+            amount: 120,
+            currencyCode: "USD",
+            type: .expense,
+            date: startDate,
+            notes: "Laptop Plan",
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: 15,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil
+        )
+        context.insert(template)
+        let skippedDate = calendar.date(from: DateComponents(year: 2026, month: 2, day: 15))!
+        let skippedException = ScheduledOccurrenceException(
+            templateId: template.id,
+            occurrenceDate: calendar.startOfDay(for: skippedDate)
+        )
+        context.insert(skippedException)
+        try context.save()
+
+        let generated = try generator.generateTransactions(from: template, upTo: cutoffDate)
+        XCTAssertFalse(generated.contains(where: { calendar.isDate($0.date, inSameDayAs: skippedDate) }))
+    }
+
+    func testCreateScheduledTemplateSmoke() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let template = try service.createScheduled(
+            amount: 120,
+            startDate: .now,
+            dueDayOfMonth: 15,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Smoke",
+            planType: .recurring
+        )
+
+        XCTAssertTrue(template.isRecurringTemplate)
+        XCTAssertEqual(template.type, .expense)
+        XCTAssertEqual(template.schedulePlanType, .recurring)
+    }
+
+    func testUpdateScheduledTemplateRemovesFutureGeneratedOnly() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let now = Date.now
+        let template = try service.createScheduled(
+            amount: 90,
+            startDate: Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now,
+            dueDayOfMonth: 20,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Plan",
+            planType: .recurring
+        )
+
+        let pastGeneratedId: UUID = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: -10, to: now) ?? now
+            )
+            let id = transaction.id
+            context.insert(transaction)
+            return id
+        }()
+        _ = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: 5, to: now) ?? now
+            )
+            context.insert(transaction)
+        }()
+        _ = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: 20, to: now) ?? now
+            )
+            context.insert(transaction)
+        }()
+        try context.save()
+
+        try service.updateScheduledTemplate(
+            template,
+            amount: 120,
+            startDate: now,
+            dueDayOfMonth: 25,
+            reminderLeadDays: 3,
+            account: account,
+            notes: "Updated plan",
+            category: nil,
+            planType: .recurring
+        )
+
+        let templateId = template.id
+        let remainingGenerated = try context.fetch(
+            FetchDescriptor<Transaction>(
+                predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
+            )
+        )
+
+        XCTAssertEqual(remainingGenerated.count, 1)
+        XCTAssertEqual(remainingGenerated.first?.id, pastGeneratedId)
+        XCTAssertEqual(template.amount, 120)
+        XCTAssertEqual(template.dueDayOfMonth, 25)
+        XCTAssertEqual(template.reminderLeadDays, 3)
+        XCTAssertEqual(template.notes, "Updated plan")
+    }
+
+    func testDeleteScheduledTemplateRemovesFutureGeneratedKeepsPastGenerated() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Loan", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let now = Date.now
+        let template = try service.createScheduled(
+            amount: 150,
+            startDate: Calendar.current.date(byAdding: .month, value: -2, to: now) ?? now,
+            dueDayOfMonth: 10,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Recurring plan",
+            planType: .recurring
+        )
+        let templateId = template.id
+
+        let pastGeneratedId: UUID = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: -15, to: now) ?? now
+            )
+            let id = transaction.id
+            context.insert(transaction)
+            return id
+        }()
+        let futureGeneratedId: UUID = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: 15, to: now) ?? now
+            )
+            let id = transaction.id
+            context.insert(transaction)
+            return id
+        }()
+        try context.save()
+
+        try service.delete(template)
+
+        let deletedTemplate = try service.fetch(byId: templateId)
+        XCTAssertNil(deletedTemplate)
+
+        let remainingPast = try service.fetch(byId: pastGeneratedId)
+        XCTAssertNotNil(remainingPast)
+
+        let removedFuture = try service.fetch(byId: futureGeneratedId)
+        XCTAssertNil(removedFuture)
+    }
+
+    func testHandleFutureGeneratedDeletionSkipCreatesExceptionAndRemovesOccurrence() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let dueDate = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
+        let template = try service.createScheduled(
+            amount: 88,
+            startDate: .now,
+            dueDayOfMonth: Calendar.current.component(.day, from: dueDate),
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Gym",
+            planType: .recurring
+        )
+
+        let generated = Transaction.fromTemplate(template, forDate: dueDate)
+        context.insert(generated)
+        try context.save()
+
+        try await service.handleFutureGeneratedDeletion(generated, action: .skipOccurrence)
+
+        let removed = try service.fetch(byId: generated.id)
+        XCTAssertNil(removed)
+
+        let key = Calendar.current.startOfDay(for: dueDate)
+        let templateId = template.id
+        let exceptions = try context.fetch(
+            FetchDescriptor<ScheduledOccurrenceException>(
+                predicate: #Predicate<ScheduledOccurrenceException> {
+                    $0.templateId == templateId && $0.occurrenceDate == key
+                }
+            )
+        )
+        XCTAssertEqual(exceptions.count, 1)
+    }
+
+    func testHandleFutureGeneratedDeletionStopRemovesTemplateAndFutureKeepsPast() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let now = Date.now
+        let template = try service.createScheduled(
+            amount: 120,
+            startDate: Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now,
+            dueDayOfMonth: 12,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Plan",
+            planType: .recurring
+        )
+
+        let pastGenerated = Transaction.fromTemplate(
+            template,
+            forDate: Calendar.current.date(byAdding: .day, value: -5, to: now) ?? now
+        )
+        context.insert(pastGenerated)
+
+        let futureGenerated = Transaction.fromTemplate(
+            template,
+            forDate: Calendar.current.date(byAdding: .day, value: 5, to: now) ?? now
+        )
+        context.insert(futureGenerated)
+        try context.save()
+
+        try await service.handleFutureGeneratedDeletion(futureGenerated, action: .stopPlan)
+
+        XCTAssertNil(try service.fetch(byId: template.id))
+        XCTAssertNotNil(try service.fetch(byId: pastGenerated.id))
+        XCTAssertNil(try service.fetch(byId: futureGenerated.id))
+    }
+
+    func testPurgeAllInstallmentDataIfNeededRemovesLegacyInstallmentTransactions() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Legacy", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let template = Transaction(
+            amount: 77,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            dueDayOfMonth: 10,
+            reminderLeadDays: 1,
+            installmentTotalCount: 3,
+            account: account
+        )
+        template.schedulePlanTypeRawValue = "installment"
+        context.insert(template)
+
+        let generated = Transaction(
+            amount: 77,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 2, to: .now) ?? .now,
+            schedulePlanType: nil,
+            installmentSequenceNumber: 1,
+            recurringTemplateId: template.id,
+            account: account
+        )
+        generated.schedulePlanTypeRawValue = "installment"
+        context.insert(generated)
+        try context.save()
+
+        UserDefaults.standard.removeObject(forKey: "flux.installment.purge.v1.done")
+        try await service.purgeAllInstallmentDataIfNeeded()
+
+        XCTAssertNil(try service.fetch(byId: template.id))
+        XCTAssertNil(try service.fetch(byId: generated.id))
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: "flux.installment.purge.v1.done"))
+    }
+
+    func testReminderSchedulerUsesDeterministicIdentifiers() async throws {
+        let account = Account(name: "Reminder Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let templateDate = Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 2, day: 28)
+        )!
+
+        let template = Transaction(
+            amount: 45,
+            currencyCode: "USD",
+            type: .expense,
+            date: templateDate,
+            notes: "Subscription",
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: 28,
+            reminderLeadDays: 3,
+            account: account,
+            category: nil
+        )
+        context.insert(template)
+        let generated = Transaction.fromTemplate(template, forDate: templateDate)
+        context.insert(generated)
+        try context.save()
+
+        let center = MockUserNotificationCenter()
+        let scheduler = TransactionReminderScheduler(
+            context: context,
+            notificationCenter: center
+        )
+        try await scheduler.syncReminders(for: [generated])
+
+        let expectedIdentifier = TransactionReminderScheduler.identifier(
+            templateId: template.id,
+            dueDate: templateDate
+        )
+
+        XCTAssertEqual(center.addedRequests.count, 1)
+        XCTAssertEqual(center.addedRequests.first?.identifier, expectedIdentifier)
+    }
+
+    func testReminderSchedulerRemovesTemplateNotificationsByPrefix() async throws {
+        let templateID = UUID()
+        let dueDate = Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 3, day: 15)
+        )!
+        let center = MockUserNotificationCenter()
+        let identifier = TransactionReminderScheduler.identifier(
+            templateId: templateID,
+            dueDate: dueDate
+        )
+        let content = UNMutableNotificationContent()
+        content.title = "Title"
+        content.body = "Body"
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: nil
+        )
+        try await center.add(request)
+
+        let scheduler = TransactionReminderScheduler(
+            context: context,
+            notificationCenter: center
+        )
+
+        await scheduler.removeReminders(forTemplateId: templateID)
+
+        XCTAssertEqual(center.removedIdentifiers, [identifier])
+    }
+
     // MARK: - AccountService Tests
     
     func testAccountServiceTotalBalance() async throws {

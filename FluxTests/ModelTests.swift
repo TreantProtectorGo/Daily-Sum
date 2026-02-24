@@ -94,6 +94,48 @@ final class ModelTests: XCTestCase {
         
         XCTAssertEqual(account.currentBalance, 1300, "Balance should be 1000 + 500 - 200")
     }
+
+    func testAccountBalanceExcludesFutureAndTemplateTransactions() throws {
+        let account = Account(
+            name: "Future-safe Account",
+            type: .bank,
+            currencyCode: "USD",
+            initialBalance: 1000
+        )
+        context.insert(account)
+
+        context.insert(Transaction(
+            amount: 100,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: -1, to: .now)!,
+            account: account,
+            category: nil
+        ))
+
+        context.insert(Transaction(
+            amount: 200,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 7, to: .now)!,
+            account: account,
+            category: nil
+        ))
+
+        context.insert(Transaction(
+            amount: 50,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            account: account
+        ))
+
+        try context.save()
+
+        XCTAssertEqual(account.currentBalance, 900)
+    }
     
     // MARK: - Transaction Tests
     
@@ -121,6 +163,46 @@ final class ModelTests: XCTestCase {
         XCTAssertFalse(instance.isRecurringTemplate)
         XCTAssertEqual(instance.recurringTemplateId, template.id)
         XCTAssertTrue(instance.isGeneratedFromRecurring)
+    }
+
+    func testLegacyInstallmentRawValueResolvesAsRecurring() throws {
+        let account = Account(name: "Legacy Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let template = Transaction(
+            amount: 120,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            account: account
+        )
+        template.schedulePlanTypeRawValue = "installment"
+        context.insert(template)
+
+        try context.save()
+
+        XCTAssertEqual(template.schedulePlanType, nil)
+        XCTAssertEqual(template.resolvedSchedulePlanType, .recurring)
+    }
+
+    func testFutureGeneratedScheduledFlag() throws {
+        let account = Account(name: "Generated Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let transaction = Transaction(
+            amount: 45,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 3, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(transaction)
+        try context.save()
+
+        XCTAssertTrue(transaction.isFutureGeneratedScheduled)
     }
     
     // MARK: - Budget Tests

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 // MARK: - User Currency Preference (Persisted)
 
@@ -171,6 +172,8 @@ final class SettingsViewModel {
             ReportsCategoryRowLimitPreference.rowLimit = reportsCategoryRowLimit
         }
     }
+
+    var notificationAuthorizationStatus: UNAuthorizationStatus = .notDetermined
     
     var accountCount: Int = 0
     var transactionCount: Int = 0
@@ -206,6 +209,19 @@ final class SettingsViewModel {
             lastSuccessfulSyncDate: lastSuccessfulRateSyncDate
         )
     }
+
+    var reminderStatusText: String {
+        switch notificationAuthorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            AppLocalization.string("settings.reminders.enabled", defaultValue: "Enabled")
+        case .denied:
+            AppLocalization.string("settings.reminders.denied", defaultValue: "Denied")
+        case .notDetermined:
+            AppLocalization.string("settings.reminders.notDetermined", defaultValue: "Not Requested")
+        @unknown default:
+            AppLocalization.string("settings.reminders.unknown", defaultValue: "Unknown")
+        }
+    }
     
     init(
         modelContext: ModelContext,
@@ -238,6 +254,7 @@ final class SettingsViewModel {
             )
             categoryCount = try modelContext.fetchCount(FetchDescriptor<Category>())
             budgetCount = try modelContext.fetchCount(FetchDescriptor<Budget>())
+            await refreshReminderAuthorizationStatus()
             
         } catch {
             errorMessage = error.localizedDescription
@@ -266,6 +283,21 @@ final class SettingsViewModel {
             _ = await travelCurrencyLocationService.requestAuthorizationIfNeeded()
         }
         useLocationDefaults = enabled
+    }
+
+    func refreshReminderAuthorizationStatus() async {
+        let status = await UNUserNotificationCenter.current().authorizationStatusValue()
+        notificationAuthorizationStatus = status
+    }
+
+    func requestReminderAuthorization() async {
+        let scheduler = TransactionReminderScheduler(context: modelContext)
+        do {
+            _ = try await scheduler.requestAuthorizationIfNeeded()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        await refreshReminderAuthorizationStatus()
     }
     
     func clearAllData() async throws {

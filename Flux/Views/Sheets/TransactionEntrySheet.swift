@@ -1,6 +1,13 @@
 import SwiftUI
 import SwiftData
 
+private enum ScheduleFormMode: String, CaseIterable, Identifiable {
+    case oneTime
+    case recurring
+
+    var id: String { rawValue }
+}
+
 // MARK: - Transaction Entry Sheet
 
 /// Sheet for adding or editing a transaction
@@ -18,6 +25,9 @@ struct TransactionEntrySheet: View {
     @State private var selectedAccount: Account?
     @State private var date: Date = Date()
     @State private var notes: String = ""
+    @State private var scheduleMode: ScheduleFormMode = .oneTime
+    @State private var dueDayOfMonth: Int = Calendar.current.component(.day, from: .now)
+    @State private var reminderLeadDays: Int = TransactionReminderScheduler.defaultReminderLeadDays
     
     @State private var isSaving = false
     @State private var showError = false
@@ -38,6 +48,10 @@ struct TransactionEntrySheet: View {
                 
                 // Grouped details
                 detailsSection
+
+                if transactionType == .expense {
+                    scheduleSection
+                }
                 
                 // Notes
                 notesSection
@@ -103,6 +117,9 @@ struct TransactionEntrySheet: View {
         .onChange(of: transactionType) { _, _ in
             // Reset category when type changes
             selectedCategory = nil
+            if transactionType != .expense {
+                scheduleMode = .oneTime
+            }
         }
     }
     
@@ -149,8 +166,70 @@ struct TransactionEntrySheet: View {
                 selection: $date,
                 displayedComponents: .date
             )
+            .onChange(of: date) { _, newValue in
+                dueDayOfMonth = Calendar.current.component(.day, from: newValue)
+            }
         } header: {
             Text(AppLocalization.string("transaction.details", defaultValue: "Details"))
+        }
+    }
+
+    private var scheduleSection: some View {
+        Section {
+            Picker(
+                AppLocalization.string("transaction.schedule.mode", defaultValue: "Schedule"),
+                selection: $scheduleMode
+            ) {
+                Text(AppLocalization.string("transaction.schedule.oneTime", defaultValue: "One-time"))
+                    .tag(ScheduleFormMode.oneTime)
+                Text(AppLocalization.string("transaction.schedule.recurring", defaultValue: "Recurring"))
+                    .tag(ScheduleFormMode.recurring)
+            }
+
+            if scheduleMode != .oneTime {
+                let dueDayTitle = AppLocalization.string(
+                    "transaction.schedule.dueDay",
+                    defaultValue: "Due Day"
+                )
+                Picker(
+                    dueDayTitle,
+                    selection: $dueDayOfMonth
+                ) {
+                    ForEach(1...31, id: \.self) { day in
+                        Text("\(day)")
+                            .tag(day)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Picker(
+                    AppLocalization.string("transaction.schedule.reminder", defaultValue: "Reminder"),
+                    selection: $reminderLeadDays
+                ) {
+                    let daysBeforeText = AppLocalization.string(
+                        "transaction.schedule.reminder.daysBefore",
+                        defaultValue: "day(s) before"
+                    )
+                    Text(AppLocalization.string(
+                        "transaction.schedule.reminder.sameDay",
+                        defaultValue: "Same day"
+                    )).tag(0)
+
+                    Text("1 \(daysBeforeText)").tag(1)
+                    Text("3 \(daysBeforeText)").tag(3)
+                    Text("7 \(daysBeforeText)").tag(7)
+                }
+            }
+
+        } header: {
+            Text(AppLocalization.string("transaction.schedule.header", defaultValue: "Monthly Plan"))
+        } footer: {
+            if scheduleMode != .oneTime {
+                Text(AppLocalization.string(
+                    "transaction.schedule.footer",
+                    defaultValue: "Scheduled expenses auto-generate up to 30 days ahead."
+                ))
+            }
         }
     }
     
@@ -182,6 +261,14 @@ struct TransactionEntrySheet: View {
         selectedAccount = transaction.account
         date = transaction.date
         notes = transaction.notes ?? ""
+        dueDayOfMonth = transaction.dueDayOfMonth ?? Calendar.current.component(.day, from: transaction.date)
+        reminderLeadDays = transaction.reminderLeadDays ?? TransactionReminderScheduler.defaultReminderLeadDays
+
+        if transaction.isRecurringTemplate || transaction.isGeneratedFromRecurring {
+            scheduleMode = .recurring
+        } else {
+            scheduleMode = .oneTime
+        }
     }
     
     private func applyPreferredAccountIfNeeded() {
@@ -219,25 +306,109 @@ struct TransactionEntrySheet: View {
             let service = TransactionService(context: modelContext)
             
             if let existing = existingTransaction {
-                // Update existing
-                existing.type = transactionType
-                existing.amount = amount
-                existing.category = selectedCategory
-                existing.account = account
-                existing.date = date
-                existing.notes = notes.isEmpty ? nil : notes
-                existing.currencyCode = account.currencyCode
-                
-                try modelContext.save()
-            } else {
-                try service.create(
-                    amount: amount,
-                    type: transactionType,
-                    date: date,
-                    notes: notes.isEmpty ? nil : notes,
-                    account: account,
-                    category: selectedCategory
+                let templateForScheduledEdit = try scheduledTemplateForEditing(
+                    from: existing,
+                    service: service
                 )
+
+                if let template = templateForScheduledEdit {
+                    if transactionType == .expense, scheduleMode != .oneTime {
+                        try service.updateScheduledTemplate(
+                            template,
+                            amount: amount,
+                            startDate: date,
+                            dueDayOfMonth: dueDayOfMonth,
+                            reminderLeadDays: reminderLeadDays,
+                            account: account,
+                            notes: notes.isEmpty ? nil : notes,
+                            category: selectedCategory,
+                            planType: selectedPlanType
+                        )
+                        let generator = RecurringTransactionGenerator(context: modelContext)
+                        let cutoffDate = Calendar.current.date(
+                            byAdding: .day,
+                            value: RecurringTransactionGenerator.defaultLookAheadDays,
+                            to: .now
+                        ) ?? .now
+                        let generated = try generator.generateTransactions(from: template, upTo: cutoffDate)
+                        let reminderScheduler = TransactionReminderScheduler(context: modelContext)
+                        Task {
+                            await reminderScheduler.removeReminders(forTemplateId: template.id)
+                            try? await reminderScheduler.syncReminders(for: generated)
+                        }
+                    } else {
+                        let templateId = template.id
+                        let generator = RecurringTransactionGenerator(context: modelContext)
+                        try generator.deleteFutureGeneratedTransactions(for: template)
+
+                        template.isRecurringTemplate = false
+                        template.recurrenceRule = nil
+                        template.schedulePlanType = nil
+                        template.dueDayOfMonth = nil
+                        template.reminderLeadDays = nil
+                        template.installmentTotalCount = nil
+                        template.installmentSequenceNumber = nil
+                        template.recurringTemplateId = nil
+                        template.generatedDate = nil
+
+                        template.type = transactionType
+                        template.amount = amount
+                        template.category = selectedCategory
+                        template.account = account
+                        template.date = date
+                        template.notes = notes.isEmpty ? nil : notes
+                        template.currencyCode = account.currencyCode
+                        try modelContext.save()
+
+                        let reminderScheduler = TransactionReminderScheduler(context: modelContext)
+                        Task {
+                            await reminderScheduler.removeReminders(forTemplateId: templateId)
+                        }
+                    }
+                } else {
+                    existing.type = transactionType
+                    existing.amount = amount
+                    existing.category = selectedCategory
+                    existing.account = account
+                    existing.date = date
+                    existing.notes = notes.isEmpty ? nil : notes
+                    existing.currencyCode = account.currencyCode
+
+                    try modelContext.save()
+                }
+            } else {
+                if transactionType == .expense, scheduleMode != .oneTime {
+                    let template = try service.createScheduled(
+                        amount: amount,
+                        startDate: date,
+                        dueDayOfMonth: dueDayOfMonth,
+                        reminderLeadDays: reminderLeadDays,
+                        account: account,
+                        category: selectedCategory,
+                        notes: notes.isEmpty ? nil : notes,
+                        planType: selectedPlanType
+                    )
+                    let generator = RecurringTransactionGenerator(context: modelContext)
+                    let cutoffDate = Calendar.current.date(
+                        byAdding: .day,
+                        value: RecurringTransactionGenerator.defaultLookAheadDays,
+                        to: .now
+                    ) ?? .now
+                    let generated = try generator.generateTransactions(from: template, upTo: cutoffDate)
+                    let reminderScheduler = TransactionReminderScheduler(context: modelContext)
+                    Task {
+                        try? await reminderScheduler.syncReminders(for: generated)
+                    }
+                } else {
+                    try service.create(
+                        amount: amount,
+                        type: transactionType,
+                        date: date,
+                        notes: notes.isEmpty ? nil : notes,
+                        account: account,
+                        category: selectedCategory
+                    )
+                }
             }
             
             onSave()
@@ -252,6 +423,25 @@ struct TransactionEntrySheet: View {
         }
         
         isSaving = false
+    }
+
+    private func scheduledTemplateForEditing(
+        from transaction: Transaction,
+        service: TransactionService
+    ) throws -> Transaction? {
+        if transaction.isRecurringTemplate {
+            return transaction
+        }
+
+        guard let templateID = transaction.recurringTemplateId else {
+            return nil
+        }
+
+        return try service.fetch(byId: templateID)
+    }
+
+    private var selectedPlanType: TransactionService.ScheduledPlanKind {
+        .recurring
     }
 }
 

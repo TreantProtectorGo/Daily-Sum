@@ -11,6 +11,8 @@ struct TransactionListView: View {
     @State private var showAddTransaction = false
     @State private var selectedTransaction: Transaction?
     @State private var showFilters = false
+    @State private var pendingScheduledDeleteTransaction: Transaction?
+    @State private var showScheduledDeleteDialog = false
     
     private var isSearchContext: Bool {
         externalSearchText != nil
@@ -96,6 +98,58 @@ struct TransactionListView: View {
                 .padding(.bottom, 20)
             }
         }
+        .confirmationDialog(
+            AppLocalization.string(
+                "transaction.deleteScheduledFuture.title",
+                defaultValue: "This is a scheduled transaction"
+            ),
+            isPresented: $showScheduledDeleteDialog,
+            titleVisibility: .visible
+        ) {
+            Button(
+                AppLocalization.string(
+                    "transaction.deleteScheduledFuture.skip",
+                    defaultValue: "Skip this occurrence"
+                )
+            ) {
+                guard let transaction = pendingScheduledDeleteTransaction else { return }
+                Task {
+                    try? await viewModel?.handleFutureGeneratedDeletion(
+                        transaction,
+                        action: .skipOccurrence
+                    )
+                    pendingScheduledDeleteTransaction = nil
+                }
+            }
+
+            Button(
+                AppLocalization.string(
+                    "transaction.deleteScheduledFuture.stop",
+                    defaultValue: "Stop this plan"
+                ),
+                role: .destructive
+            ) {
+                guard let transaction = pendingScheduledDeleteTransaction else { return }
+                Task {
+                    try? await viewModel?.handleFutureGeneratedDeletion(
+                        transaction,
+                        action: .stopPlan
+                    )
+                    pendingScheduledDeleteTransaction = nil
+                }
+            }
+
+            Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                pendingScheduledDeleteTransaction = nil
+            }
+        } message: {
+            Text(
+                AppLocalization.string(
+                    "transaction.deleteScheduledFuture.message",
+                    defaultValue: "Do you want to skip only this due date or stop this recurring plan?"
+                )
+            )
+        }
     }
     
     // MARK: - Content
@@ -112,6 +166,15 @@ struct TransactionListView: View {
     @ViewBuilder
     private func transactionList(viewModel: TransactionListViewModel) -> some View {
         List {
+            if !isSearchContext && viewModel.shouldShowUpcomingHintBar {
+                Section {
+                    upcomingScheduledHintRow(viewModel: viewModel)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+            }
+
             ForEach(viewModel.groupedTransactions, id: \.date) { group in
                 Section {
                     ForEach(group.transactions) { transaction in
@@ -120,11 +183,12 @@ struct TransactionListView: View {
                             .onTapGesture {
                                 selectedTransaction = transaction
                             }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            .swipeActions(
+                                edge: .trailing,
+                                allowsFullSwipe: !transaction.isFutureGeneratedScheduled
+                            ) {
                                 Button(role: .destructive) {
-                                    Task {
-                                        try? await viewModel.deleteTransaction(transaction)
-                                    }
+                                    requestDelete(transaction, viewModel: viewModel)
                                 } label: {
                                     Label(
                                         AppLocalization.string("action.delete", defaultValue: "Delete"),
@@ -147,6 +211,83 @@ struct TransactionListView: View {
                 .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
+    }
+
+    private func upcomingScheduledHintRow(viewModel: TransactionListViewModel) -> some View {
+        Button {
+            if viewModel.showUpcomingScheduled {
+                viewModel.hideUpcomingScheduled()
+            } else {
+                viewModel.revealUpcomingScheduled()
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.subheadline)
+                    .foregroundStyle(.orange)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(
+                        AppLocalization.string(
+                            "transaction.upcomingHint.title",
+                            defaultValue: "Upcoming scheduled transactions"
+                        )
+                    )
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+
+                    Text(upcomingScheduledHintSubtitle(viewModel: viewModel))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(
+                    AppLocalization.string(
+                        viewModel.showUpcomingScheduled ?
+                        "transaction.upcomingHint.action.hide" :
+                        "transaction.upcomingHint.action",
+                        defaultValue: viewModel.showUpcomingScheduled ? "Hide" : "Show"
+                    )
+                )
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.orange)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.orange.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func upcomingScheduledHintSubtitle(viewModel: TransactionListViewModel) -> String {
+        let nextDateText = viewModel.nextUpcomingScheduledDate.map {
+            DateFormatterUtility.shared.formatTransactionDate($0)
+        } ?? AppLocalization.string("date.today", defaultValue: "Today")
+
+        return AppLocalization.formatted(
+            "transaction.upcomingHint.subtitle",
+            defaultValue: "%lld in next 30 days • Next %@",
+            Int64(viewModel.hiddenUpcomingScheduledCount),
+            nextDateText
+        )
+    }
+
+    private func requestDelete(_ transaction: Transaction, viewModel: TransactionListViewModel) {
+        if transaction.isFutureGeneratedScheduled {
+            pendingScheduledDeleteTransaction = transaction
+            showScheduledDeleteDialog = true
+            return
+        }
+
+        Task {
+            try? await viewModel.deleteTransaction(transaction)
+        }
     }
     
     @ViewBuilder
@@ -258,6 +399,29 @@ struct TransactionFiltersSheet: View {
                         }
                         .foregroundStyle(.red)
                     }
+                }
+
+                Section {
+                    Toggle(
+                        AppLocalization.string(
+                            "filter.showUpcomingScheduled",
+                            defaultValue: "Show Upcoming Scheduled"
+                        ),
+                        isOn: Binding(
+                            get: { viewModel.showUpcomingScheduled },
+                            set: { newValue in
+                                viewModel.showUpcomingScheduled = newValue
+                                viewModel.applyFilters()
+                            }
+                        )
+                    )
+                } footer: {
+                    Text(
+                        AppLocalization.string(
+                            "filter.showUpcomingScheduled.footer",
+                            defaultValue: "When off, upcoming auto-generated scheduled transactions are hidden."
+                        )
+                    )
                 }
             }
             .navigationTitle("")

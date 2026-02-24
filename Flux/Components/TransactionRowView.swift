@@ -18,6 +18,13 @@ struct TransactionRowView: View {
                 Text(transaction.category?.displayName ?? AppLocalization.string("transaction.uncategorized", defaultValue: "Uncategorized"))
                     .font(.headline)
                     .lineLimit(1)
+
+                if let scheduleDetail = scheduleDetailText {
+                    Text(scheduleDetail)
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .lineLimit(1)
+                }
                 
                 if let notes = transaction.notes, !notes.isEmpty {
                     Text(notes)
@@ -44,6 +51,24 @@ struct TransactionRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private var scheduleDetailText: String? {
+        guard transaction.isGeneratedFromRecurring else {
+            return nil
+        }
+
+        var parts: [String] = []
+        if transaction.isUpcoming {
+            parts.append(
+                AppLocalization.string("transaction.schedule.upcoming", defaultValue: "Upcoming")
+            )
+        }
+
+        if parts.isEmpty {
+            return nil
+        }
+        return parts.joined(separator: " • ")
     }
     
     @ViewBuilder

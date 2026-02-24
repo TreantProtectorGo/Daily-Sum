@@ -13,6 +13,7 @@ import SwiftUI
 final class FluxTests: XCTestCase {
     private var originalPreferredCurrencyCode: String?
     private var originalUseLocationDefaults: Bool?
+    private var originalShowUpcomingScheduled: Bool?
 
     override func setUpWithError() throws {
         originalPreferredCurrencyCode = UserDefaults.standard.string(
@@ -20,6 +21,9 @@ final class FluxTests: XCTestCase {
         )
         originalUseLocationDefaults = UserDefaults.standard.object(
             forKey: TravelCurrencyPreference.storageKey
+        ) as? Bool
+        originalShowUpcomingScheduled = UserDefaults.standard.object(
+            forKey: TransactionListPreference.showUpcomingScheduledStorageKey
         ) as? Bool
     }
 
@@ -35,6 +39,17 @@ final class FluxTests: XCTestCase {
             )
         } else {
             UserDefaults.standard.removeObject(forKey: TravelCurrencyPreference.storageKey)
+        }
+
+        if let originalShowUpcomingScheduled {
+            UserDefaults.standard.set(
+                originalShowUpcomingScheduled,
+                forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+            )
+        } else {
+            UserDefaults.standard.removeObject(
+                forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+            )
         }
     }
 
@@ -66,6 +81,299 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(TransactionAccountPreference.defaultAccountId, accountId)
         XCTAssertTrue(TransactionAccountPreference.rememberLastUsedAccount)
         XCTAssertEqual(TransactionAccountPreference.lastUsedAccountId, accountId)
+    }
+
+    func testTransactionListPreferencePersistsShowUpcomingScheduled() {
+        let originalValue = UserDefaults.standard.object(
+            forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+        ) as? Bool
+        defer {
+            if let originalValue {
+                UserDefaults.standard.set(
+                    originalValue,
+                    forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+                )
+            } else {
+                UserDefaults.standard.removeObject(
+                    forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+                )
+            }
+        }
+
+        TransactionListPreference.showUpcomingScheduled = false
+        XCTAssertFalse(TransactionListPreference.showUpcomingScheduled)
+
+        TransactionListPreference.showUpcomingScheduled = true
+        XCTAssertTrue(TransactionListPreference.showUpcomingScheduled)
+    }
+
+    @MainActor
+    func testTransactionListHidesOnlyFutureGeneratedScheduledWhenToggleOff() async throws {
+        let originalValue = UserDefaults.standard.object(
+            forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+        ) as? Bool
+        defer {
+            if let originalValue {
+                UserDefaults.standard.set(
+                    originalValue,
+                    forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+                )
+            } else {
+                UserDefaults.standard.removeObject(
+                    forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+                )
+            }
+        }
+
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Filter Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let templateId = UUID()
+        let pastGenerated = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: -2, to: .now)!,
+            recurringTemplateId: templateId,
+            account: account
+        )
+        let futureGenerated = Transaction(
+            amount: 12,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 2, to: .now)!,
+            recurringTemplateId: templateId,
+            account: account
+        )
+        let futureManual = Transaction(
+            amount: 20,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 3, to: .now)!,
+            account: account
+        )
+
+        context.insert(pastGenerated)
+        context.insert(futureGenerated)
+        context.insert(futureManual)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        let hiddenIds = Set(viewModel.filteredTransactions.map(\.id))
+        XCTAssertTrue(hiddenIds.contains(pastGenerated.id))
+        XCTAssertFalse(hiddenIds.contains(futureGenerated.id))
+        XCTAssertTrue(hiddenIds.contains(futureManual.id))
+
+        viewModel.showUpcomingScheduled = true
+        viewModel.applyFilters()
+
+        let shownIds = Set(viewModel.filteredTransactions.map(\.id))
+        XCTAssertTrue(shownIds.contains(pastGenerated.id))
+        XCTAssertTrue(shownIds.contains(futureGenerated.id))
+        XCTAssertTrue(shownIds.contains(futureManual.id))
+    }
+
+    @MainActor
+    func testUpcomingHintBarAppearsWhenUpcomingGeneratedTransactionsExist() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let now = Date.now
+        let generated = Transaction(
+            amount: 42,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 4, to: now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generated)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        XCTAssertEqual(viewModel.hiddenUpcomingScheduledCount, 1)
+        XCTAssertEqual(viewModel.nextUpcomingScheduledDate, generated.date)
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+    }
+
+    @MainActor
+    func testUpcomingHintBarStillAppearsWhenShowUpcomingIsEnabledForHideAction() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generated = Transaction(
+            amount: 35,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 3, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generated)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+
+        viewModel.showUpcomingScheduled = true
+        viewModel.applyFilters()
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+    }
+
+    @MainActor
+    func testUpcomingHintCountsOnlyGeneratedTransactionsWithinLookAheadWindow() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let now = Date.now
+        let withinWindowGenerated = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 6, to: now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        let beyondWindowGenerated = Transaction(
+            amount: 20,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(
+                byAdding: .day,
+                value: RecurringTransactionGenerator.defaultLookAheadDays + 8,
+                to: now
+            )!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        let manualFuture = Transaction(
+            amount: 30,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 5, to: now)!,
+            account: account
+        )
+
+        context.insert(withinWindowGenerated)
+        context.insert(beyondWindowGenerated)
+        context.insert(manualFuture)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        XCTAssertEqual(viewModel.hiddenUpcomingScheduledCount, 1)
+        XCTAssertEqual(viewModel.hiddenUpcomingScheduledTransactions.first?.id, withinWindowGenerated.id)
+        XCTAssertEqual(viewModel.upcomingScheduledTransactionsInWindow.count, 1)
+        XCTAssertEqual(viewModel.upcomingScheduledTransactionsInWindow.first?.id, withinWindowGenerated.id)
+    }
+
+    @MainActor
+    func testRevealUpcomingScheduledShowsHiddenGeneratedTransactionsInFilteredList() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generated = Transaction(
+            amount: 55,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 2, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generated)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        XCTAssertFalse(viewModel.filteredTransactions.map(\.id).contains(generated.id))
+
+        viewModel.revealUpcomingScheduled()
+
+        XCTAssertTrue(viewModel.showUpcomingScheduled)
+        XCTAssertTrue(viewModel.filteredTransactions.map(\.id).contains(generated.id))
+    }
+
+    @MainActor
+    func testHideUpcomingScheduledHidesGeneratedTransactionsInFilteredList() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generated = Transaction(
+            amount: 55,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 2, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generated)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = true
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        XCTAssertTrue(viewModel.filteredTransactions.map(\.id).contains(generated.id))
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+
+        viewModel.hideUpcomingScheduled()
+
+        XCTAssertFalse(viewModel.showUpcomingScheduled)
+        XCTAssertFalse(viewModel.filteredTransactions.map(\.id).contains(generated.id))
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+    }
+
+    @MainActor
+    func testUpcomingHintHiddenWhenContentFiltersAreActive() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generated = Transaction(
+            amount: 40,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 4, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generated)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+
+        viewModel.selectedType = .expense
+        viewModel.applyFilters()
+
+        XCTAssertFalse(viewModel.shouldShowUpcomingHintBar)
     }
     
     func testReportPeriodDateRangesUseExpectedBoundaries() {
@@ -117,9 +425,14 @@ final class FluxTests: XCTestCase {
             referenceDate: referenceDate,
             calendar: calendar
         )
+        let expectedYearStart = calendar.date(
+            byAdding: .month,
+            value: -11,
+            to: calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))!
+        )
         XCTAssertEqual(
             yearRange.start,
-            calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))
+            expectedYearStart
         )
         XCTAssertEqual(yearRange.end, referenceDate)
         

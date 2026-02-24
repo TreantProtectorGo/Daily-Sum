@@ -10,6 +10,7 @@ import SwiftData
 
 @main
 struct FluxApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var container: ModelContainer?
     @State private var isLoading = true
     @State private var loadError: Error?
@@ -32,6 +33,12 @@ struct FluxApp: App {
             .task {
                 await initializeApp()
             }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active, let container else { return }
+                Task { @MainActor in
+                    await refreshScheduledTransactionsAndReminders(in: container)
+                }
+            }
         }
     }
 
@@ -42,20 +49,31 @@ struct FluxApp: App {
         }
         return .autoupdatingCurrent
     }
+
+    private var isRunningTests: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        if environment["XCTestConfigurationFilePath"] != nil { return true }
+        if environment["XCInjectBundleInto"] != nil { return true }
+        if environment["XCTestBundlePath"] != nil { return true }
+        return NSClassFromString("XCTestCase") != nil
+    }
     
     /// Initializes the app's data layer
     private func initializeApp() async {
+        if isRunningTests {
+            isLoading = false
+            return
+        }
+
         do {
             // Create and seed the model container
             // TODO: Read CloudKit preference from UserDefaults
             let enableCloudKit = false
             container = try await ModelContainer.createAndSeed(enableCloudKit: enableCloudKit)
             
-            // Generate any pending recurring transactions
             if let container {
-                let generator = RecurringTransactionGenerator(context: container.mainContext)
-                let _ = try generator.generatePendingTransactions()
                 Task { @MainActor in
+                    await refreshScheduledTransactionsAndReminders(in: container)
                     await refreshExchangeRatesIfNeeded(in: container)
                 }
             }
@@ -78,6 +96,20 @@ struct FluxApp: App {
         } catch {
             // Keep startup resilient even when rate refresh fails (e.g. offline).
             print("Exchange rate refresh failed: \(error.localizedDescription)")
+        }
+    }
+
+    @MainActor
+    private func refreshScheduledTransactionsAndReminders(in container: ModelContainer) async {
+        do {
+            let service = TransactionService(context: container.mainContext)
+            try await service.purgeAllInstallmentDataIfNeeded()
+            let generator = RecurringTransactionGenerator(context: container.mainContext)
+            _ = try generator.generatePendingTransactions()
+            let reminderScheduler = TransactionReminderScheduler(context: container.mainContext)
+            try await reminderScheduler.resyncAllPendingReminders()
+        } catch {
+            print("Scheduled transaction refresh failed: \(error.localizedDescription)")
         }
     }
 }

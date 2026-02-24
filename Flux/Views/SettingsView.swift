@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 // MARK: - Settings View
 
@@ -57,6 +58,7 @@ struct SettingsView: View {
             exchangeRateSection(viewModel: viewModel)
             languageSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
+            remindersSection(viewModel: viewModel)
             reportsSection(viewModel: viewModel)
             
             // Data Summary
@@ -96,6 +98,11 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showExchangeCalculator) {
             ExchangeCalculatorSheet()
+        }
+        .onAppear {
+            Task {
+                await viewModel.refreshReminderAuthorizationStatus()
+            }
         }
     }
     
@@ -161,6 +168,33 @@ struct SettingsView: View {
                     defaultValue: "Controls how many category rows are shown by default in Reports before you tap Show more."
                 )
             )
+        }
+    }
+
+    @ViewBuilder
+    private func remindersSection(viewModel: SettingsViewModel) -> some View {
+        Section {
+            HStack {
+                Text(AppLocalization.string("settings.reminders.status", defaultValue: "Due Date Reminders"))
+                Spacer()
+                Text(viewModel.reminderStatusText)
+                    .foregroundStyle(.secondary)
+            }
+
+            if viewModel.notificationAuthorizationStatus == .notDetermined {
+                Button(AppLocalization.string("settings.reminders.enable", defaultValue: "Enable Notifications")) {
+                    Task {
+                        await viewModel.requestReminderAuthorization()
+                    }
+                }
+            } else if viewModel.notificationAuthorizationStatus == .denied {
+                Button(AppLocalization.string("settings.reminders.openSettings", defaultValue: "Open iOS Settings")) {
+                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                    UIApplication.shared.open(url)
+                }
+            }
+        } header: {
+            Text(AppLocalization.string("settings.reminders", defaultValue: "Reminders"))
         }
     }
     

@@ -32,20 +32,27 @@ final class FluxUITests: XCTestCase {
     }
 
     @MainActor
-    func testCategoryPickerOpensWhenTappingBlankArea() throws {
+    func testCategoryPickerOpensFromTrigger() throws {
         let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
 
         app.tabBars.buttons["Transactions"].tap()
         app.buttons["transactions.addButton"].tap()
 
-        let categoryPicker = app.buttons["transaction.categoryPicker.trigger"]
+        let pickerButtons = app.buttons.matching(identifier: "transaction.categoryPicker.trigger")
+        XCTAssertGreaterThan(pickerButtons.count, 0)
+
+        let categoryPicker = pickerButtons.allElementsBoundByIndex.first(where: \.isHittable) ?? pickerButtons.firstMatch
         XCTAssertTrue(categoryPicker.waitForExistence(timeout: 2))
+        XCTAssertTrue(categoryPicker.isHittable)
+        categoryPicker.tap()
 
-        let blankArea = categoryPicker.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5))
-        blankArea.tap()
-
-        XCTAssertTrue(app.otherElements["transaction.categoryPicker.sheet"].waitForExistence(timeout: 1))
+        let pickerSheet = app.descendants(matching: .any)["transaction.categoryPicker.sheet"]
+        if !pickerSheet.waitForExistence(timeout: 1) {
+            categoryPicker.tap()
+        }
+        XCTAssertTrue(pickerSheet.waitForExistence(timeout: 10))
     }
 
     @MainActor

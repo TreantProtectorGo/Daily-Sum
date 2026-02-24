@@ -8,6 +8,7 @@ enum ModelContainerConfiguration {
         Category.self,
         Account.self,
         Transaction.self,
+        ScheduledOccurrenceException.self,
         Budget.self
     ]
     
