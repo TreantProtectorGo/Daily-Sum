@@ -86,6 +86,7 @@ struct TransactionEntrySheet: View {
                 if existingTransaction != nil {
                     loadExistingTransaction()
                 } else {
+                    resetFormForNewTransaction()
                     applyPreferredAccountIfNeeded()
                 }
             }
@@ -114,6 +115,7 @@ struct TransactionEntrySheet: View {
             }
         }
         .pickerStyle(.segmented)
+        .accessibilityIdentifier("transaction.type.mode")
         .onChange(of: transactionType) { _, _ in
             // Reset category when type changes
             selectedCategory = nil
@@ -185,6 +187,7 @@ struct TransactionEntrySheet: View {
                 Text(AppLocalization.string("transaction.schedule.recurring", defaultValue: "Recurring"))
                     .tag(ScheduleFormMode.recurring)
             }
+            .accessibilityIdentifier("transaction.schedule.mode")
 
             if scheduleMode != .oneTime {
                 let dueDayTitle = AppLocalization.string(
@@ -251,6 +254,22 @@ struct TransactionEntrySheet: View {
     }
     
     // MARK: - Actions
+
+    private func resetFormForNewTransaction() {
+        let now = Date()
+        transactionType = .expense
+        amount = 0
+        selectedCategory = nil
+        selectedAccount = nil
+        date = now
+        notes = ""
+        scheduleMode = .oneTime
+        dueDayOfMonth = Calendar.current.component(.day, from: now)
+        reminderLeadDays = TransactionReminderScheduler.defaultReminderLeadDays
+        isSaving = false
+        showError = false
+        errorMessage = ""
+    }
     
     private func loadExistingTransaction() {
         guard let transaction = existingTransaction else { return }
