@@ -105,12 +105,17 @@ final class Category {
     private static let systemCategoryKeys: [String] = [
         // Expense
         "category.expense.food",
+        "category.expense.home",
         "category.expense.transport",
         "category.expense.shopping",
         "category.expense.entertainment",
         "category.expense.bills",
+        "category.expense.insurance",
+        "category.expense.tax",
         "category.expense.health",
         "category.expense.education",
+        "category.expense.upskilling",
+        "category.expense.pet",
         "category.expense.travel",
         "category.expense.groceries",
         "category.expense.dining",
@@ -121,7 +126,11 @@ final class Category {
         "category.expense.gifts",
         // Income
         "category.income.salary",
+        "category.income.bonus",
         "category.income.freelance",
+        "category.income.interest",
+        "category.income.governmentSubsidy",
+        "category.income.secondHandSale",
         "category.income.investment",
         "category.income.gift",
         "category.income.refund"

@@ -301,11 +301,15 @@ struct SettingsView: View {
             Picker(
                 AppLocalization.string("settings.defaultLanguage", defaultValue: "App Language"),
                 selection: Binding(
-                    get: { viewModel.appLanguage },
+                    get: {
+                        viewModel.appLanguage == .system
+                            ? .traditionalChinese
+                            : viewModel.appLanguage
+                    },
                     set: { viewModel.appLanguage = $0 }
                 )
             ) {
-                ForEach(AppLanguage.allCases) { language in
+                ForEach(AppLanguage.allCases.filter { $0 != .system }) { language in
                     Text(language.displayName)
                         .tag(language)
                 }

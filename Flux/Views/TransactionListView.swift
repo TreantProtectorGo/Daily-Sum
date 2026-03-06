@@ -103,7 +103,7 @@ struct TransactionListView: View {
         .alert(
             AppLocalization.string(
                 "transaction.deleteScheduledFuture.title",
-                defaultValue: "This is a scheduled transaction"
+                defaultValue: "This is a subscription transaction"
             ),
             isPresented: $showScheduledDeleteDialog,
             actions: {
@@ -126,7 +126,7 @@ struct TransactionListView: View {
                 Button(
                     AppLocalization.string(
                         "transaction.deleteScheduledFuture.stop",
-                        defaultValue: "Stop this plan"
+                        defaultValue: "Stop this subscription"
                     ),
                     role: .destructive
                 ) {
@@ -148,7 +148,7 @@ struct TransactionListView: View {
                 Text(
                     AppLocalization.string(
                         "transaction.deleteScheduledFuture.message",
-                        defaultValue: "Do you want to skip only this due date or stop this recurring plan?"
+                        defaultValue: "Do you want to skip only this due date or stop this subscription?"
                     )
                 )
             }
@@ -156,7 +156,7 @@ struct TransactionListView: View {
         .alert(
             AppLocalization.string(
                 "transaction.deleteScheduledFuture.title",
-                defaultValue: "This is a scheduled transaction"
+                defaultValue: "This is a subscription transaction"
             ),
             isPresented: $showSourceDeleteDialog,
             actions: {
@@ -283,7 +283,7 @@ struct TransactionListView: View {
                     Text(
                         AppLocalization.string(
                             "transaction.upcomingHint.title",
-                            defaultValue: "Upcoming scheduled transactions"
+                            defaultValue: "Upcoming subscription transactions"
                         )
                     )
                     .font(.subheadline)
@@ -325,7 +325,7 @@ struct TransactionListView: View {
 
         return AppLocalization.formatted(
             "transaction.upcomingHint.subtitle",
-            defaultValue: "%lld in next 30 days • Next %@",
+            defaultValue: "%lld in next 31 days • Next %@",
             Int64(viewModel.hiddenUpcomingScheduledCount),
             nextDateText
         )
@@ -497,7 +497,7 @@ struct TransactionFiltersSheet: View {
                     Toggle(
                         AppLocalization.string(
                             "filter.showUpcomingScheduled",
-                            defaultValue: "Show Upcoming Scheduled"
+                            defaultValue: "Show Upcoming Subscriptions"
                         ),
                         isOn: Binding(
                             get: { viewModel.showUpcomingScheduled },
@@ -511,7 +511,7 @@ struct TransactionFiltersSheet: View {
                     Text(
                         AppLocalization.string(
                             "filter.showUpcomingScheduled.footer",
-                            defaultValue: "When off, upcoming auto-generated scheduled transactions are hidden."
+                            defaultValue: "When off, upcoming auto-generated subscription transactions are hidden."
                         )
                     )
                 }

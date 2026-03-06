@@ -31,10 +31,22 @@ enum AppLocalization {
         var candidates = [localeIdentifier]
         let separators = CharacterSet(charactersIn: "-_")
         let components = localeIdentifier.components(separatedBy: separators)
+        let normalized = localeIdentifier.lowercased()
+
+        if normalized.hasPrefix("zh-hk") || normalized.hasPrefix("zh-tw") {
+            candidates.append("zh-Hant")
+        }
+        if normalized.hasPrefix("zh-hans") {
+            candidates.append("zh-Hans")
+        }
+
         if let languageCode = components.first, languageCode != localeIdentifier {
             candidates.append(languageCode)
         }
-        return candidates
+
+        // Keep original order while removing duplicates.
+        var seen = Set<String>()
+        return candidates.filter { seen.insert($0).inserted }
     }
 
     static func string(

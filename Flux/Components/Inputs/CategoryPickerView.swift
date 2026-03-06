@@ -27,8 +27,10 @@ enum CategoryPickerMode {
 
     var placeholderTitle: String {
         switch self {
-        case .transaction:
-            return AppLocalization.string("category.none", defaultValue: "No Category")
+        case .transaction(let type):
+            return type == .expense
+                ? AppLocalization.string("category.select.expense", defaultValue: "Select Category")
+                : AppLocalization.string("category.select.income", defaultValue: "Select Category")
         case .budgetExpense:
             return AppLocalization.string("budget.allCategories", defaultValue: "All Categories")
         }
@@ -37,9 +39,58 @@ enum CategoryPickerMode {
     var placeholderIcon: String {
         switch self {
         case .transaction:
-            return "questionmark.circle"
+            return "tag"
         case .budgetExpense:
             return "square.grid.2x2.fill"
+        }
+    }
+
+    var showsPlaceholderOption: Bool {
+        switch self {
+        case .transaction:
+            return false
+        case .budgetExpense:
+            return true
+        }
+    }
+
+    var preferredCategoryOrder: [String] {
+        switch self {
+        case .transaction(.expense), .budgetExpense:
+            return [
+                "category.expense.food",
+                "category.expense.groceries",
+                "category.expense.dining",
+                "category.expense.coffee",
+                "category.expense.home",
+                "category.expense.housing",
+                "category.expense.bills",
+                "category.expense.insurance",
+                "category.expense.tax",
+                "category.expense.transport",
+                "category.expense.travel",
+                "category.expense.health",
+                "category.expense.personalCare",
+                "category.expense.pet",
+                "category.expense.education",
+                "category.expense.upskilling",
+                "category.expense.shopping",
+                "category.expense.entertainment",
+                "category.expense.subscriptions",
+                "category.expense.gifts"
+            ]
+        case .transaction(.income):
+            return [
+                "category.income.salary",
+                "category.income.bonus",
+                "category.income.freelance",
+                "category.income.secondHandSale",
+                "category.income.interest",
+                "category.income.investment",
+                "category.income.governmentSubsidy",
+                "category.income.gift",
+                "category.income.refund"
+            ]
         }
     }
 }
@@ -52,7 +103,14 @@ struct CategoryPickerView: View {
     @State private var showCategorySheet = false
     
     private var categories: [Category] {
-        allCategories.filter { $0.type == mode.categoryType }
+        let filtered = allCategories.filter { $0.type == mode.categoryType }
+        let order = Dictionary(uniqueKeysWithValues: mode.preferredCategoryOrder.enumerated().map { ($0.element, $0.offset) })
+        return filtered.sorted { lhs, rhs in
+            let lhsRank = order[lhs.nameKey] ?? Int.max
+            let rhsRank = order[rhs.nameKey] ?? Int.max
+            if lhsRank != rhsRank { return lhsRank < rhsRank }
+            return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+        }
     }
     
     init(selectedCategory: Binding<Category?>, transactionType: TransactionType) {
@@ -114,13 +172,15 @@ private struct CategorySelectionSheet: View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 16) {
-                    CategoryPlaceholderGridItem(
-                        title: mode.placeholderTitle,
-                        icon: mode.placeholderIcon,
-                        isSelected: selectedCategory == nil
-                    ) {
-                        selectedCategory = nil
-                        dismiss()
+                    if mode.showsPlaceholderOption {
+                        CategoryPlaceholderGridItem(
+                            title: mode.placeholderTitle,
+                            icon: mode.placeholderIcon,
+                            isSelected: selectedCategory == nil
+                        ) {
+                            selectedCategory = nil
+                            dismiss()
+                        }
                     }
 
                     ForEach(categories) { category in
@@ -224,10 +284,12 @@ struct InlineCategoryPicker: View {
     }
     
     var body: some View {
-        Picker(AppLocalization.string("category.label", defaultValue: "Category"), selection: $selectedCategory) {
-            Text(AppLocalization.string("category.none", defaultValue: "None"))
-                .tag(nil as Category?)
-            
+        let selection = Binding<Category?>(
+            get: { selectedCategory ?? categories.first },
+            set: { selectedCategory = $0 }
+        )
+
+        Picker(AppLocalization.string("category.label", defaultValue: "Category"), selection: selection) {
             ForEach(categories) { category in
                 HStack {
                     Image(systemName: category.icon)

@@ -11,7 +11,10 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var id: Self { self }
 
     static func from(rawValue: String?) -> AppLanguage {
-        guard let rawValue, let language = AppLanguage(rawValue: rawValue) else {
+        guard let rawValue else {
+            return .system
+        }
+        guard let language = AppLanguage(rawValue: rawValue) else {
             return .system
         }
         return language

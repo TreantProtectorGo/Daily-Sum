@@ -225,12 +225,12 @@ struct TransactionEntrySheet: View {
             }
 
         } header: {
-            Text(AppLocalization.string("transaction.schedule.header", defaultValue: "Monthly Plan"))
+            Text(AppLocalization.string("transaction.schedule.header", defaultValue: "Subscription"))
         } footer: {
             if scheduleMode != .oneTime {
                 Text(AppLocalization.string(
                     "transaction.schedule.footer",
-                    defaultValue: "Scheduled expenses auto-generate up to 30 days ahead."
+                    defaultValue: "Subscription expenses auto-generate up to 31 days ahead."
                 ))
             }
         }

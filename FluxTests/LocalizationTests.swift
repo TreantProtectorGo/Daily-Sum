@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import SwiftData
 @testable import Flux
 
 final class LocalizationTests: XCTestCase {
@@ -91,21 +92,136 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(SupportedCurrency.USD.localizedName, "美元")
     }
 
-    func testLegacySystemCategoryNameIsLocalizedInEnglishMode() {
+    func testSystemCategoryKeyIsLocalizedInEnglishMode() {
         let originalLanguage = AppLanguagePreference.language
         defer { AppLanguagePreference.language = originalLanguage }
 
         AppLanguagePreference.language = .english
 
-        let legacyCategory = Category(
-            nameKey: "外食",
+        let category = Category(
+            nameKey: "category.expense.dining",
             icon: "cup.and.saucer.fill",
             colorHex: "#F8B500",
             type: .expense,
             isSystemDefault: true
         )
 
-        XCTAssertEqual(legacyCategory.displayName, "Dining Out")
+        XCTAssertEqual(category.displayName, "Dining")
+    }
+
+    func testEnglishCategoryCopyMatchesCurrentCategoryIntent() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        AppLanguagePreference.language = .english
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.food", table: "CategoryLocalizations"),
+            "Ingredients"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.dining", table: "CategoryLocalizations"),
+            "Dining"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.coffee", table: "CategoryLocalizations"),
+            "Drinks"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.home", table: "CategoryLocalizations"),
+            "Household"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.tax", table: "CategoryLocalizations"),
+            "Taxes"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.pet", table: "CategoryLocalizations"),
+            "Pets"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.income.gift", table: "CategoryLocalizations"),
+            "Gift"
+        )
+    }
+
+    func testEnglishGeneralCopyMatchesCurrentWording() {
+        XCTAssertEqual(
+            localizedStringValue(key: "account.delete.confirm.title", locale: "en"),
+            "Delete this account?"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "dashboard.viewAllInReports", locale: "en"),
+            "View all in Reports"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "schedule.reminder.title", locale: "en"),
+            "Bill due soon"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "schedule.reminder.body", locale: "en"),
+            "A subscription expense is due soon."
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "settings.clearData.title", locale: "en"),
+            "Clear all data?"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "settings.privacy.message", locale: "en"),
+            "All data is stored locally on your device. iCloud Sync and premium features are coming soon."
+        )
+    }
+
+    func testUpcomingHintSubtitleFormatSpecifiersAreConsistentAcrossLanguages() {
+        let localesByLanguage: [(AppLanguage, String)] = [
+            (.english, "en"),
+            (.simplifiedChinese, "zh-Hans"),
+            (.traditionalChinese, "zh-Hant")
+        ]
+
+        for (language, locale) in localesByLanguage {
+            let value = localizedStringValue(key: "transaction.upcomingHint.subtitle", locale: locale)
+            XCTAssertEqual(
+                value.components(separatedBy: "%lld").count - 1,
+                2,
+                "Expected exactly two %lld placeholders for \(language)"
+            )
+            XCTAssertTrue(value.contains("%@"), "Expected %@ placeholder for \(language)")
+        }
+    }
+
+    private func localizedStringValue(
+        key: String,
+        locale: String,
+        table: String = "Localizable"
+    ) -> String {
+        let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let repoRoot = testsDirectory.deletingLastPathComponent()
+        let xcstringsURL = repoRoot
+            .appendingPathComponent("Flux")
+            .appendingPathComponent("Resources")
+            .appendingPathComponent("\(table).xcstrings")
+
+        do {
+            let data = try Data(contentsOf: xcstringsURL)
+            let object = try JSONSerialization.jsonObject(with: data)
+            guard
+                let root = object as? [String: Any],
+                let strings = root["strings"] as? [String: Any],
+                let keyNode = strings[key] as? [String: Any],
+                let localizations = keyNode["localizations"] as? [String: Any],
+                let localeNode = localizations[locale] as? [String: Any],
+                let stringUnit = localeNode["stringUnit"] as? [String: Any],
+                let value = stringUnit["value"] as? String
+            else {
+                XCTFail("Missing localization value for key \(key) locale \(locale)")
+                return ""
+            }
+
+            return value
+        } catch {
+            XCTFail("Failed to load \(table).xcstrings: \(error)")
+            return ""
+        }
     }
 
     func testReportMonthFormattingFollowsSelectedAppLanguage() {
@@ -131,5 +247,137 @@ final class LocalizationTests: XCTestCase {
             simplifiedChineseLabel,
             date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "zh-Hans")))
         )
+    }
+
+    func testCategoryLocalizationUsesHongKongTraditionalChineseWording() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        AppLanguagePreference.language = .traditionalChinese
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.coffee", table: "CategoryLocalizations"),
+            "飲品"
+        )
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.dining", table: "CategoryLocalizations"),
+            "食飯"
+        )
+    }
+
+    func testCategoryLocalizationUsesRequestedSimplifiedChineseWording() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        AppLanguagePreference.language = .simplifiedChinese
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.upskilling", table: "CategoryLocalizations"),
+            "自我增值"
+        )
+    }
+
+    func testCategoryLocalizationUsesSimplifiedChineseDrinkWording() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        AppLanguagePreference.language = .simplifiedChinese
+        XCTAssertEqual(
+            AppLocalization.string(key: "category.expense.coffee", table: "CategoryLocalizations"),
+            "饮品"
+        )
+    }
+
+    func testCategoryPickerPlaceholderVisibilityByMode() {
+        XCTAssertFalse(CategoryPickerMode.transaction(.expense).showsPlaceholderOption)
+        XCTAssertFalse(CategoryPickerMode.transaction(.income).showsPlaceholderOption)
+        XCTAssertTrue(CategoryPickerMode.budgetExpense.showsPlaceholderOption)
+    }
+
+    func testCategoryPickerExpenseGroupingOrder() {
+        let order = CategoryPickerMode.transaction(.expense).preferredCategoryOrder
+        XCTAssertEqual(order.prefix(5), [
+            "category.expense.food",
+            "category.expense.groceries",
+            "category.expense.dining",
+            "category.expense.coffee",
+            "category.expense.home"
+        ])
+    }
+
+    func testAllSystemCategoryKeysResolveForAllAppLanguages() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        let categoryKeys = [
+            "category.expense.food",
+            "category.expense.home",
+            "category.expense.transport",
+            "category.expense.shopping",
+            "category.expense.entertainment",
+            "category.expense.bills",
+            "category.expense.insurance",
+            "category.expense.tax",
+            "category.expense.health",
+            "category.expense.education",
+            "category.expense.upskilling",
+            "category.expense.pet",
+            "category.expense.travel",
+            "category.expense.groceries",
+            "category.expense.dining",
+            "category.expense.coffee",
+            "category.expense.subscriptions",
+            "category.expense.housing",
+            "category.expense.personalCare",
+            "category.expense.gifts",
+            "category.income.salary",
+            "category.income.bonus",
+            "category.income.freelance",
+            "category.income.interest",
+            "category.income.governmentSubsidy",
+            "category.income.secondHandSale",
+            "category.income.investment",
+            "category.income.gift",
+            "category.income.refund"
+        ]
+        let languages: [AppLanguage] = [.english, .simplifiedChinese, .traditionalChinese]
+
+        for language in languages {
+            AppLanguagePreference.language = language
+            for key in categoryKeys {
+                let localized = AppLocalization.string(key: key, table: "CategoryLocalizations")
+                XCTAssertFalse(localized.isEmpty, "\(key) should not be empty for \(language)")
+                XCTAssertNotEqual(localized, key, "\(key) should resolve for \(language)")
+            }
+        }
+    }
+
+    @MainActor
+    func testIncomeAndExpenseGiftUseSameIcon() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let expenseGift = categories.first { $0.nameKey == "category.expense.gifts" }
+        let incomeGift = categories.first { $0.nameKey == "category.income.gift" }
+
+        XCTAssertNotNil(expenseGift)
+        XCTAssertNotNil(incomeGift)
+        XCTAssertEqual(expenseGift?.icon, incomeGift?.icon)
+    }
+
+    @MainActor
+    func testFoodAndDiningUseUpdatedIconMapping() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let food = categories.first { $0.nameKey == "category.expense.food" }
+        let dining = categories.first { $0.nameKey == "category.expense.dining" }
+
+        XCTAssertEqual(food?.icon, "carrot.fill")
+        XCTAssertEqual(dining?.icon, "fork.knife")
     }
 }

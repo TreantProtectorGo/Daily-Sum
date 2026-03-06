@@ -5,6 +5,41 @@ import SwiftData
 @MainActor
 struct DefaultDataSeeder {
     let context: ModelContext
+
+    private let expenseCategoryDefinitions: [(key: String, icon: String, color: String)] = [
+        ("category.expense.food", "carrot.fill", "#FF6B6B"),
+        ("category.expense.home", "house.circle.fill", "#5DADE2"),
+        ("category.expense.transport", "car.fill", "#4ECDC4"),
+        ("category.expense.shopping", "bag.fill", "#45B7D1"),
+        ("category.expense.entertainment", "tv.fill", "#96CEB4"),
+        ("category.expense.bills", "doc.text.fill", "#FFEAA7"),
+        ("category.expense.insurance", "cross.case.fill", "#AF7AC5"),
+        ("category.expense.tax", "building.columns.fill", "#F5B041"),
+        ("category.expense.health", "heart.fill", "#DDA0DD"),
+        ("category.expense.education", "book.fill", "#98D8C8"),
+        ("category.expense.upskilling", "graduationcap.fill", "#73C6B6"),
+        ("category.expense.pet", "pawprint.fill", "#F1948A"),
+        ("category.expense.travel", "airplane", "#F7DC6F"),
+        ("category.expense.groceries", "cart.fill", "#82E0AA"),
+        ("category.expense.dining", "fork.knife", "#F8B500"),
+        ("category.expense.coffee", "cup.and.saucer.fill", "#6F4E37"),
+        ("category.expense.subscriptions", "repeat", "#9B59B6"),
+        ("category.expense.housing", "building.2.fill", "#3498DB"),
+        ("category.expense.personalCare", "shower.fill", "#E91E63"),
+        ("category.expense.gifts", "gift.fill", "#E74C3C")
+    ]
+
+    private let incomeCategoryDefinitions: [(key: String, icon: String, color: String)] = [
+        ("category.income.salary", "banknote.fill", "#27AE60"),
+        ("category.income.bonus", "sparkles", "#2ECC71"),
+        ("category.income.freelance", "laptopcomputer", "#3498DB"),
+        ("category.income.interest", "percent", "#16A085"),
+        ("category.income.governmentSubsidy", "building.2.crop.circle.fill", "#1ABC9C"),
+        ("category.income.secondHandSale", "tag.fill", "#5DADE2"),
+        ("category.income.investment", "chart.line.uptrend.xyaxis", "#9B59B6"),
+        ("category.income.gift", "gift.fill", "#E74C3C"),
+        ("category.income.refund", "arrow.counterclockwise.circle.fill", "#F39C12")
+    ]
     
     /// Checks if seeding is needed and performs it
     func seedIfNeeded() async throws {
@@ -46,26 +81,7 @@ struct DefaultDataSeeder {
     // MARK: - Category Seeding
     
     private func seedCategories() throws {
-        // Expense categories
-        let expenseCategories: [(key: String, icon: String, color: String)] = [
-            ("category.expense.food", "fork.knife", "#FF6B6B"),
-            ("category.expense.transport", "car.fill", "#4ECDC4"),
-            ("category.expense.shopping", "bag.fill", "#45B7D1"),
-            ("category.expense.entertainment", "tv.fill", "#96CEB4"),
-            ("category.expense.bills", "doc.text.fill", "#FFEAA7"),
-            ("category.expense.health", "heart.fill", "#DDA0DD"),
-            ("category.expense.education", "book.fill", "#98D8C8"),
-            ("category.expense.travel", "airplane", "#F7DC6F"),
-            ("category.expense.groceries", "cart.fill", "#82E0AA"),
-            ("category.expense.dining", "cup.and.saucer.fill", "#F8B500"),
-            ("category.expense.coffee", "mug.fill", "#6F4E37"),
-            ("category.expense.subscriptions", "repeat", "#9B59B6"),
-            ("category.expense.housing", "house.fill", "#3498DB"),
-            ("category.expense.personalCare", "figure.stand", "#E91E63"),
-            ("category.expense.gifts", "gift.fill", "#E74C3C")
-        ]
-        
-        for (key, icon, color) in expenseCategories {
+        for (key, icon, color) in expenseCategoryDefinitions {
             let category = Category(
                 nameKey: key,
                 icon: icon,
@@ -76,16 +92,7 @@ struct DefaultDataSeeder {
             context.insert(category)
         }
         
-        // Income categories
-        let incomeCategories: [(key: String, icon: String, color: String)] = [
-            ("category.income.salary", "banknote.fill", "#27AE60"),
-            ("category.income.freelance", "laptopcomputer", "#3498DB"),
-            ("category.income.investment", "chart.line.uptrend.xyaxis", "#9B59B6"),
-            ("category.income.gift", "giftcard.fill", "#E74C3C"),
-            ("category.income.refund", "arrow.uturn.backward.circle.fill", "#F39C12")
-        ]
-        
-        for (key, icon, color) in incomeCategories {
+        for (key, icon, color) in incomeCategoryDefinitions {
             let category = Category(
                 nameKey: key,
                 icon: icon,
@@ -96,7 +103,7 @@ struct DefaultDataSeeder {
             context.insert(category)
         }
     }
-    
+
     // MARK: - Account Seeding
     
     private func seedAccounts() throws {

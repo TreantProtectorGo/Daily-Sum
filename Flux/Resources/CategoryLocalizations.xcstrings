@@ -30,19 +30,42 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Coffee"
+            "value" : "Drinks"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "咖啡"
+            "value" : "饮品"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "咖啡"
+            "value" : "飲品"
+          }
+        }
+      }
+    },
+    "category.expense.home" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Household"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "家用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "家用"
           }
         }
       }
@@ -53,19 +76,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dining Out"
+            "value" : "Dining"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "外食"
+            "value" : "餐饮"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "外食"
+            "value" : "食飯"
           }
         }
       }
@@ -122,19 +145,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Food"
+            "value" : "Ingredients"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "食物"
+            "value" : "食材"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "食物"
+            "value" : "食材"
           }
         }
       }
@@ -174,13 +197,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "杂货"
+            "value" : "超市"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "雜貨"
+            "value" : "超市"
           }
         }
       }
@@ -208,6 +231,29 @@
         }
       }
     },
+    "category.expense.insurance" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insurance"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保险"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保險"
+          }
+        }
+      }
+    },
     "category.expense.housing" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -226,7 +272,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "住房"
+            "value" : "住屋"
           }
         }
       }
@@ -300,6 +346,29 @@
         }
       }
     },
+    "category.expense.tax" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taxes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "税项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "稅項"
+          }
+        }
+      }
+    },
     "category.expense.transport" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -346,6 +415,52 @@
         }
       }
     },
+    "category.expense.upskilling" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upskilling"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自我增值"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "進修"
+          }
+        }
+      }
+    },
+    "category.expense.pet" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pets"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "宠物"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "寵物"
+          }
+        }
+      }
+    },
     "category.income.freelance" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -358,13 +473,36 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自由职业"
+            "value" : "兼职"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自由接案"
+            "value" : "兼職"
+          }
+        }
+      }
+    },
+    "category.income.bonus" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bonus"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "奖金"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "花紅"
           }
         }
       }
@@ -375,19 +513,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gift Received"
+            "value" : "Gift"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "收到礼物"
+            "value" : "礼物"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "收到禮物"
+            "value" : "禮物"
           }
         }
       }
@@ -411,6 +549,75 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "投資收益"
+          }
+        }
+      }
+    },
+    "category.income.interest" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interest"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "利息"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "利息"
+          }
+        }
+      }
+    },
+    "category.income.governmentSubsidy" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Government Subsidy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "政府补贴"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "政府津貼"
+          }
+        }
+      }
+    },
+    "category.income.secondHandSale" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Second-hand Sale"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "二手变卖"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "二手變賣"
           }
         }
       }
@@ -456,7 +663,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "薪水"
+            "value" : "薪金"
           }
         }
       }
