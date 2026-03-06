@@ -252,8 +252,7 @@ final class TransactionService {
         _ transaction: Transaction,
         action: ScheduledFutureDeleteAction
     ) async throws {
-        guard transaction.isFutureGeneratedScheduled,
-              let templateId = transaction.recurringTemplateId else {
+        guard let templateId = transaction.recurringTemplateId else {
             try delete(transaction)
             return
         }
@@ -262,7 +261,12 @@ final class TransactionService {
         case .skipOccurrence:
             try await skipScheduledOccurrence(templateId: templateId, dueDate: transaction.date)
         case .stopPlan:
+            let selectedTransactionId = transaction.id
             try await stopScheduledPlan(templateId: templateId)
+            if let remainingSelectedTransaction = try fetch(byId: selectedTransactionId),
+               !remainingSelectedTransaction.isRecurringTemplate {
+                try delete(remainingSelectedTransaction)
+            }
         }
     }
 

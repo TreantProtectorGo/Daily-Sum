@@ -4,7 +4,7 @@ import SwiftData
 /// Generates transaction instances from recurring templates
 @MainActor
 struct RecurringTransactionGenerator {
-    static let defaultLookAheadDays = 30
+    static let defaultLookAheadDays = 31
 
     private let context: ModelContext
 

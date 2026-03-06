@@ -1,12 +1,56 @@
+import Foundation
 import SwiftUI
 
 // MARK: - Transaction Row View
 
+/// Immutable row data used by transaction list UIs to avoid rendering detached SwiftData models.
+struct TransactionRowSnapshot: Identifiable {
+    let id: UUID
+    let categoryDisplayName: String
+    let categoryIcon: String?
+    let categoryColor: Color?
+    let notes: String?
+    let signedAmount: Decimal
+    let currencyCode: String
+    let date: Date
+    let isGeneratedFromRecurring: Bool
+    let isUpcoming: Bool
+
+    var isFutureCalendarDay: Bool {
+        let calendar = Calendar.current
+        return calendar.startOfDay(for: date) > calendar.startOfDay(for: .now)
+    }
+
+    var shouldPromptScheduledDelete: Bool {
+        isGeneratedFromRecurring && isFutureCalendarDay
+    }
+
+    init(transaction: Transaction) {
+        id = transaction.id
+        categoryDisplayName = transaction.category?.displayName
+            ?? AppLocalization.string("transaction.uncategorized", defaultValue: "Uncategorized")
+        categoryIcon = transaction.category?.icon
+        categoryColor = transaction.category?.color
+        notes = transaction.notes
+        signedAmount = transaction.signedAmount
+        currencyCode = transaction.currencyCode
+        date = transaction.date
+        isGeneratedFromRecurring = transaction.isGeneratedFromRecurring
+        isUpcoming = transaction.isUpcoming
+    }
+}
+
 /// A row displaying a single transaction in a list
 struct TransactionRowView: View {
-    let transaction: Transaction
-    
-    @Environment(\.regionalSettings) private var regionalSettings
+    let snapshot: TransactionRowSnapshot
+
+    init(transaction: Transaction) {
+        self.snapshot = TransactionRowSnapshot(transaction: transaction)
+    }
+
+    init(snapshot: TransactionRowSnapshot) {
+        self.snapshot = snapshot
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -15,7 +59,7 @@ struct TransactionRowView: View {
             
             // Details
             VStack(alignment: .leading, spacing: 2) {
-                Text(transaction.category?.displayName ?? AppLocalization.string("transaction.uncategorized", defaultValue: "Uncategorized"))
+                Text(snapshot.categoryDisplayName)
                     .font(.headline)
                     .lineLimit(1)
 
@@ -26,7 +70,7 @@ struct TransactionRowView: View {
                         .lineLimit(1)
                 }
                 
-                if let notes = transaction.notes, !notes.isEmpty {
+                if let notes = snapshot.notes, !notes.isEmpty {
                     Text(notes)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -39,13 +83,13 @@ struct TransactionRowView: View {
             // Amount and Date
             VStack(alignment: .trailing, spacing: 2) {
                 AmountText(
-                    transaction.signedAmount,
-                    currencyCode: transaction.currencyCode,
+                    snapshot.signedAmount,
+                    currencyCode: snapshot.currencyCode,
                     showSign: true,
                     fontWeight: .semibold
                 )
                 
-                Text(DateFormatterUtility.shared.formatTransactionDate(transaction.date))
+                Text(DateFormatterUtility.shared.formatTransactionDate(snapshot.date))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -54,12 +98,12 @@ struct TransactionRowView: View {
     }
 
     private var scheduleDetailText: String? {
-        guard transaction.isGeneratedFromRecurring else {
+        guard snapshot.isGeneratedFromRecurring else {
             return nil
         }
 
         var parts: [String] = []
-        if transaction.isUpcoming {
+        if snapshot.isUpcoming {
             parts.append(
                 AppLocalization.string("transaction.schedule.upcoming", defaultValue: "Upcoming")
             )
@@ -73,8 +117,8 @@ struct TransactionRowView: View {
     
     @ViewBuilder
     private var categoryIconView: some View {
-        if let category = transaction.category {
-            CategoryIcon(category: category)
+        if let icon = snapshot.categoryIcon, let color = snapshot.categoryColor {
+            CategoryIcon(icon: icon, color: color)
         } else {
             PlaceholderCategoryIcon()
         }

@@ -5264,13 +5264,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你要只跳过这一期，还是停止这个定期计划？"
+            "value" : "你要只跳过这一期，还是停止这个订阅计划？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你要只跳過這一期，還是停止這個定期計畫？"
+            "value" : "你要只跳過這一期，還是停止這個訂閱計畫？"
           }
         }
       }
@@ -5340,6 +5340,75 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "這是預排交易"
+          }
+        }
+      }
+    },
+    "transaction.deleteScheduledSource.deleteAll" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete entire subscription"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除整个订阅"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除整個訂閱"
+          }
+        }
+      }
+    },
+    "transaction.deleteScheduledSource.deleteOne" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete only this transaction"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只删除这笔交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只刪除此交易"
+          }
+        }
+      }
+    },
+    "transaction.deleteScheduledSource.message" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Deleting this source transaction will remove the entire subscription."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除源头会同时删除整个订阅。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除源頭會同時刪除整個訂閱。"
           }
         }
       }
@@ -5632,13 +5701,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "定期"
+            "value" : "订阅"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "定期"
+            "value" : "訂閱"
           }
         }
       }

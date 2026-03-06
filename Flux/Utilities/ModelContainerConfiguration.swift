@@ -14,6 +14,8 @@ enum ModelContainerConfiguration {
     
     @MainActor
     static func createContainer(enableCloudKit: Bool = false) throws -> ModelContainer {
+        try ensureApplicationSupportDirectoryExists()
+
         let schema = Schema(modelTypes)
         
         let configuration: ModelConfiguration
@@ -108,5 +110,15 @@ enum ModelContainerConfiguration {
         context.insert(transaction2)
         
         try context.save()
+    }
+
+    private static func ensureApplicationSupportDirectoryExists() throws {
+        let fileManager = FileManager.default
+        guard let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+        if !fileManager.fileExists(atPath: appSupportURL.path) {
+            try fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+        }
     }
 }

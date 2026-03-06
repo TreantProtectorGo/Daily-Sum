@@ -11,9 +11,12 @@ import SwiftUI
 @testable import Flux
 
 final class FluxTests: XCTestCase {
+    private static let showUpcomingScheduledMigrationKey =
+        "flux.showUpcomingScheduledTransactions.defaultVisibleMigrationCompleted"
     private var originalPreferredCurrencyCode: String?
     private var originalUseLocationDefaults: Bool?
     private var originalShowUpcomingScheduled: Bool?
+    private var originalShowUpcomingScheduledMigration: Bool?
 
     override func setUpWithError() throws {
         originalPreferredCurrencyCode = UserDefaults.standard.string(
@@ -24,6 +27,9 @@ final class FluxTests: XCTestCase {
         ) as? Bool
         originalShowUpcomingScheduled = UserDefaults.standard.object(
             forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+        ) as? Bool
+        originalShowUpcomingScheduledMigration = UserDefaults.standard.object(
+            forKey: Self.showUpcomingScheduledMigrationKey
         ) as? Bool
     }
 
@@ -49,6 +55,17 @@ final class FluxTests: XCTestCase {
         } else {
             UserDefaults.standard.removeObject(
                 forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+            )
+        }
+
+        if let originalShowUpcomingScheduledMigration {
+            UserDefaults.standard.set(
+                originalShowUpcomingScheduledMigration,
+                forKey: Self.showUpcomingScheduledMigrationKey
+            )
+        } else {
+            UserDefaults.standard.removeObject(
+                forKey: Self.showUpcomingScheduledMigrationKey
             )
         }
     }
@@ -105,6 +122,111 @@ final class FluxTests: XCTestCase {
 
         TransactionListPreference.showUpcomingScheduled = true
         XCTAssertTrue(TransactionListPreference.showUpcomingScheduled)
+    }
+
+    func testTransactionListPreferenceMigratesLegacyHiddenUpcomingToVisibleByDefault() {
+        UserDefaults.standard.set(
+            false,
+            forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+        )
+        UserDefaults.standard.removeObject(
+            forKey: Self.showUpcomingScheduledMigrationKey
+        )
+
+        XCTAssertTrue(TransactionListPreference.showUpcomingScheduled)
+        XCTAssertEqual(
+            UserDefaults.standard.object(
+                forKey: TransactionListPreference.showUpcomingScheduledStorageKey
+            ) as? Bool,
+            true
+        )
+        XCTAssertEqual(
+            UserDefaults.standard.object(
+                forKey: Self.showUpcomingScheduledMigrationKey
+            ) as? Bool,
+            true
+        )
+    }
+
+    func testTransactionRowSnapshotPromptsScheduledDeleteOnlyForFutureGeneratedDay() {
+        let account = Account(name: "Test", type: .cash, currencyCode: "USD")
+
+        let futureGenerated = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 1, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        let todayGenerated = Transaction(
+            amount: 12,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        let futureManual = Transaction(
+            amount: 20,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 1, to: .now)!,
+            account: account
+        )
+
+        XCTAssertTrue(TransactionRowSnapshot(transaction: futureGenerated).shouldPromptScheduledDelete)
+        XCTAssertFalse(TransactionRowSnapshot(transaction: todayGenerated).shouldPromptScheduledDelete)
+        XCTAssertFalse(TransactionRowSnapshot(transaction: futureManual).shouldPromptScheduledDelete)
+    }
+
+    @MainActor
+    func testIsSourceRecurringTransactionOnlyTrueForTemplateStartDayOccurrence() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Source Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let templateDate = Calendar.current.date(byAdding: .day, value: -2, to: .now)!
+        let template = Transaction(
+            amount: 80,
+            currencyCode: "USD",
+            type: .expense,
+            date: templateDate,
+            notes: "Plan",
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: Calendar.current.component(.day, from: templateDate),
+            reminderLeadDays: 1,
+            account: account,
+            category: nil
+        )
+        context.insert(template)
+
+        let sourceOccurrence = Transaction(
+            amount: 80,
+            currencyCode: "USD",
+            type: .expense,
+            date: templateDate,
+            recurringTemplateId: template.id,
+            account: account
+        )
+        let nonSourceOccurrence = Transaction(
+            amount: 80,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .month, value: 1, to: templateDate)!,
+            recurringTemplateId: template.id,
+            account: account
+        )
+        context.insert(sourceOccurrence)
+        context.insert(nonSourceOccurrence)
+        try context.save()
+
+        let viewModel = TransactionListViewModel(modelContext: context)
+        XCTAssertTrue(viewModel.isSourceRecurringTransaction(transactionId: sourceOccurrence.id))
+        XCTAssertFalse(viewModel.isSourceRecurringTransaction(transactionId: nonSourceOccurrence.id))
     }
 
     @MainActor
@@ -345,6 +467,99 @@ final class FluxTests: XCTestCase {
         XCTAssertFalse(viewModel.showUpcomingScheduled)
         XCTAssertFalse(viewModel.filteredTransactions.map(\.id).contains(generated.id))
         XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+    }
+
+    @MainActor
+    func testVisibleUpcomingSectionUsesDedicatedRowsWithoutDuplicationInTimeline() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Upcoming Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generatedFuture = Transaction(
+            amount: 60,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 3, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        let manualToday = Transaction(
+            amount: 20,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            account: account
+        )
+        context.insert(generatedFuture)
+        context.insert(manualToday)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = true
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        XCTAssertTrue(viewModel.visibleUpcomingScheduledRows.map(\.id).contains(generatedFuture.id))
+        let timelineIDs = viewModel.groupedTransactionRows.flatMap(\.rows).map(\.id)
+        XCTAssertFalse(timelineIDs.contains(generatedFuture.id))
+        XCTAssertTrue(timelineIDs.contains(manualToday.id))
+    }
+
+    @MainActor
+    func testHasVisibleTransactionsIsTrueWhenOnlyUpcomingScheduledRowsExist() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Upcoming Only Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generatedFuture = Transaction(
+            amount: 60,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 3, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generatedFuture)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = true
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        XCTAssertTrue(viewModel.groupedTransactionRows.isEmpty)
+        XCTAssertEqual(viewModel.visibleUpcomingScheduledRows.map(\.id), [generatedFuture.id])
+        XCTAssertTrue(viewModel.hasVisibleTransactions)
+    }
+
+    @MainActor
+    func testClearFiltersResetsToShowUpcomingScheduledByDefault() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Clear Filter Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generated = Transaction(
+            amount: 55,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 2, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(generated)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+        XCTAssertFalse(viewModel.filteredTransactions.map(\.id).contains(generated.id))
+
+        viewModel.selectedType = .expense
+        viewModel.clearFilters()
+
+        XCTAssertTrue(viewModel.showUpcomingScheduled)
+        XCTAssertTrue(viewModel.filteredTransactions.map(\.id).contains(generated.id))
     }
 
     @MainActor

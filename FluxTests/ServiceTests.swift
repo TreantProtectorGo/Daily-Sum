@@ -240,6 +240,47 @@ final class ServiceTests: XCTestCase {
         XCTAssertFalse(generated.contains(where: { calendar.isDate($0.date, inSameDayAs: skippedDate) }))
     }
 
+    func testGeneratorDefaultLookAheadIncludesAtLeastOneFutureMonthlyOccurrence() throws {
+        let account = Account(name: "Monthly", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let calendar = Calendar(identifier: .gregorian)
+        let startDate = calendar.date(from: DateComponents(
+            year: 2026,
+            month: 1,
+            day: 1,
+            hour: 12
+        ))!
+        let cutoffDate = calendar.date(
+            byAdding: .day,
+            value: RecurringTransactionGenerator.defaultLookAheadDays,
+            to: startDate
+        )!
+
+        let template = Transaction(
+            amount: 90,
+            currencyCode: "USD",
+            type: .expense,
+            date: startDate,
+            notes: "Monthly",
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: 1,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil
+        )
+        context.insert(template)
+        try context.save()
+
+        let generator = RecurringTransactionGenerator(context: context)
+        let generated = try generator.generateTransactions(from: template, upTo: cutoffDate)
+
+        XCTAssertTrue(generated.contains(where: { $0.date > startDate }))
+    }
+
     func testCreateScheduledTemplateSmoke() async throws {
         let service = TransactionService(context: context)
         let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
@@ -457,6 +498,44 @@ final class ServiceTests: XCTestCase {
 
         XCTAssertNil(try service.fetch(byId: template.id))
         XCTAssertNotNil(try service.fetch(byId: pastGenerated.id))
+        XCTAssertNil(try service.fetch(byId: futureGenerated.id))
+    }
+
+    func testHandleFutureGeneratedDeletionStopFromPastGeneratedRemovesPlanAndSelectedOccurrence() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Utilities", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        try context.save()
+
+        let now = Date.now
+        let template = try service.createScheduled(
+            amount: 66,
+            startDate: Calendar.current.date(byAdding: .month, value: -2, to: now) ?? now,
+            dueDayOfMonth: 7,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Past generated selected",
+            planType: .recurring
+        )
+
+        let selectedPast = Transaction.fromTemplate(
+            template,
+            forDate: Calendar.current.date(byAdding: .day, value: -3, to: now) ?? now
+        )
+        context.insert(selectedPast)
+
+        let futureGenerated = Transaction.fromTemplate(
+            template,
+            forDate: Calendar.current.date(byAdding: .day, value: 6, to: now) ?? now
+        )
+        context.insert(futureGenerated)
+        try context.save()
+
+        try await service.handleFutureGeneratedDeletion(selectedPast, action: .stopPlan)
+
+        XCTAssertNil(try service.fetch(byId: template.id))
+        XCTAssertNil(try service.fetch(byId: selectedPast.id))
         XCTAssertNil(try service.fetch(byId: futureGenerated.id))
     }
 

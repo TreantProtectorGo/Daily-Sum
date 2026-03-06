@@ -4,13 +4,28 @@ import SwiftData
 
 enum TransactionListPreference {
     static let showUpcomingScheduledStorageKey = "flux.showUpcomingScheduledTransactions"
+    static let showUpcomingScheduledMigrationKey =
+        "flux.showUpcomingScheduledTransactions.defaultVisibleMigrationCompleted"
 
     static var showUpcomingScheduled: Bool {
         get {
-            UserDefaults.standard.object(forKey: showUpcomingScheduledStorageKey) as? Bool ?? false
+            let migrationCompleted = UserDefaults.standard.object(
+                forKey: showUpcomingScheduledMigrationKey
+            ) as? Bool ?? false
+
+            if !migrationCompleted {
+                UserDefaults.standard.set(true, forKey: showUpcomingScheduledStorageKey)
+                UserDefaults.standard.set(true, forKey: showUpcomingScheduledMigrationKey)
+                return true
+            }
+
+            return UserDefaults.standard.object(
+                forKey: showUpcomingScheduledStorageKey
+            ) as? Bool ?? true
         }
         set {
             UserDefaults.standard.set(newValue, forKey: showUpcomingScheduledStorageKey)
+            UserDefaults.standard.set(true, forKey: showUpcomingScheduledMigrationKey)
         }
     }
 }
@@ -53,7 +68,7 @@ final class TransactionListViewModel {
         startDate != nil ||
         endDate != nil ||
         !searchText.isEmpty ||
-        showUpcomingScheduled
+        !showUpcomingScheduled
     }
 
     var upcomingScheduledTransactionsInWindow: [Transaction] {
@@ -97,13 +112,29 @@ final class TransactionListViewModel {
         shouldShowUpcomingHintBar
     }
     
-    var groupedTransactions: [(date: Date, transactions: [Transaction])] {
+    var groupedTransactionRows: [(date: Date, rows: [TransactionRowSnapshot])] {
         let calendar = Calendar.current
-        let grouped = Dictionary(grouping: filteredTransactions) { transaction in
-            calendar.startOfDay(for: transaction.date)
+        let snapshots = timelineTransactions.map(TransactionRowSnapshot.init(transaction:))
+        let grouped = Dictionary(grouping: snapshots) { row in
+            calendar.startOfDay(for: row.date)
         }
         return grouped.sorted { $0.key > $1.key }
-            .map { (date: $0.key, transactions: $0.value) }
+            .map { (date: $0.key, rows: $0.value) }
+    }
+
+    var visibleUpcomingScheduledRows: [TransactionRowSnapshot] {
+        guard showUpcomingScheduled else { return [] }
+        let now = Date.now
+        return filteredTransactions
+            .filter { transaction in
+                transaction.isGeneratedFromRecurring && transaction.date > now
+            }
+            .sorted { $0.date < $1.date }
+            .map(TransactionRowSnapshot.init(transaction:))
+    }
+
+    var hasVisibleTransactions: Bool {
+        !visibleUpcomingScheduledRows.isEmpty || !groupedTransactionRows.isEmpty
     }
     
     // MARK: - Initialization
@@ -187,7 +218,7 @@ final class TransactionListViewModel {
         startDate = nil
         endDate = nil
         searchText = ""
-        showUpcomingScheduled = false
+        showUpcomingScheduled = true
         applyFilters()
     }
 
@@ -202,26 +233,101 @@ final class TransactionListViewModel {
     }
     
     // MARK: - CRUD Operations
+
+    func transaction(byId transactionId: UUID) throws -> Transaction? {
+        try transactionService.fetch(byId: transactionId)
+    }
+
+    func isSourceRecurringTransaction(transactionId: UUID) -> Bool {
+        guard
+            let transaction = try? transactionService.fetch(byId: transactionId),
+            let templateId = transaction.recurringTemplateId,
+            let template = try? transactionService.fetch(byId: templateId)
+        else {
+            return false
+        }
+
+        return Calendar.current.isDate(transaction.date, inSameDayAs: template.date)
+    }
     
     func deleteTransaction(_ transaction: Transaction) async throws {
-        try transactionService.delete(transaction)
-        await loadTransactions()
+        pruneDeletedTransactionsLocally(
+            transactionId: transaction.id,
+            templateId: transaction.recurringTemplateId,
+            action: nil
+        )
+        await Task.yield()
+
+        do {
+            try transactionService.delete(transaction)
+            await loadTransactions()
+        } catch {
+            await loadTransactions()
+            throw error
+        }
+    }
+
+    func deleteTransaction(transactionId: UUID) async throws {
+        guard let transaction = try transactionService.fetch(byId: transactionId) else {
+            await loadTransactions()
+            return
+        }
+
+        try await deleteTransaction(transaction)
     }
 
     func handleFutureGeneratedDeletion(
         _ transaction: Transaction,
         action: ScheduledFutureDeleteAction
     ) async throws {
-        try await transactionService.handleFutureGeneratedDeletion(transaction, action: action)
-        await loadTransactions()
+        pruneDeletedTransactionsLocally(
+            transactionId: transaction.id,
+            templateId: transaction.recurringTemplateId,
+            action: action
+        )
+        await Task.yield()
+
+        do {
+            try await transactionService.handleFutureGeneratedDeletion(transaction, action: action)
+            await loadTransactions()
+        } catch {
+            await loadTransactions()
+            throw error
+        }
+    }
+
+    func handleFutureGeneratedDeletion(
+        transactionId: UUID,
+        action: ScheduledFutureDeleteAction
+    ) async throws {
+        guard let transaction = try transactionService.fetch(byId: transactionId) else {
+            await loadTransactions()
+            return
+        }
+
+        try await handleFutureGeneratedDeletion(transaction, action: action)
     }
     
     func deleteTransactions(at offsets: IndexSet, in section: (date: Date, transactions: [Transaction])) async throws {
-        for index in offsets {
-            let transaction = section.transactions[index]
-            try transactionService.delete(transaction)
+        let selectedTransactions = offsets.map { section.transactions[$0] }
+        for transaction in selectedTransactions {
+            pruneDeletedTransactionsLocally(
+                transactionId: transaction.id,
+                templateId: transaction.recurringTemplateId,
+                action: nil
+            )
         }
-        await loadTransactions()
+        await Task.yield()
+
+        do {
+            for transaction in selectedTransactions {
+                try transactionService.delete(transaction)
+            }
+            await loadTransactions()
+        } catch {
+            await loadTransactions()
+            throw error
+        }
     }
 
     private var hasActiveContentFilters: Bool {
@@ -231,5 +337,35 @@ final class TransactionListViewModel {
         startDate != nil ||
         endDate != nil ||
         !searchText.isEmpty
+    }
+
+    private var timelineTransactions: [Transaction] {
+        guard showUpcomingScheduled else {
+            return filteredTransactions
+        }
+
+        let now = Date.now
+        return filteredTransactions.filter { transaction in
+            !(transaction.isGeneratedFromRecurring && transaction.date > now)
+        }
+    }
+
+    private func pruneDeletedTransactionsLocally(
+        transactionId: UUID,
+        templateId: UUID?,
+        action: ScheduledFutureDeleteAction?
+    ) {
+        var idsToRemove: Set<UUID> = [transactionId]
+
+        if action == .stopPlan,
+           let templateId {
+            let relatedGeneratedIds = transactions
+                .filter { $0.recurringTemplateId == templateId }
+                .map(\.id)
+            idsToRemove.formUnion(relatedGeneratedIds)
+        }
+
+        transactions.removeAll { idsToRemove.contains($0.id) }
+        filteredTransactions.removeAll { idsToRemove.contains($0.id) }
     }
 }

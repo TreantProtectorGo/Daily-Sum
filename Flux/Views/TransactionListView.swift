@@ -11,8 +11,10 @@ struct TransactionListView: View {
     @State private var showAddTransaction = false
     @State private var selectedTransaction: Transaction?
     @State private var showFilters = false
-    @State private var pendingScheduledDeleteTransaction: Transaction?
+    @State private var pendingScheduledDeleteTransactionID: UUID?
     @State private var showScheduledDeleteDialog = false
+    @State private var pendingSourceDeleteTransactionID: UUID?
+    @State private var showSourceDeleteDialog = false
     
     private var isSearchContext: Bool {
         externalSearchText != nil
@@ -98,65 +100,117 @@ struct TransactionListView: View {
                 .padding(.bottom, 20)
             }
         }
-        .confirmationDialog(
+        .alert(
             AppLocalization.string(
                 "transaction.deleteScheduledFuture.title",
                 defaultValue: "This is a scheduled transaction"
             ),
             isPresented: $showScheduledDeleteDialog,
-            titleVisibility: .visible
-        ) {
-            Button(
-                AppLocalization.string(
-                    "transaction.deleteScheduledFuture.skip",
-                    defaultValue: "Skip this occurrence"
-                )
-            ) {
-                guard let transaction = pendingScheduledDeleteTransaction else { return }
-                Task {
-                    try? await viewModel?.handleFutureGeneratedDeletion(
-                        transaction,
-                        action: .skipOccurrence
+            actions: {
+                Button(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledFuture.skip",
+                        defaultValue: "Skip this occurrence"
                     )
-                    pendingScheduledDeleteTransaction = nil
+                ) {
+                    guard let transactionID = pendingScheduledDeleteTransactionID else { return }
+                    pendingScheduledDeleteTransactionID = nil
+                    Task {
+                        try? await viewModel?.handleFutureGeneratedDeletion(
+                            transactionId: transactionID,
+                            action: .skipOccurrence
+                        )
+                    }
                 }
-            }
 
-            Button(
-                AppLocalization.string(
-                    "transaction.deleteScheduledFuture.stop",
-                    defaultValue: "Stop this plan"
-                ),
-                role: .destructive
-            ) {
-                guard let transaction = pendingScheduledDeleteTransaction else { return }
-                Task {
-                    try? await viewModel?.handleFutureGeneratedDeletion(
-                        transaction,
-                        action: .stopPlan
+                Button(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledFuture.stop",
+                        defaultValue: "Stop this plan"
+                    ),
+                    role: .destructive
+                ) {
+                    guard let transactionID = pendingScheduledDeleteTransactionID else { return }
+                    pendingScheduledDeleteTransactionID = nil
+                    Task {
+                        try? await viewModel?.handleFutureGeneratedDeletion(
+                            transactionId: transactionID,
+                            action: .stopPlan
+                        )
+                    }
+                }
+
+                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                    pendingScheduledDeleteTransactionID = nil
+                }
+            },
+            message: {
+                Text(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledFuture.message",
+                        defaultValue: "Do you want to skip only this due date or stop this recurring plan?"
                     )
-                    pendingScheduledDeleteTransaction = nil
-                }
-            }
-
-            Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
-                pendingScheduledDeleteTransaction = nil
-            }
-        } message: {
-            Text(
-                AppLocalization.string(
-                    "transaction.deleteScheduledFuture.message",
-                    defaultValue: "Do you want to skip only this due date or stop this recurring plan?"
                 )
-            )
-        }
+            }
+        )
+        .alert(
+            AppLocalization.string(
+                "transaction.deleteScheduledFuture.title",
+                defaultValue: "This is a scheduled transaction"
+            ),
+            isPresented: $showSourceDeleteDialog,
+            actions: {
+                Button(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledSource.deleteOne",
+                        defaultValue: "Delete only this transaction"
+                    ),
+                    role: .destructive
+                ) {
+                    guard let transactionID = pendingSourceDeleteTransactionID else { return }
+                    pendingSourceDeleteTransactionID = nil
+                    Task {
+                        try? await viewModel?.deleteTransaction(transactionId: transactionID)
+                    }
+                }
+
+                Button(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledSource.deleteAll",
+                        defaultValue: "Delete entire subscription"
+                    ),
+                    role: .destructive
+                ) {
+                    guard let transactionID = pendingSourceDeleteTransactionID else { return }
+                    pendingSourceDeleteTransactionID = nil
+                    Task {
+                        try? await viewModel?.handleFutureGeneratedDeletion(
+                            transactionId: transactionID,
+                            action: .stopPlan
+                        )
+                    }
+                }
+
+                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                    pendingSourceDeleteTransactionID = nil
+                }
+            },
+            message: {
+                Text(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledSource.message",
+                        defaultValue: "Deleting this source transaction will remove the entire subscription."
+                    )
+                )
+            }
+        )
     }
     
     // MARK: - Content
     
     @ViewBuilder
     private func transactionContent(viewModel: TransactionListViewModel) -> some View {
-        if viewModel.filteredTransactions.isEmpty {
+        if !viewModel.hasVisibleTransactions {
             emptyState(viewModel: viewModel)
         } else {
             transactionList(viewModel: viewModel)
@@ -175,28 +229,27 @@ struct TransactionListView: View {
                 }
             }
 
-            ForEach(viewModel.groupedTransactions, id: \.date) { group in
+            if !viewModel.visibleUpcomingScheduledRows.isEmpty {
                 Section {
-                    ForEach(group.transactions) { transaction in
-                        TransactionRowView(transaction: transaction)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedTransaction = transaction
-                            }
-                            .swipeActions(
-                                edge: .trailing,
-                                allowsFullSwipe: !transaction.isFutureGeneratedScheduled
-                            ) {
-                                Button(role: .destructive) {
-                                    requestDelete(transaction, viewModel: viewModel)
-                                } label: {
-                                    Label(
-                                        AppLocalization.string("action.delete", defaultValue: "Delete"),
-                                        systemImage: "trash"
-                                    )
-                                }
-                                .tint(.red)
-                            }
+                    ForEach(viewModel.visibleUpcomingScheduledRows) { row in
+                        transactionRow(row, viewModel: viewModel)
+                    }
+                } header: {
+                    Text(
+                        AppLocalization.string(
+                            "transaction.schedule.upcoming",
+                            defaultValue: "Upcoming"
+                        )
+                    )
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                }
+            }
+
+            ForEach(viewModel.groupedTransactionRows, id: \.date) { group in
+                Section {
+                    ForEach(group.rows) { row in
+                        transactionRow(row, viewModel: viewModel)
                     }
                 } header: {
                     Text(formatSectionDate(group.date))
@@ -278,16 +331,55 @@ struct TransactionListView: View {
         )
     }
 
-    private func requestDelete(_ transaction: Transaction, viewModel: TransactionListViewModel) {
-        if transaction.isFutureGeneratedScheduled {
-            pendingScheduledDeleteTransaction = transaction
+    private func transactionRow(
+        _ row: TransactionRowSnapshot,
+        viewModel: TransactionListViewModel
+    ) -> some View {
+        TransactionRowView(snapshot: row)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                openTransactionEditor(for: row.id, viewModel: viewModel)
+            }
+            .swipeActions(
+                edge: .trailing,
+                allowsFullSwipe: !row.shouldPromptScheduledDelete
+            ) {
+                Button {
+                    requestDelete(row, viewModel: viewModel)
+                } label: {
+                    Label(
+                        AppLocalization.string("action.delete", defaultValue: "Delete"),
+                        systemImage: "trash"
+                    )
+                }
+                .tint(.red)
+            }
+    }
+
+    private func requestDelete(_ row: TransactionRowSnapshot, viewModel: TransactionListViewModel) {
+        if row.shouldPromptScheduledDelete {
+            pendingScheduledDeleteTransactionID = row.id
             showScheduledDeleteDialog = true
             return
         }
 
-        Task {
-            try? await viewModel.deleteTransaction(transaction)
+        if row.isGeneratedFromRecurring,
+           viewModel.isSourceRecurringTransaction(transactionId: row.id) {
+            pendingSourceDeleteTransactionID = row.id
+            showSourceDeleteDialog = true
+            return
         }
+
+        Task {
+            try? await viewModel.deleteTransaction(transactionId: row.id)
+        }
+    }
+
+    private func openTransactionEditor(for transactionId: UUID, viewModel: TransactionListViewModel) {
+        guard let transaction = try? viewModel.transaction(byId: transactionId) else {
+            return
+        }
+        selectedTransaction = transaction
     }
     
     @ViewBuilder
