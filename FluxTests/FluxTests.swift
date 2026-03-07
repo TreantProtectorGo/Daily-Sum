@@ -180,6 +180,46 @@ final class FluxTests: XCTestCase {
         XCTAssertFalse(TransactionRowSnapshot(transaction: futureManual).shouldPromptScheduledDelete)
     }
 
+    func testTransactionEntryValidationRequiresCategoryToSave() {
+        let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF3B30",
+            type: .expense,
+            isSystemDefault: true
+        )
+
+        XCTAssertTrue(
+            TransactionEntryFormValidation.canSave(
+                amount: 12.34,
+                selectedAccount: account,
+                selectedCategory: category
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryFormValidation.canSave(
+                amount: 12.34,
+                selectedAccount: account,
+                selectedCategory: nil
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryFormValidation.canSave(
+                amount: 0,
+                selectedAccount: account,
+                selectedCategory: category
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryFormValidation.canSave(
+                amount: 12.34,
+                selectedAccount: nil,
+                selectedCategory: category
+            )
+        )
+    }
+
     @MainActor
     func testIsSourceRecurringTransactionOnlyTrueForTemplateStartDayOccurrence() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()

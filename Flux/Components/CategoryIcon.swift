@@ -93,7 +93,7 @@ struct PlaceholderCategoryIcon: View {
     }
     
     var body: some View {
-        Image(systemName: "questionmark.circle")
+        Image(systemName: "tag")
             .font(size.iconFont)
             .foregroundStyle(.secondary)
             .frame(width: size.dimension, height: size.dimension)

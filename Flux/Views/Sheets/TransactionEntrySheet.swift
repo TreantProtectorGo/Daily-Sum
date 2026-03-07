@@ -8,6 +8,16 @@ private enum ScheduleFormMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum TransactionEntryFormValidation {
+    static func canSave(
+        amount: Decimal,
+        selectedAccount: Account?,
+        selectedCategory: Category?
+    ) -> Bool {
+        amount > 0 && selectedAccount != nil && selectedCategory != nil
+    }
+}
+
 // MARK: - Transaction Entry Sheet
 
 /// Sheet for adding or editing a transaction
@@ -271,7 +281,11 @@ struct TransactionEntrySheet: View {
     // MARK: - Validation
     
     private var isFormValid: Bool {
-        amount > 0 && selectedAccount != nil
+        TransactionEntryFormValidation.canSave(
+            amount: amount,
+            selectedAccount: selectedAccount,
+            selectedCategory: selectedCategory
+        )
     }
     
     // MARK: - Actions
@@ -338,7 +352,9 @@ struct TransactionEntrySheet: View {
     }
     
     private func saveTransaction() {
-        guard isFormValid, let account = selectedAccount else { return }
+        guard isFormValid,
+              let account = selectedAccount,
+              let selectedCategory else { return }
         
         isSaving = true
         let saveStartedAt = PerformanceLogger.start(
