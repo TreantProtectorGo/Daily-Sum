@@ -189,9 +189,23 @@ struct CompactAmountInput: View {
     @Binding var amount: Decimal
     let currencyCode: String
     let label: String
+    let autoFocus: Bool
     
+    @State private var hasAttemptedAutoFocus = false
     @State private var inputBuffer = NumericInputBuffer(maxFractionDigits: 4)
     @State private var isNumberPadPresented = false
+
+    init(
+        amount: Binding<Decimal>,
+        currencyCode: String,
+        label: String,
+        autoFocus: Bool = false
+    ) {
+        self._amount = amount
+        self.currencyCode = currencyCode
+        self.label = label
+        self.autoFocus = autoFocus
+    }
     
     var body: some View {
         HStack {
@@ -210,11 +224,17 @@ struct CompactAmountInput: View {
                     .frame(width: 100, alignment: .trailing)
                     .contentShape(Rectangle())
                     .onTapGesture { setNumberPadPresented(true) }
-                    .onAppear { syncBufferFromAmount() }
                     .onChange(of: amount) { _, _ in
                         guard !isNumberPadPresented else { return }
                         syncBufferFromAmount()
                     }
+            }
+        }
+        .onAppear {
+            syncBufferFromAmount()
+            if autoFocus && !hasAttemptedAutoFocus {
+                hasAttemptedAutoFocus = true
+                setNumberPadPresented(true)
             }
         }
         .sheet(isPresented: $isNumberPadPresented) {
@@ -334,7 +354,8 @@ struct CompactAmountInput: View {
                     CompactAmountInput(
                         amount: $compactAmount,
                         currencyCode: "USD",
-                        label: "Budget Amount"
+                        label: "Budget Amount",
+                        autoFocus: false
                     )
                 }
                 .frame(height: 100)

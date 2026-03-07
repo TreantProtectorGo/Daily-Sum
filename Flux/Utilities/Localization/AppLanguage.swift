@@ -41,20 +41,11 @@ enum AppLanguage: String, CaseIterable, Identifiable {
                 defaultValue: "System Default"
             )
         case .english:
-            return AppLocalization.string(
-                "settings.language.english",
-                defaultValue: "English"
-            )
+            return "English"
         case .simplifiedChinese:
-            return AppLocalization.string(
-                "settings.language.simplifiedChinese",
-                defaultValue: "Simplified Chinese"
-            )
+            return "简体中文"
         case .traditionalChinese:
-            return AppLocalization.string(
-                "settings.language.traditionalChinese",
-                defaultValue: "Traditional Chinese"
-            )
+            return "繁體中文（香港）"
         }
     }
 }

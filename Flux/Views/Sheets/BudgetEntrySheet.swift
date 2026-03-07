@@ -20,6 +20,7 @@ struct BudgetEntrySheet: View {
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var selectedDetent: PresentationDetent = .medium
     
     private var currencyOptions: [SupportedCurrency] {
         SupportedCurrency.allCases.map { $0 }
@@ -64,6 +65,7 @@ struct BudgetEntrySheet: View {
                 }
             }
             .onAppear {
+                selectedDetent = isEditing ? .medium : .large
                 loadExistingBudget()
             }
             .alert(
@@ -75,7 +77,7 @@ struct BudgetEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
     }
     
     // MARK: - Form Sections
@@ -92,7 +94,8 @@ struct BudgetEntrySheet: View {
             CompactAmountInput(
                 amount: $limitAmount,
                 currencyCode: currencyCode,
-                label: AppLocalization.string("budget.limit", defaultValue: "Spending Limit")
+                label: AppLocalization.string("budget.limit", defaultValue: "Spending Limit"),
+                autoFocus: !isEditing
             )
             
             Picker(AppLocalization.string("budget.currency", defaultValue: "Currency"), selection: $currencyCode) {

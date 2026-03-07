@@ -19,6 +19,7 @@ struct AccountEntrySheet: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showDeleteConfirmation = false
+    @State private var selectedDetent: PresentationDetent = .medium
     
     private var isEditing: Bool { existingAccount != nil }
     
@@ -63,6 +64,7 @@ struct AccountEntrySheet: View {
                 }
             }
             .onAppear {
+                selectedDetent = isEditing ? .medium : .large
                 loadExistingAccount()
             }
             .alert(
@@ -74,7 +76,7 @@ struct AccountEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
         .alert(
             AppLocalization.string("account.delete.confirm.title", defaultValue: "Do you want to delete this Account?"),
             isPresented: $showDeleteConfirmation,
@@ -124,7 +126,8 @@ struct AccountEntrySheet: View {
                 currencyCode: selectedCurrency.rawValue,
                 label: isEditing
                     ? AppLocalization.string("account.currentBalance", defaultValue: "Current Balance")
-                    : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance")
+                    : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance"),
+                autoFocus: !isEditing
             )
         }
     }

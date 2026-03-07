@@ -6,6 +6,7 @@ struct ExchangeCalculatorSheet: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var viewModel: ExchangeCalculatorViewModel?
+    @State private var selectedDetent: PresentationDetent = .large
 
     var body: some View {
         NavigationStack {
@@ -41,7 +42,7 @@ struct ExchangeCalculatorSheet: View {
                 await viewModel?.initializeDefaults()
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
     }
 
     private func calculatorForm(viewModel: ExchangeCalculatorViewModel) -> some View {
@@ -74,7 +75,7 @@ struct ExchangeCalculatorSheet: View {
                         set: { viewModel.amount = $0 }
                     ),
                     currencyCode: viewModel.fromCurrencyCode,
-                    autoFocus: false,
+                    autoFocus: true,
                     useGlassBackground: false,
                     useOuterPadding: false
                 )
