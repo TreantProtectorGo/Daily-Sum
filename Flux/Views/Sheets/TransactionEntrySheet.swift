@@ -92,6 +92,10 @@ struct TransactionEntrySheet: View {
                     "TransactionEntrySheet.Open",
                     metadata: "mode=\(mode)"
                 )
+    
+                // Start in large detent for create flow so auto-focused keypad
+                // does not wait on a medium->large expansion animation.
+                selectedDetent = existingTransaction == nil ? .large : .medium
 
                 if existingTransaction != nil {
                     loadExistingTransaction()

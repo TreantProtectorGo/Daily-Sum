@@ -49,6 +49,7 @@ struct AmountInputView: View {
                     .padding(useOuterPadding ? 16 : 0)
             }
         }
+        .background(preloadedNumberPad)
     }
 
     private var inputContent: some View {
@@ -69,9 +70,7 @@ struct AmountInputView: View {
                     syncBufferFromAmount()
                     if autoFocus && !hasAttemptedAutoFocus {
                         hasAttemptedAutoFocus = true
-                        DispatchQueue.main.async {
-                            presentNumberPad()
-                        }
+                        presentNumberPad()
                     }
                 }
                 .onChange(of: amount) { _, _ in
@@ -106,11 +105,28 @@ struct AmountInputView: View {
         formatter.currencyCode = currencyCode
         return formatter.currencySymbol ?? "$"
     }
+
+    private var preloadedNumberPad: some View {
+        // Keep a hidden instance in the hierarchy to warm up view/material creation.
+        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in }
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
     
     private func presentNumberPad() {
         guard !isNumberPadPresented else { return }
-        isNumberPadPresented = true
+        setNumberPadPresented(true)
         onFocusChanged?(true)
+    }
+
+    private func setNumberPadPresented(_ presented: Bool) {
+        var transaction = SwiftUI.Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isNumberPadPresented = presented
+        }
     }
 
     private func dismissNumberPad() {
@@ -142,7 +158,7 @@ struct AmountInputView: View {
         case .backspace:
             inputBuffer.backspace()
         case .done:
-            isNumberPadPresented = false
+            setNumberPadPresented(false)
             return
         }
 
@@ -193,7 +209,7 @@ struct CompactAmountInput: View {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 100, alignment: .trailing)
                     .contentShape(Rectangle())
-                    .onTapGesture { isNumberPadPresented = true }
+                    .onTapGesture { setNumberPadPresented(true) }
                     .onAppear { syncBufferFromAmount() }
                     .onChange(of: amount) { _, _ in
                         guard !isNumberPadPresented else { return }
@@ -209,6 +225,7 @@ struct CompactAmountInput: View {
             .presentationDetents([.height(336)])
             .presentationDragIndicator(.visible)
         }
+        .background(preloadedNumberPad)
     }
     
     private var compactDisplayText: String {
@@ -230,11 +247,28 @@ struct CompactAmountInput: View {
         formatter.currencyCode = currencyCode
         return formatter.currencySymbol ?? "$"
     }
+
+    private var preloadedNumberPad: some View {
+        // Keep a hidden instance in the hierarchy to warm up view/material creation.
+        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in }
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
     
     private func syncBufferFromAmount() {
         let formatted = amount == 0 ? "" : formatForEditing(amount)
         if formatted != inputBuffer.text {
             inputBuffer = NumericInputBuffer(initialText: formatted, maxFractionDigits: 4)
+        }
+    }
+
+    private func setNumberPadPresented(_ presented: Bool) {
+        var transaction = SwiftUI.Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isNumberPadPresented = presented
         }
     }
 
@@ -247,7 +281,7 @@ struct CompactAmountInput: View {
         case .backspace:
             inputBuffer.backspace()
         case .done:
-            isNumberPadPresented = false
+            setNumberPadPresented(false)
             return
         }
 
