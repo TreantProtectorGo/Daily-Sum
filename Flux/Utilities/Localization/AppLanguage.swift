@@ -45,7 +45,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .simplifiedChinese:
             return "简体中文"
         case .traditionalChinese:
-            return "繁體中文（香港）"
+            return "繁體中文"
         }
     }
 }
