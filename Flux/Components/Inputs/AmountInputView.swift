@@ -13,10 +13,10 @@ struct AmountInputView: View {
     let onFirstUserInput: (() -> Void)?
     let onFocusChanged: ((Bool) -> Void)?
     
-    @State private var textValue: String = ""
     @State private var hasAttemptedAutoFocus = false
     @State private var hasReportedFirstInput = false
-    @FocusState private var isFocused: Bool
+    @State private var inputBuffer = NumericInputBuffer(maxFractionDigits: 4)
+    @State private var isNumberPadPresented = false
     
     init(
         amount: Binding<Decimal>,
@@ -58,33 +58,48 @@ struct AmountInputView: View {
                 .font(.title2)
                 .foregroundStyle(.secondary)
             
-            // Amount input
-            TextField(placeholder, text: $textValue)
+            Text(displayText)
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .keyboardType(.decimalPad)
-                .focused($isFocused)
-                .onChange(of: textValue) { _, newValue in
-                    updateAmount(from: newValue)
-                    reportFirstUserInputIfNeeded(newValue)
-                }
-                .onChange(of: isFocused) { _, newValue in
-                    onFocusChanged?(newValue)
-                }
+                .foregroundStyle(inputBuffer.text.isEmpty ? .secondary : .primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { presentNumberPad() }
                 .onAppear {
-                    if amount != 0 {
-                        textValue = formatForEditing(amount)
-                    }
+                    syncBufferFromAmount()
                     if autoFocus && !hasAttemptedAutoFocus {
                         hasAttemptedAutoFocus = true
                         DispatchQueue.main.async {
-                            isFocused = true
+                            presentNumberPad()
                         }
                     }
                 }
+                .onChange(of: amount) { _, _ in
+                    guard !isNumberPadPresented else { return }
+                    syncBufferFromAmount()
+                }
+        }
+        .sheet(isPresented: $isNumberPadPresented, onDismiss: dismissNumberPad) {
+            CustomNumberPad(
+                decimalSeparator: localeDecimalSeparator,
+                onAction: handleNumberPadAction
+            )
+            .presentationDetents([.height(336)])
+            .presentationDragIndicator(.visible)
         }
     }
     
+    private var displayText: String {
+        guard !inputBuffer.text.isEmpty else { return placeholder }
+        return inputBuffer.text.replacingOccurrences(of: ".", with: localeDecimalSeparator)
+    }
+
+    private var localeDecimalSeparator: String {
+        let formatter = NumberFormatter()
+        formatter.locale = AppLocalization.locale
+        return formatter.decimalSeparator ?? "."
+    }
+
     private var currencySymbol: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -92,48 +107,62 @@ struct AmountInputView: View {
         return formatter.currencySymbol ?? "$"
     }
     
-    private func updateAmount(from text: String) {
-        // Allow only valid decimal characters
-        let filtered = text.filter { $0.isNumber || $0 == "." || $0 == "," }
-        
-        // Replace comma with period for parsing
-        let normalized = filtered.replacingOccurrences(of: ",", with: ".")
-        
-        // Ensure only one decimal point
-        let components = normalized.split(separator: ".", omittingEmptySubsequences: false)
-        var cleanText = normalized
-        if components.count > 2 {
-            cleanText = String(components[0]) + "." + components.dropFirst().joined()
-        }
-        
-        // Parse and update
-        if let decimal = Decimal(string: cleanText) {
-            amount = decimal
-        } else if cleanText.isEmpty {
-            amount = 0
-        }
-        
-        // Update text if it was filtered
-        if filtered != text {
-            textValue = filtered
-        }
+    private func presentNumberPad() {
+        guard !isNumberPadPresented else { return }
+        isNumberPadPresented = true
+        onFocusChanged?(true)
+    }
+
+    private func dismissNumberPad() {
+        onFocusChanged?(false)
     }
 
     private func reportFirstUserInputIfNeeded(_ newValue: String) {
         guard !hasReportedFirstInput else { return }
-        guard isFocused else { return }
         guard !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         hasReportedFirstInput = true
         onFirstUserInput?()
     }
     
+    private func syncBufferFromAmount() {
+        let formatted = amount == 0 ? "" : formatForEditing(amount)
+        if formatted != inputBuffer.text {
+            inputBuffer = NumericInputBuffer(initialText: formatted, maxFractionDigits: 4)
+        }
+    }
+
+    private func handleNumberPadAction(_ action: CustomNumberPadAction) {
+        let previousText = inputBuffer.text
+
+        switch action {
+        case .digit(let value):
+            inputBuffer.appendCharacter(Character("\(value)"))
+        case .decimalSeparator:
+            inputBuffer.insertDecimalSeparator()
+        case .backspace:
+            inputBuffer.backspace()
+        case .done:
+            isNumberPadPresented = false
+            return
+        }
+
+        amount = inputBuffer.decimalValue
+
+        if inputBuffer.text != previousText {
+            reportFirstUserInputIfNeeded(inputBuffer.text)
+        }
+    }
+
     private func formatForEditing(_ value: Decimal) -> String {
         let number = NSDecimalNumber(decimal: value)
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = false
         formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: number) ?? "0"
+        formatter.maximumFractionDigits = 4
+        formatter.decimalSeparator = "."
+        return formatter.string(from: number) ?? ""
     }
 }
 
@@ -145,7 +174,8 @@ struct CompactAmountInput: View {
     let currencyCode: String
     let label: String
     
-    @State private var textValue: String = ""
+    @State private var inputBuffer = NumericInputBuffer(maxFractionDigits: 4)
+    @State private var isNumberPadPresented = false
     
     var body: some View {
         HStack {
@@ -158,22 +188,42 @@ struct CompactAmountInput: View {
                 Text(currencySymbol)
                     .foregroundStyle(.secondary)
                 
-                TextField("0", text: $textValue)
-                    .keyboardType(.decimalPad)
+                Text(compactDisplayText)
+                    .foregroundStyle(inputBuffer.text.isEmpty ? .secondary : .primary)
                     .multilineTextAlignment(.trailing)
-                    .frame(width: 100)
-                    .onChange(of: textValue) { _, newValue in
-                        updateAmount(from: newValue)
-                    }
-                    .onAppear {
-                        if amount != 0 {
-                            textValue = formatForEditing(amount)
-                        }
+                    .frame(width: 100, alignment: .trailing)
+                    .contentShape(Rectangle())
+                    .onTapGesture { isNumberPadPresented = true }
+                    .onAppear { syncBufferFromAmount() }
+                    .onChange(of: amount) { _, _ in
+                        guard !isNumberPadPresented else { return }
+                        syncBufferFromAmount()
                     }
             }
         }
+        .sheet(isPresented: $isNumberPadPresented) {
+            CustomNumberPad(
+                decimalSeparator: localeDecimalSeparator,
+                onAction: handleNumberPadAction
+            )
+            .presentationDetents([.height(336)])
+            .presentationDragIndicator(.visible)
+        }
     }
     
+    private var compactDisplayText: String {
+        if inputBuffer.text.isEmpty {
+            return "0"
+        }
+        return inputBuffer.text.replacingOccurrences(of: ".", with: localeDecimalSeparator)
+    }
+
+    private var localeDecimalSeparator: String {
+        let formatter = NumberFormatter()
+        formatter.locale = AppLocalization.locale
+        return formatter.decimalSeparator ?? "."
+    }
+
     private var currencySymbol: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
@@ -181,28 +231,39 @@ struct CompactAmountInput: View {
         return formatter.currencySymbol ?? "$"
     }
     
-    private func updateAmount(from text: String) {
-        let filtered = text.filter { $0.isNumber || $0 == "." || $0 == "," }
-        let normalized = filtered.replacingOccurrences(of: ",", with: ".")
-        
-        if let decimal = Decimal(string: normalized) {
-            amount = decimal
-        } else if normalized.isEmpty {
-            amount = 0
+    private func syncBufferFromAmount() {
+        let formatted = amount == 0 ? "" : formatForEditing(amount)
+        if formatted != inputBuffer.text {
+            inputBuffer = NumericInputBuffer(initialText: formatted, maxFractionDigits: 4)
         }
-        
-        if filtered != text {
-            textValue = filtered
+    }
+
+    private func handleNumberPadAction(_ action: CustomNumberPadAction) {
+        switch action {
+        case .digit(let value):
+            inputBuffer.appendCharacter(Character("\(value)"))
+        case .decimalSeparator:
+            inputBuffer.insertDecimalSeparator()
+        case .backspace:
+            inputBuffer.backspace()
+        case .done:
+            isNumberPadPresented = false
+            return
         }
+
+        amount = inputBuffer.decimalValue
     }
     
     private func formatForEditing(_ value: Decimal) -> String {
         let number = NSDecimalNumber(decimal: value)
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = false
         formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: number) ?? "0"
+        formatter.maximumFractionDigits = 4
+        formatter.decimalSeparator = "."
+        return formatter.string(from: number) ?? ""
     }
 }
 

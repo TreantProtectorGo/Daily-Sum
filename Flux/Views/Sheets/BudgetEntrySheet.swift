@@ -88,15 +88,12 @@ struct BudgetEntrySheet: View {
                         .tag(period)
                 }
             }
-            
-            HStack {
-                Text(AppLocalization.string("budget.limit", defaultValue: "Spending Limit"))
-                Spacer()
-                TextField("0", value: $limitAmount, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 120)
-            }
+
+            CompactAmountInput(
+                amount: $limitAmount,
+                currencyCode: currencyCode,
+                label: AppLocalization.string("budget.limit", defaultValue: "Spending Limit")
+            )
             
             Picker(AppLocalization.string("budget.currency", defaultValue: "Currency"), selection: $currencyCode) {
                 ForEach(currencyOptions, id: \.self) { currency in

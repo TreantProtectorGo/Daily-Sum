@@ -118,17 +118,14 @@ struct AccountEntrySheet: View {
     private var balanceSection: some View {
         Section(AppLocalization.string("account.balance", defaultValue: "Balance")) {
             currencyPicker
-            
-            HStack {
-                Text(isEditing 
+
+            CompactAmountInput(
+                amount: $initialBalance,
+                currencyCode: selectedCurrency.rawValue,
+                label: isEditing
                     ? AppLocalization.string("account.currentBalance", defaultValue: "Current Balance")
-                    : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance"))
-                Spacer()
-                TextField("0", value: $initialBalance, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 120)
-            }
+                    : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance")
+            )
         }
     }
     

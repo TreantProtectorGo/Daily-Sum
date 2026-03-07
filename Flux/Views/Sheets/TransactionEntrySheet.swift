@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UIKit
 
 private enum ScheduleFormMode: String, CaseIterable, Identifiable {
     case oneTime
@@ -32,7 +31,7 @@ struct TransactionEntrySheet: View {
     @State private var sheetOpenedAt: Date?
     @State private var hasLoggedFirstAmountInput = false
     @State private var amountFieldFocusedAt: Date?
-    @State private var isAmountFieldFocused = false
+    @State private var selectedDetent: PresentationDetent = .medium
     
     @State private var isSaving = false
     @State private var showError = false
@@ -109,12 +108,6 @@ struct TransactionEntrySheet: View {
             .onChange(of: accounts.count) { _, _ in
                 applyPreferredAccountIfNeeded()
             }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-                handleKeyboardWillShow(notification)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
-                handleKeyboardDidShow(notification)
-            }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),
                 isPresented: $showError
@@ -124,7 +117,7 @@ struct TransactionEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
     }
     
     // MARK: - Form Sections
@@ -152,7 +145,7 @@ struct TransactionEntrySheet: View {
             AmountInputView(
                 amount: $amount,
                 currencyCode: selectedAccount?.currencyCode ?? UserCurrencyPreference.resolvedCurrencyCode,
-                autoFocus: false,
+                autoFocus: existingTransaction == nil,
                 onFirstUserInput: handleFirstAmountInput,
                 onFocusChanged: handleAmountFieldFocusChanged
             )
@@ -484,8 +477,15 @@ struct TransactionEntrySheet: View {
         guard !hasLoggedFirstAmountInput else { return }
         hasLoggedFirstAmountInput = true
 
+        if let focusedAt = amountFieldFocusedAt {
+            PerformanceLogger.end(
+                "TransactionEntrySheet.CustomPad.FirstKey",
+                from: focusedAt
+            )
+        }
+
         guard let openedAt = sheetOpenedAt else {
-            PerformanceLogger.mark("TransactionEntrySheet.FirstAmountInput")
+            PerformanceLogger.mark("TransactionEntrySheet.CustomPad.FirstKey")
             return
         }
 
@@ -493,48 +493,16 @@ struct TransactionEntrySheet: View {
             "TransactionEntrySheet.TimeToFirstAmountInput",
             from: openedAt
         )
-
-        if let focusedAt = amountFieldFocusedAt {
-            PerformanceLogger.end(
-                "TransactionEntrySheet.FocusToFirstAmountInput",
-                from: focusedAt
-            )
-        }
     }
 
     private func handleAmountFieldFocusChanged(_ isFocused: Bool) {
-        isAmountFieldFocused = isFocused
-
         if isFocused {
-            amountFieldFocusedAt = PerformanceLogger.start("TransactionEntrySheet.AmountFieldFocused")
+            amountFieldFocusedAt = Date()
+            PerformanceLogger.mark("TransactionEntrySheet.CustomPad.Open")
+            selectedDetent = .large
         } else {
             amountFieldFocusedAt = nil
         }
-    }
-
-    private func handleKeyboardWillShow(_ notification: Notification) {
-        guard isAmountFieldFocused else { return }
-
-        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
-        let metadata = duration.map { "animationDuration=\(String(format: "%.3fs", $0))" }
-        PerformanceLogger.mark("TransactionEntrySheet.KeyboardWillShow", metadata: metadata)
-    }
-
-    private func handleKeyboardDidShow(_ notification: Notification) {
-        guard isAmountFieldFocused else { return }
-
-        guard let focusedAt = amountFieldFocusedAt else {
-            PerformanceLogger.mark("TransactionEntrySheet.KeyboardDidShow")
-            return
-        }
-
-        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
-        let metadata = duration.map { "animationDuration=\(String(format: "%.3fs", $0))" }
-        PerformanceLogger.end(
-            "TransactionEntrySheet.FocusToKeyboardDidShow",
-            from: focusedAt,
-            metadata: metadata
-        )
     }
 
     private func scheduledTemplateForEditing(
