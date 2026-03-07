@@ -26,7 +26,7 @@ enum TransactionListPreference {
         set {
             UserDefaults.standard.set(newValue, forKey: showUpcomingScheduledStorageKey)
             UserDefaults.standard.set(true, forKey: showUpcomingScheduledMigrationKey)
-        }
+        }  
     }
 }
 

@@ -325,8 +325,9 @@ struct TransactionListView: View {
 
         return AppLocalization.formatted(
             "transaction.upcomingHint.subtitle",
-            defaultValue: "%lld in next 31 days • Next %@",
+            defaultValue: "%1$lld due in the next %2$lld days • Next %3$@",
             Int64(viewModel.hiddenUpcomingScheduledCount),
+            Int64(RecurringTransactionGenerator.defaultLookAheadDays),
             nextDateText
         )
     }

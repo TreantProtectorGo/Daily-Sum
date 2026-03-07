@@ -194,7 +194,7 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text(AppLocalization.string("settings.reminders", defaultValue: "Reminders"))
+            Text(AppLocalization.string("settings.reminders", defaultValue: "Notifications"))
         }
     }
     

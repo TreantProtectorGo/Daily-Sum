@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 private enum ScheduleFormMode: String, CaseIterable, Identifiable {
     case oneTime
@@ -28,6 +29,10 @@ struct TransactionEntrySheet: View {
     @State private var scheduleMode: ScheduleFormMode = .oneTime
     @State private var dueDayOfMonth: Int = Calendar.current.component(.day, from: .now)
     @State private var reminderLeadDays: Int = TransactionReminderScheduler.defaultReminderLeadDays
+    @State private var sheetOpenedAt: Date?
+    @State private var hasLoggedFirstAmountInput = false
+    @State private var amountFieldFocusedAt: Date?
+    @State private var isAmountFieldFocused = false
     
     @State private var isSaving = false
     @State private var showError = false
@@ -83,15 +88,32 @@ struct TransactionEntrySheet: View {
                 }
             }
             .onAppear {
+                let mode = existingTransaction == nil ? "create" : "edit"
+                sheetOpenedAt = PerformanceLogger.start(
+                    "TransactionEntrySheet.Open",
+                    metadata: "mode=\(mode)"
+                )
+
                 if existingTransaction != nil {
                     loadExistingTransaction()
                 } else {
                     resetFormForNewTransaction()
                     applyPreferredAccountIfNeeded()
                 }
+
+                PerformanceLogger.mark(
+                    "TransactionEntrySheet.Open.Ready",
+                    metadata: "accounts=\(accounts.count)"
+                )
             }
             .onChange(of: accounts.count) { _, _ in
                 applyPreferredAccountIfNeeded()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                handleKeyboardWillShow(notification)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { notification in
+                handleKeyboardDidShow(notification)
             }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),
@@ -130,7 +152,9 @@ struct TransactionEntrySheet: View {
             AmountInputView(
                 amount: $amount,
                 currencyCode: selectedAccount?.currencyCode ?? UserCurrencyPreference.resolvedCurrencyCode,
-                autoFocus: false
+                autoFocus: false,
+                onFirstUserInput: handleFirstAmountInput,
+                onFocusChanged: handleAmountFieldFocusChanged
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -320,6 +344,19 @@ struct TransactionEntrySheet: View {
         guard isFormValid, let account = selectedAccount else { return }
         
         isSaving = true
+        let saveStartedAt = PerformanceLogger.start(
+            "TransactionEntrySheet.Save",
+            metadata: "type=\(transactionType.rawValue),schedule=\(scheduleMode.rawValue)"
+        )
+        var saveStatus = "success"
+        defer {
+            isSaving = false
+            PerformanceLogger.end(
+                "TransactionEntrySheet.Save",
+                from: saveStartedAt,
+                metadata: "status=\(saveStatus)"
+            )
+        }
         
         do {
             let service = TransactionService(context: modelContext)
@@ -437,11 +474,67 @@ struct TransactionEntrySheet: View {
             dismiss()
             
         } catch {
+            saveStatus = "error"
             errorMessage = error.localizedDescription
             showError = true
         }
-        
-        isSaving = false
+    }
+
+    private func handleFirstAmountInput() {
+        guard !hasLoggedFirstAmountInput else { return }
+        hasLoggedFirstAmountInput = true
+
+        guard let openedAt = sheetOpenedAt else {
+            PerformanceLogger.mark("TransactionEntrySheet.FirstAmountInput")
+            return
+        }
+
+        PerformanceLogger.end(
+            "TransactionEntrySheet.TimeToFirstAmountInput",
+            from: openedAt
+        )
+
+        if let focusedAt = amountFieldFocusedAt {
+            PerformanceLogger.end(
+                "TransactionEntrySheet.FocusToFirstAmountInput",
+                from: focusedAt
+            )
+        }
+    }
+
+    private func handleAmountFieldFocusChanged(_ isFocused: Bool) {
+        isAmountFieldFocused = isFocused
+
+        if isFocused {
+            amountFieldFocusedAt = PerformanceLogger.start("TransactionEntrySheet.AmountFieldFocused")
+        } else {
+            amountFieldFocusedAt = nil
+        }
+    }
+
+    private func handleKeyboardWillShow(_ notification: Notification) {
+        guard isAmountFieldFocused else { return }
+
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+        let metadata = duration.map { "animationDuration=\(String(format: "%.3fs", $0))" }
+        PerformanceLogger.mark("TransactionEntrySheet.KeyboardWillShow", metadata: metadata)
+    }
+
+    private func handleKeyboardDidShow(_ notification: Notification) {
+        guard isAmountFieldFocused else { return }
+
+        guard let focusedAt = amountFieldFocusedAt else {
+            PerformanceLogger.mark("TransactionEntrySheet.KeyboardDidShow")
+            return
+        }
+
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double
+        let metadata = duration.map { "animationDuration=\(String(format: "%.3fs", $0))" }
+        PerformanceLogger.end(
+            "TransactionEntrySheet.FocusToKeyboardDidShow",
+            from: focusedAt,
+            metadata: metadata
+        )
     }
 
     private func scheduledTemplateForEditing(

@@ -4729,19 +4729,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Reminders"
+            "value" : "Notifications"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "提醒"
+            "value" : "通知"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "提醒"
+            "value" : "通知"
           }
         }
       }

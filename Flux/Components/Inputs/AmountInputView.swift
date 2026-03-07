@@ -10,9 +10,12 @@ struct AmountInputView: View {
     let autoFocus: Bool
     let useGlassBackground: Bool
     let useOuterPadding: Bool
+    let onFirstUserInput: (() -> Void)?
+    let onFocusChanged: ((Bool) -> Void)?
     
     @State private var textValue: String = ""
     @State private var hasAttemptedAutoFocus = false
+    @State private var hasReportedFirstInput = false
     @FocusState private var isFocused: Bool
     
     init(
@@ -21,7 +24,9 @@ struct AmountInputView: View {
         placeholder: String = "0.00",
         autoFocus: Bool = false,
         useGlassBackground: Bool = true,
-        useOuterPadding: Bool = true
+        useOuterPadding: Bool = true,
+        onFirstUserInput: (() -> Void)? = nil,
+        onFocusChanged: ((Bool) -> Void)? = nil
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
@@ -29,6 +34,8 @@ struct AmountInputView: View {
         self.autoFocus = autoFocus
         self.useGlassBackground = useGlassBackground
         self.useOuterPadding = useOuterPadding
+        self.onFirstUserInput = onFirstUserInput
+        self.onFocusChanged = onFocusChanged
     }
     
     var body: some View {
@@ -59,6 +66,10 @@ struct AmountInputView: View {
                 .focused($isFocused)
                 .onChange(of: textValue) { _, newValue in
                     updateAmount(from: newValue)
+                    reportFirstUserInputIfNeeded(newValue)
+                }
+                .onChange(of: isFocused) { _, newValue in
+                    onFocusChanged?(newValue)
                 }
                 .onAppear {
                     if amount != 0 {
@@ -106,6 +117,14 @@ struct AmountInputView: View {
         if filtered != text {
             textValue = filtered
         }
+    }
+
+    private func reportFirstUserInputIfNeeded(_ newValue: String) {
+        guard !hasReportedFirstInput else { return }
+        guard isFocused else { return }
+        guard !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        hasReportedFirstInput = true
+        onFirstUserInput?()
     }
     
     private func formatForEditing(_ value: Decimal) -> String {
