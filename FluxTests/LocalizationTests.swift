@@ -171,6 +171,32 @@ final class LocalizationTests: XCTestCase {
         )
     }
 
+    func testScheduleHeaderCopyUsesDistinctSectionTitleAcrossLanguages() {
+        let expectedValues = [
+            "en": "Entry Type",
+            "zh-Hans": "记录方式",
+            "zh-Hant": "記錄方式"
+        ]
+
+        for (locale, expectedValue) in expectedValues {
+            let headerValue = localizedStringValue(
+                key: "transaction.schedule.header",
+                locale: locale
+            )
+            let recurringValue = localizedStringValue(
+                key: "transaction.schedule.recurring",
+                locale: locale
+            )
+
+            XCTAssertEqual(headerValue, expectedValue)
+            XCTAssertNotEqual(
+                headerValue,
+                recurringValue,
+                "Schedule section title should stay distinct from the recurring option for \(locale)"
+            )
+        }
+    }
+
     func testUpcomingHintSubtitleFormatSpecifiersAreConsistentAcrossLanguages() {
         let localesByLanguage: [(AppLanguage, String)] = [
             (.english, "en"),

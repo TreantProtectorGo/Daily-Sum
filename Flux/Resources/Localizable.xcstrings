@@ -5553,19 +5553,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Subscription"
+            "value" : "Entry Type"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "订阅"
+            "value" : "记录方式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "訂閱"
+            "value" : "記錄方式"
           }
         }
       }
