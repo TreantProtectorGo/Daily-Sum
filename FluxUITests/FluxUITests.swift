@@ -78,6 +78,41 @@ final class FluxUITests: XCTestCase {
     }
 
     @MainActor
+    func testTransactionAmountKeypadCommitsExpressionResult() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+
+        app.tabBars.buttons["Transactions"].tap()
+        app.buttons["transactions.addButton"].tap()
+
+        let confirmButton = keypadButton(in: app, label: "Confirm")
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10))
+
+        keypadButton(in: app, label: "1").tap()
+        keypadButton(in: app, label: "2").tap()
+        keypadButton(in: app, label: "Add").tap()
+        keypadButton(in: app, label: "3").tap()
+        keypadButton(in: app, label: "Multiply").tap()
+        keypadButton(in: app, label: "4").tap()
+        confirmButton.tap()
+
+        let amountTrigger = app.buttons["amountInput.trigger"]
+        XCTAssertTrue(amountTrigger.waitForExistence(timeout: 2))
+        XCTAssertEqual(amountTrigger.value as? String, "24")
+    }
+
+    private func keypadButton(in app: XCUIApplication, label: String) -> XCUIElement {
+        app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ AND label == %@",
+                "numberPad.sheet",
+                label
+            )
+        ).firstMatch
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {

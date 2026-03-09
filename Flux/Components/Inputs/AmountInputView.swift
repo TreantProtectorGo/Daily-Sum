@@ -12,12 +12,13 @@ struct AmountInputView: View {
     let useOuterPadding: Bool
     let onFirstUserInput: (() -> Void)?
     let onFocusChanged: ((Bool) -> Void)?
-    
+
     @State private var hasAttemptedAutoFocus = false
     @State private var hasReportedFirstInput = false
-    @State private var inputBuffer = NumericInputBuffer(maxFractionDigits: 4)
+    @State private var inputBuffer = NumericExpressionBuffer(maxFractionDigits: 4)
     @State private var isNumberPadPresented = false
-    
+    @State private var shouldCommitDraftOnDismiss = false
+
     init(
         amount: Binding<Decimal>,
         currencyCode: String,
@@ -37,7 +38,7 @@ struct AmountInputView: View {
         self.onFirstUserInput = onFirstUserInput
         self.onFocusChanged = onFocusChanged
     }
-    
+
     var body: some View {
         Group {
             if useGlassBackground {
@@ -54,43 +55,53 @@ struct AmountInputView: View {
 
     private var inputContent: some View {
         HStack(spacing: 8) {
-            // Currency symbol
             Text(currencySymbol)
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            
-            Text(displayText)
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundStyle(inputBuffer.text.isEmpty ? .secondary : .primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture { presentNumberPad() }
-                .onAppear {
-                    syncBufferFromAmount()
-                    if autoFocus && !hasAttemptedAutoFocus {
-                        hasAttemptedAutoFocus = true
-                        presentNumberPad()
-                    }
-                }
-                .onChange(of: amount) { _, _ in
-                    guard !isNumberPadPresented else { return }
-                    syncBufferFromAmount()
-                }
+
+            Button(action: presentNumberPad) {
+                Text(displayText)
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundStyle(renderedDisplayText.isEmpty ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("amountInput.trigger")
+            .accessibilityValue(displayText)
         }
-        .sheet(isPresented: $isNumberPadPresented, onDismiss: dismissNumberPad) {
-            CustomNumberPad(
+        .onAppear {
+            syncBufferFromAmount()
+            if autoFocus && !hasAttemptedAutoFocus {
+                hasAttemptedAutoFocus = true
+                presentNumberPad()
+            }
+        }
+        .onChange(of: amount) { _, _ in
+            guard !isNumberPadPresented else { return }
+            syncBufferFromAmount()
+        }
+        .sheet(isPresented: $isNumberPadPresented, onDismiss: handleNumberPadDismissed) {
+            keypadSheetContent(
                 decimalSeparator: localeDecimalSeparator,
                 onAction: handleNumberPadAction
             )
-            .presentationDetents([.height(336)])
+            .presentationDetents([.height(CustomNumberPadLayout.sheetHeight)])
             .presentationDragIndicator(.visible)
+            .presentationBackground(Color(uiColor: CustomNumberPadPalette.sheetSurface))
         }
     }
-    
+
+    private var renderedDisplayText: String {
+        inputBuffer.displayText(locale: AppLocalization.locale)
+    }
+
     private var displayText: String {
-        guard !inputBuffer.text.isEmpty else { return placeholder }
-        return inputBuffer.text.replacingOccurrences(of: ".", with: localeDecimalSeparator)
+        renderedDisplayText.isEmpty ? placeholder : renderedDisplayText
     }
 
     private var localeDecimalSeparator: String {
@@ -107,16 +118,19 @@ struct AmountInputView: View {
     }
 
     private var preloadedNumberPad: some View {
-        // Keep a hidden instance in the hierarchy to warm up view/material creation.
-        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in }
-            .opacity(0)
-            .frame(width: 0, height: 0)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in
+            .accepted
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
-    
+
     private func presentNumberPad() {
         guard !isNumberPadPresented else { return }
+        syncBufferFromAmount()
+        shouldCommitDraftOnDismiss = true
         setNumberPadPresented(true)
         onFocusChanged?(true)
     }
@@ -129,56 +143,82 @@ struct AmountInputView: View {
         }
     }
 
-    private func dismissNumberPad() {
+    private func handleNumberPadDismissed() {
+        if shouldCommitDraftOnDismiss {
+            _ = commitDraft()
+        }
+        shouldCommitDraftOnDismiss = false
         onFocusChanged?(false)
     }
 
-    private func reportFirstUserInputIfNeeded(_ newValue: String) {
+    private func reportFirstUserInputIfNeeded() {
         guard !hasReportedFirstInput else { return }
-        guard !newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         hasReportedFirstInput = true
         onFirstUserInput?()
     }
-    
+
     private func syncBufferFromAmount() {
-        let formatted = amount == 0 ? "" : formatForEditing(amount)
-        if formatted != inputBuffer.text {
-            inputBuffer = NumericInputBuffer(initialText: formatted, maxFractionDigits: 4)
-        }
+        inputBuffer = NumericExpressionBuffer(
+            initialValue: amount,
+            maxFractionDigits: 4,
+            emptyWhenZero: amount == 0
+        )
     }
 
-    private func handleNumberPadAction(_ action: CustomNumberPadAction) {
-        let previousText = inputBuffer.text
+    private func handleNumberPadAction(_ action: CustomNumberPadAction) -> CustomNumberPadActionResult {
+        let result: CustomNumberPadActionResult
 
         switch action {
         case .digit(let value):
-            inputBuffer.appendCharacter(Character("\(value)"))
+            result = CustomNumberPadActionResult(inputBuffer.appendDigit(Character("\(value)")))
         case .decimalSeparator:
-            inputBuffer.insertDecimalSeparator()
+            result = CustomNumberPadActionResult(inputBuffer.insertDecimalSeparator())
         case .backspace:
-            inputBuffer.backspace()
-        case .done:
+            result = CustomNumberPadActionResult(inputBuffer.backspace())
+        case .operation(let operation):
+            result = CustomNumberPadActionResult(inputBuffer.insertOperator(operation))
+        case .confirm:
+            _ = commitDraft()
+            shouldCommitDraftOnDismiss = false
             setNumberPadPresented(false)
-            return
+            return .accepted
         }
 
-        amount = inputBuffer.decimalValue
-
-        if inputBuffer.text != previousText {
-            reportFirstUserInputIfNeeded(inputBuffer.text)
+        if result != .ignored {
+            reportFirstUserInputIfNeeded()
         }
+
+        if let liveValue = inputBuffer.liveDecimalValue {
+            amount = liveValue
+        }
+
+        return result
     }
 
-    private func formatForEditing(_ value: Decimal) -> String {
-        let number = NSDecimalNumber(decimal: value)
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.usesGroupingSeparator = false
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 4
-        formatter.decimalSeparator = "."
-        return formatter.string(from: number) ?? ""
+    private func commitDraft() -> Decimal {
+        guard inputBuffer.hasExpression || inputBuffer.hasContent || amount != 0 else {
+            syncBufferFromAmount()
+            return amount
+        }
+
+        let committed = inputBuffer.commit()
+        amount = committed
+        return committed
+    }
+
+    private func keypadSheetContent(
+        decimalSeparator: String,
+        onAction: @escaping (CustomNumberPadAction) -> CustomNumberPadActionResult
+    ) -> some View {
+        ZStack(alignment: .top) {
+            Color(uiColor: CustomNumberPadPalette.sheetSurface)
+
+            CustomNumberPad(
+                decimalSeparator: decimalSeparator,
+                onAction: onAction
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -190,10 +230,11 @@ struct CompactAmountInput: View {
     let currencyCode: String
     let label: String
     let autoFocus: Bool
-    
+
     @State private var hasAttemptedAutoFocus = false
-    @State private var inputBuffer = NumericInputBuffer(maxFractionDigits: 4)
+    @State private var inputBuffer = NumericExpressionBuffer(maxFractionDigits: 4)
     @State private var isNumberPadPresented = false
+    @State private var shouldCommitDraftOnDismiss = false
 
     init(
         amount: Binding<Decimal>,
@@ -206,53 +247,61 @@ struct CompactAmountInput: View {
         self.label = label
         self.autoFocus = autoFocus
     }
-    
+
     var body: some View {
         HStack {
             Text(label)
                 .foregroundStyle(.secondary)
-            
+
             Spacer()
-            
-            HStack(spacing: 4) {
-                Text(currencySymbol)
-                    .foregroundStyle(.secondary)
-                
-                Text(compactDisplayText)
-                    .foregroundStyle(inputBuffer.text.isEmpty ? .secondary : .primary)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 100, alignment: .trailing)
-                    .contentShape(Rectangle())
-                    .onTapGesture { setNumberPadPresented(true) }
-                    .onChange(of: amount) { _, _ in
-                        guard !isNumberPadPresented else { return }
-                        syncBufferFromAmount()
-                    }
+
+            Button(action: presentNumberPad) {
+                HStack(spacing: 4) {
+                    Text(currencySymbol)
+                        .foregroundStyle(.secondary)
+
+                    Text(compactDisplayText)
+                        .foregroundStyle(renderedDisplayText.isEmpty ? .secondary : .primary)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
+                        .frame(width: 120, alignment: .trailing)
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("amountInput.compactTrigger")
+            .accessibilityValue(compactDisplayText)
         }
         .onAppear {
             syncBufferFromAmount()
             if autoFocus && !hasAttemptedAutoFocus {
                 hasAttemptedAutoFocus = true
-                setNumberPadPresented(true)
+                presentNumberPad()
             }
         }
-        .sheet(isPresented: $isNumberPadPresented) {
-            CustomNumberPad(
+        .onChange(of: amount) { _, _ in
+            guard !isNumberPadPresented else { return }
+            syncBufferFromAmount()
+        }
+        .sheet(isPresented: $isNumberPadPresented, onDismiss: handleNumberPadDismissed) {
+            keypadSheetContent(
                 decimalSeparator: localeDecimalSeparator,
                 onAction: handleNumberPadAction
             )
-            .presentationDetents([.height(336)])
+            .presentationDetents([.height(CustomNumberPadLayout.sheetHeight)])
             .presentationDragIndicator(.visible)
+            .presentationBackground(Color(uiColor: CustomNumberPadPalette.sheetSurface))
         }
         .background(preloadedNumberPad)
     }
-    
+
+    private var renderedDisplayText: String {
+        inputBuffer.displayText(locale: AppLocalization.locale)
+    }
+
     private var compactDisplayText: String {
-        if inputBuffer.text.isEmpty {
-            return "0"
-        }
-        return inputBuffer.text.replacingOccurrences(of: ".", with: localeDecimalSeparator)
+        renderedDisplayText.isEmpty ? "0" : renderedDisplayText
     }
 
     private var localeDecimalSeparator: String {
@@ -269,19 +318,20 @@ struct CompactAmountInput: View {
     }
 
     private var preloadedNumberPad: some View {
-        // Keep a hidden instance in the hierarchy to warm up view/material creation.
-        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in }
-            .opacity(0)
-            .frame(width: 0, height: 0)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
-    
-    private func syncBufferFromAmount() {
-        let formatted = amount == 0 ? "" : formatForEditing(amount)
-        if formatted != inputBuffer.text {
-            inputBuffer = NumericInputBuffer(initialText: formatted, maxFractionDigits: 4)
+        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in
+            .accepted
         }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func presentNumberPad() {
+        guard !isNumberPadPresented else { return }
+        syncBufferFromAmount()
+        shouldCommitDraftOnDismiss = true
+        setNumberPadPresented(true)
     }
 
     private func setNumberPadPresented(_ presented: Bool) {
@@ -292,32 +342,88 @@ struct CompactAmountInput: View {
         }
     }
 
-    private func handleNumberPadAction(_ action: CustomNumberPadAction) {
+    private func handleNumberPadDismissed() {
+        if shouldCommitDraftOnDismiss {
+            _ = commitDraft()
+        }
+        shouldCommitDraftOnDismiss = false
+    }
+
+    private func syncBufferFromAmount() {
+        inputBuffer = NumericExpressionBuffer(
+            initialValue: amount,
+            maxFractionDigits: 4,
+            emptyWhenZero: amount == 0
+        )
+    }
+
+    private func handleNumberPadAction(_ action: CustomNumberPadAction) -> CustomNumberPadActionResult {
         switch action {
         case .digit(let value):
-            inputBuffer.appendCharacter(Character("\(value)"))
+            let result = CustomNumberPadActionResult(inputBuffer.appendDigit(Character("\(value)")))
+            if let liveValue = inputBuffer.liveDecimalValue {
+                amount = liveValue
+            }
+            return result
         case .decimalSeparator:
-            inputBuffer.insertDecimalSeparator()
+            let result = CustomNumberPadActionResult(inputBuffer.insertDecimalSeparator())
+            if let liveValue = inputBuffer.liveDecimalValue {
+                amount = liveValue
+            }
+            return result
         case .backspace:
-            inputBuffer.backspace()
-        case .done:
+            let result = CustomNumberPadActionResult(inputBuffer.backspace())
+            if let liveValue = inputBuffer.liveDecimalValue {
+                amount = liveValue
+            }
+            return result
+        case .operation(let operation):
+            return CustomNumberPadActionResult(inputBuffer.insertOperator(operation))
+        case .confirm:
+            _ = commitDraft()
+            shouldCommitDraftOnDismiss = false
             setNumberPadPresented(false)
-            return
+            return .accepted
+        }
+    }
+
+    private func commitDraft() -> Decimal {
+        guard inputBuffer.hasExpression || inputBuffer.hasContent || amount != 0 else {
+            syncBufferFromAmount()
+            return amount
         }
 
-        amount = inputBuffer.decimalValue
+        let committed = inputBuffer.commit()
+        amount = committed
+        return committed
     }
-    
-    private func formatForEditing(_ value: Decimal) -> String {
-        let number = NSDecimalNumber(decimal: value)
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.usesGroupingSeparator = false
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 4
-        formatter.decimalSeparator = "."
-        return formatter.string(from: number) ?? ""
+
+    private func keypadSheetContent(
+        decimalSeparator: String,
+        onAction: @escaping (CustomNumberPadAction) -> CustomNumberPadActionResult
+    ) -> some View {
+        ZStack(alignment: .top) {
+            Color(uiColor: CustomNumberPadPalette.sheetSurface)
+
+            CustomNumberPad(
+                decimalSeparator: decimalSeparator,
+                onAction: onAction
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+private extension CustomNumberPadActionResult {
+    init(_ result: NumericExpressionMutationResult) {
+        switch result {
+        case .accepted:
+            self = .accepted
+        case .corrected:
+            self = .corrected
+        case .ignored:
+            self = .ignored
+        }
     }
 }
 
@@ -327,29 +433,27 @@ struct CompactAmountInput: View {
     struct PreviewWrapper: View {
         @State private var amount: Decimal = 0
         @State private var compactAmount: Decimal = 150.50
-        
+
         var body: some View {
             VStack(spacing: 24) {
-                // Main amount input
                 ZStack {
                     Color.blue.opacity(0.3).ignoresSafeArea()
-                    
+
                     VStack(spacing: 16) {
                         AmountInputView(
                             amount: $amount,
                             currencyCode: "USD"
                         )
-                        
-                        Text("Amount: \(amount)")
+
+                        Text(verbatim: "Amount: \(amount)")
                             .foregroundStyle(.secondary)
                     }
                     .padding()
                 }
-                .frame(height: 200)
-                
+                .frame(height: 220)
+
                 Divider()
-                
-                // Compact input
+
                 Form {
                     CompactAmountInput(
                         amount: $compactAmount,
@@ -358,10 +462,10 @@ struct CompactAmountInput: View {
                         autoFocus: false
                     )
                 }
-                .frame(height: 100)
+                .frame(height: 120)
             }
         }
     }
-    
+
     return PreviewWrapper()
 }

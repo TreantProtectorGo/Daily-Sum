@@ -2,66 +2,97 @@ import XCTest
 @testable import Flux
 
 final class NumericInputBufferTests: XCTestCase {
-    func testAcceptsUpToFourFractionDigitsAndRejectsFifth() {
-        var buffer = NumericInputBuffer(maxFractionDigits: 4)
+    private let enUS = Locale(identifier: "en_US")
 
-        "12.34567".forEach { buffer.appendCharacter($0) }
+    func testDisplaysGroupingSeparatorsWhileAcceptingUpToFourFractionDigits() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
 
-        XCTAssertEqual(buffer.text, "12.3456")
-        XCTAssertEqual(buffer.decimalValue, Decimal(string: "12.3456"))
+        "1234.56789".forEach { _ = buffer.appendCharacter($0) }
+
+        XCTAssertEqual(buffer.displayText(locale: enUS), "1,234.5678")
+        XCTAssertEqual(buffer.liveDecimalValue, Decimal(string: "1234.5678"))
     }
 
-    func testMultipleDecimalSeparatorsAreIgnoredAfterFirst() {
-        var buffer = NumericInputBuffer(maxFractionDigits: 4)
+    func testAcceptsLocaleCommaAsDecimalSeparatorInput() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
 
-        "1..2.3".forEach { buffer.appendCharacter($0) }
+        "1234,5".forEach { _ = buffer.appendCharacter($0) }
 
-        XCTAssertEqual(buffer.text, "1.23")
-        XCTAssertEqual(buffer.decimalValue, Decimal(string: "1.23"))
+        XCTAssertEqual(buffer.displayText(locale: enUS), "1,234.5")
+        XCTAssertEqual(buffer.liveDecimalValue, Decimal(string: "1234.5"))
     }
 
-    func testBackspaceAcrossFractionIntegerAndEmpty() {
-        var buffer = NumericInputBuffer(maxFractionDigits: 4)
-        "12.3".forEach { buffer.appendCharacter($0) }
+    func testChainedOperationsUseStandardPrecedenceWhenCommitted() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
 
-        buffer.backspace()
-        XCTAssertEqual(buffer.text, "12.")
+        "12".forEach { _ = buffer.appendCharacter($0) }
+        _ = buffer.insertOperator(.add)
+        "3".forEach { _ = buffer.appendCharacter($0) }
+        _ = buffer.insertOperator(.multiply)
+        "4".forEach { _ = buffer.appendCharacter($0) }
 
-        buffer.backspace()
-        XCTAssertEqual(buffer.text, "12")
+        let committed = buffer.commit()
 
-        buffer.backspace()
-        XCTAssertEqual(buffer.text, "1")
-
-        buffer.backspace()
-        XCTAssertEqual(buffer.text, "")
-
-        buffer.backspace()
-        XCTAssertEqual(buffer.text, "")
-        XCTAssertEqual(buffer.decimalValue, 0)
+        XCTAssertEqual(committed, 24)
+        XCTAssertEqual(buffer.displayText(locale: enUS), "24")
     }
 
-    func testNegativeSignIsIgnored() {
-        var buffer = NumericInputBuffer(maxFractionDigits: 4)
+    func testCommitIgnoresTrailingOperator() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
 
-        buffer.appendCharacter("-")
-        "123".forEach { buffer.appendCharacter($0) }
+        "12".forEach { _ = buffer.appendCharacter($0) }
+        _ = buffer.insertOperator(.add)
 
-        XCTAssertEqual(buffer.text, "123")
-        XCTAssertEqual(buffer.decimalValue, 123)
+        let committed = buffer.commit()
+
+        XCTAssertEqual(committed, 12)
+        XCTAssertEqual(buffer.displayText(locale: enUS), "12")
     }
 
-    func testInitialValueFormattingDoesNotInsertGroupingSeparators() {
-        let buffer = NumericInputBuffer(initialValue: Decimal(string: "1234.5678")!, maxFractionDigits: 4)
+    func testDivisionByZeroBecomesNoOpDuringCommit() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
 
-        XCTAssertEqual(buffer.text, "1234.5678")
-        XCTAssertEqual(buffer.decimalValue, Decimal(string: "1234.5678"))
+        "12".forEach { _ = buffer.appendCharacter($0) }
+        _ = buffer.insertOperator(.add)
+        "8".forEach { _ = buffer.appendCharacter($0) }
+        _ = buffer.insertOperator(.divide)
+        _ = buffer.appendCharacter("0")
+
+        let committed = buffer.commit()
+
+        XCTAssertEqual(committed, 20)
+        XCTAssertEqual(buffer.displayText(locale: enUS), "20")
     }
 
-    func testInitialTextWithGroupingSeparatorIsParsedCorrectly() {
-        let buffer = NumericInputBuffer(initialText: "1,234.56", maxFractionDigits: 4)
+    func testCommitRoundsHalfUpToFourFractionDigits() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
 
-        XCTAssertEqual(buffer.text, "1234.56")
-        XCTAssertEqual(buffer.decimalValue, Decimal(string: "1234.56"))
+        _ = buffer.appendCharacter("2")
+        _ = buffer.insertOperator(.divide)
+        _ = buffer.appendCharacter("3")
+
+        let committed = buffer.commit()
+
+        XCTAssertEqual(committed, Decimal(string: "0.6667"))
+        XCTAssertEqual(buffer.displayText(locale: enUS), "0.6667")
+    }
+
+    func testBackspaceTraversesDigitsThenOperatorsWhileKeepingDisplayFormatted() {
+        var buffer = NumericExpressionBuffer(maxFractionDigits: 4)
+
+        "1234".forEach { _ = buffer.appendCharacter($0) }
+        _ = buffer.insertOperator(.add)
+        "56".forEach { _ = buffer.appendCharacter($0) }
+
+        XCTAssertEqual(buffer.displayText(locale: enUS), "1,234 + 56")
+
+        _ = buffer.backspace()
+        XCTAssertEqual(buffer.displayText(locale: enUS), "1,234 + 5")
+
+        _ = buffer.backspace()
+        XCTAssertEqual(buffer.displayText(locale: enUS), "1,234 + ")
+
+        _ = buffer.backspace()
+        XCTAssertEqual(buffer.displayText(locale: enUS), "1,234")
     }
 }
