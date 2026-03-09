@@ -4346,7 +4346,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟匯率計算器"
+            "value" : "匯率計算器"
           }
         }
       }
@@ -4760,7 +4760,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已拒絕"
+            "value" : "已關閉"
           }
         }
       }
@@ -4829,7 +4829,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尚未請求"
+            "value" : "未啟用"
           }
         }
       }

@@ -171,6 +171,30 @@ final class LocalizationTests: XCTestCase {
         )
     }
 
+    func testTraditionalChineseSettingsCopyMatchesCurrentWording() {
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.exchangeRate.openCalculator",
+                locale: "zh-Hant"
+            ),
+            "匯率計算器"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.reminders.notDetermined",
+                locale: "zh-Hant"
+            ),
+            "未啟用"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.reminders.denied",
+                locale: "zh-Hant"
+            ),
+            "已關閉"
+        )
+    }
+
     func testScheduleHeaderCopyUsesDistinctSectionTitleAcrossLanguages() {
         let expectedValues = [
             "en": "Entry Type",
