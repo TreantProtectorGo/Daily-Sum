@@ -454,8 +454,8 @@ struct TransactionFiltersSheet: View {
             Form {
                 // Account
                 Section(AppLocalization.string("filter.account", defaultValue: "Account")) {
-                    Picker(AppLocalization.string("filter.account", defaultValue: "Account"), selection: $viewModel.selectedAccount) {
-                        Text(AppLocalization.string("filter.all", defaultValue: "All"))
+                    Picker("", selection: $viewModel.selectedAccount) {
+                        Text(AppLocalization.string("filter.allAccounts", defaultValue: "All Accounts"))
                             .tag(nil as Account?)
                         
                         ForEach(accounts) { account in
@@ -463,6 +463,8 @@ struct TransactionFiltersSheet: View {
                                 .tag(account as Account?)
                         }
                     }
+                    .labelsHidden()
+                    .accessibilityLabel(AppLocalization.string("filter.account", defaultValue: "Account"))
                 }
                 
                 // Date Range
@@ -492,6 +494,16 @@ struct TransactionFiltersSheet: View {
                         }
                         .foregroundStyle(.red)
                     }
+                }
+
+                Section {
+                    Toggle(
+                        AppLocalization.string(
+                            "filter.travelTransactions",
+                            defaultValue: "Travel Transactions"
+                        ),
+                        isOn: $viewModel.showTravelTransactionsOnly
+                    )
                 }
 
                 Section {

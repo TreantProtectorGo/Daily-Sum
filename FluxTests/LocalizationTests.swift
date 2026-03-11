@@ -195,6 +195,84 @@ final class LocalizationTests: XCTestCase {
         )
     }
 
+    func testTravelCurrencyCopyMatchesCurrentWordingAcrossLanguages() {
+        let expectedValues: [String: [String: String]] = [
+            "en": [
+                "settings.exchangeRate.useLocationDefaults": "Automatically Detect Travel Currency",
+                "settings.exchangeRate.useLocationDefaults.footer": "Detected currency follows your location. Manual travel currency stays active until you clear it.",
+                "settings.exchangeRate.detectedCurrency": "Detected Currency",
+                "settings.exchangeRate.currentTravelCurrency": "Current Travel Currency",
+                "settings.exchangeRate.manualTravelCurrency": "Manual Travel Currency",
+                "settings.exchangeRate.manualTravelCurrency.auto": "Use Detected Currency",
+                "transaction.travel": "Travel Transaction",
+                "transaction.travel.badge": "Travel",
+                "filter.travelTransactions": "Travel Transactions"
+            ],
+            "zh-Hans": [
+                "settings.exchangeRate.useLocationDefaults": "自动侦测旅行货币",
+                "settings.exchangeRate.useLocationDefaults.footer": "定位货币会随你的位置更新，手动旅行货币会持续生效，直到你清除为止。",
+                "settings.exchangeRate.detectedCurrency": "定位货币",
+                "settings.exchangeRate.currentTravelCurrency": "目前旅行货币",
+                "settings.exchangeRate.manualTravelCurrency": "手动旅行货币",
+                "settings.exchangeRate.manualTravelCurrency.auto": "使用定位货币",
+                "transaction.travel": "旅行交易",
+                "transaction.travel.badge": "旅行",
+                "filter.travelTransactions": "旅行交易"
+            ],
+            "zh-Hant": [
+                "settings.exchangeRate.useLocationDefaults": "自動偵測旅行貨幣",
+                "settings.exchangeRate.useLocationDefaults.footer": "定位貨幣會隨你的位置更新，手動旅行貨幣會持續生效，直到你清除為止。",
+                "settings.exchangeRate.detectedCurrency": "定位貨幣",
+                "settings.exchangeRate.currentTravelCurrency": "目前旅行貨幣",
+                "settings.exchangeRate.manualTravelCurrency": "手動旅行貨幣",
+                "settings.exchangeRate.manualTravelCurrency.auto": "使用定位貨幣",
+                "transaction.travel": "旅行交易",
+                "transaction.travel.badge": "旅行",
+                "filter.travelTransactions": "旅行交易"
+            ]
+        ]
+
+        for (locale, keyValues) in expectedValues {
+            for (key, expectedValue) in keyValues {
+                XCTAssertEqual(
+                    localizedStringValue(key: key, locale: locale),
+                    expectedValue,
+                    "Unexpected value for \(key) in \(locale)"
+                )
+            }
+        }
+    }
+
+    func testTransactionFilterCopyUsesShorterChineseDateLabelsAndAllAccountsOption() {
+        let expectedValues: [String: [String: String]] = [
+            "en": [
+                "filter.from": "From",
+                "filter.to": "To",
+                "filter.allAccounts": "All Accounts"
+            ],
+            "zh-Hans": [
+                "filter.from": "从",
+                "filter.to": "到",
+                "filter.allAccounts": "全部账户"
+            ],
+            "zh-Hant": [
+                "filter.from": "從",
+                "filter.to": "到",
+                "filter.allAccounts": "全部帳戶"
+            ]
+        ]
+
+        for (locale, keyValues) in expectedValues {
+            for (key, expectedValue) in keyValues {
+                XCTAssertEqual(
+                    localizedStringValue(key: key, locale: locale),
+                    expectedValue,
+                    "Unexpected value for \(key) in \(locale)"
+                )
+            }
+        }
+    }
+
     func testScheduleHeaderCopyUsesDistinctSectionTitleAcrossLanguages() {
         let expectedValues = [
             "en": "Entry Type",

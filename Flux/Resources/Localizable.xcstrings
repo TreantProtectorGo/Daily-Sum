@@ -2833,6 +2833,29 @@
         }
       }
     },
+    "filter.allAccounts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Accounts"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部账户"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部帳戶"
+          }
+        }
+      }
+    },
     "filter.all" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2937,13 +2960,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "来自"
+            "value" : "从"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "來自"
+            "value" : "從"
           }
         }
       }
@@ -2994,6 +3017,29 @@
         }
       }
     },
+    "filter.travelTransactions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel Transactions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行交易"
+          }
+        }
+      }
+    },
     "filter.to" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3006,13 +3052,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "至"
+            "value" : "到"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "至"
+            "value" : "到"
           }
         }
       }
@@ -4430,19 +4476,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use location-based travel currency defaults"
+            "value" : "Automatically Detect Travel Currency"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用基于位置的旅行货币默认值"
+            "value" : "自动侦测旅行货币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用基於位置的旅行貨幣預設值"
+            "value" : "自動偵測旅行貨幣"
           }
         }
       }
@@ -4453,19 +4499,111 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When enabled, the calculator can use your current region currency as the target."
+            "value" : "Detected currency follows your location. Manual travel currency stays active until you clear it."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "启用后，计算器可使用你当前所在地区的货币作为目标货币。"
+            "value" : "定位货币会随你的位置更新，手动旅行货币会持续生效，直到你清除为止。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "啟用後，計算器可使用你目前所在地區的貨幣作為目標貨幣。"
+            "value" : "定位貨幣會隨你的位置更新，手動旅行貨幣會持續生效，直到你清除為止。"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.detectedCurrency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detected Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "定位货币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "定位貨幣"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.currentTravelCurrency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current Travel Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前旅行货币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前旅行貨幣"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.manualTravelCurrency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual Travel Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动旅行货币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動旅行貨幣"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.manualTravelCurrency.auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Detected Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用定位货币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用定位貨幣"
           }
         }
       }
@@ -5248,6 +5386,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "日期"
+          }
+        }
+      }
+    },
+    "transaction.travel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel Transaction"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行交易"
+          }
+        }
+      }
+    },
+    "transaction.travel.badge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行"
           }
         }
       }

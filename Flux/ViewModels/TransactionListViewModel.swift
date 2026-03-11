@@ -50,6 +50,7 @@ final class TransactionListViewModel {
     var selectedAccount: Account?
     var startDate: Date?
     var endDate: Date?
+    var showTravelTransactionsOnly = false
     var showUpcomingScheduled: Bool {
         didSet {
             TransactionListPreference.showUpcomingScheduled = showUpcomingScheduled
@@ -67,6 +68,7 @@ final class TransactionListViewModel {
         selectedAccount != nil ||
         startDate != nil ||
         endDate != nil ||
+        showTravelTransactionsOnly ||
         !searchText.isEmpty ||
         !showUpcomingScheduled
     }
@@ -201,6 +203,10 @@ final class TransactionListViewModel {
             }
         }
 
+        if showTravelTransactionsOnly {
+            result = result.filter { $0.isTravelTransaction == true }
+        }
+
         if !showUpcomingScheduled {
             let now = Date.now
             result = result.filter { transaction in
@@ -217,6 +223,7 @@ final class TransactionListViewModel {
         selectedAccount = nil
         startDate = nil
         endDate = nil
+        showTravelTransactionsOnly = false
         searchText = ""
         showUpcomingScheduled = true
         applyFilters()
@@ -336,6 +343,7 @@ final class TransactionListViewModel {
         selectedAccount != nil ||
         startDate != nil ||
         endDate != nil ||
+        showTravelTransactionsOnly ||
         !searchText.isEmpty
     }
 

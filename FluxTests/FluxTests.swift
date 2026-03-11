@@ -685,6 +685,90 @@ final class FluxTests: XCTestCase {
     }
 
     @MainActor
+    func testTravelTransactionFilterShowsOnlyTravelTransactions() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Travel Filter Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let travelTransaction = Transaction(
+            amount: 55,
+            currencyCode: "JPY",
+            type: .expense,
+            date: .now,
+            notes: "Travel",
+            isTravelTransaction: true,
+            account: account
+        )
+        let regularTransaction = Transaction(
+            amount: 30,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            notes: "Regular",
+            isTravelTransaction: false,
+            account: account
+        )
+        context.insert(travelTransaction)
+        context.insert(regularTransaction)
+        try context.save()
+
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        viewModel.showTravelTransactionsOnly = true
+        viewModel.applyFilters()
+
+        XCTAssertEqual(viewModel.filteredTransactions.map(\.id), [travelTransaction.id])
+        XCTAssertTrue(viewModel.hasFilters)
+    }
+
+    @MainActor
+    func testClearFiltersResetsTravelTransactionFilter() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Travel Filter Reset Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let travelTransaction = Transaction(
+            amount: 55,
+            currencyCode: "JPY",
+            type: .expense,
+            date: .now,
+            notes: "Travel",
+            isTravelTransaction: true,
+            account: account
+        )
+        let regularTransaction = Transaction(
+            amount: 30,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            notes: "Regular",
+            isTravelTransaction: false,
+            account: account
+        )
+        context.insert(travelTransaction)
+        context.insert(regularTransaction)
+        try context.save()
+
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+
+        viewModel.showTravelTransactionsOnly = true
+        viewModel.applyFilters()
+        XCTAssertEqual(viewModel.filteredTransactions.map(\.id), [travelTransaction.id])
+
+        viewModel.clearFilters()
+
+        XCTAssertFalse(viewModel.showTravelTransactionsOnly)
+        XCTAssertEqual(
+            Set(viewModel.filteredTransactions.map(\.id)),
+            Set([travelTransaction.id, regularTransaction.id])
+        )
+    }
+
+    @MainActor
     func testUpcomingHintHiddenWhenContentFiltersAreActive() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
@@ -711,6 +795,45 @@ final class FluxTests: XCTestCase {
         viewModel.applyFilters()
 
         XCTAssertFalse(viewModel.shouldShowUpcomingHintBar)
+    }
+
+    @MainActor
+    func testUpcomingHintHiddenWhenTravelFilterIsActive() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Travel Hint Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let generated = Transaction(
+            amount: 40,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 4, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        let travelTransaction = Transaction(
+            amount: 22,
+            currencyCode: "JPY",
+            type: .expense,
+            date: .now,
+            isTravelTransaction: true,
+            account: account
+        )
+        context.insert(generated)
+        context.insert(travelTransaction)
+        try context.save()
+
+        TransactionListPreference.showUpcomingScheduled = false
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+        XCTAssertTrue(viewModel.shouldShowUpcomingHintBar)
+
+        viewModel.showTravelTransactionsOnly = true
+        viewModel.applyFilters()
+
+        XCTAssertFalse(viewModel.shouldShowUpcomingHintBar)
+        XCTAssertEqual(viewModel.filteredTransactions.map(\.id), [travelTransaction.id])
     }
     
     func testReportPeriodDateRangesUseExpectedBoundaries() {
