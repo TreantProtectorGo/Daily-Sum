@@ -200,6 +200,7 @@ final class LocalizationTests: XCTestCase {
             "en": [
                 "settings.exchangeRate.useLocationDefaults": "Automatically Detect Travel Currency",
                 "settings.exchangeRate.useLocationDefaults.footer": "Detected currency follows your location. Manual travel currency stays active until you clear it.",
+                "settings.exchangeRate.travelSection": "Travel Currency",
                 "settings.exchangeRate.detectedCurrency": "Detected Currency",
                 "settings.exchangeRate.currentTravelCurrency": "Current Travel Currency",
                 "settings.exchangeRate.manualTravelCurrency": "Manual Travel Currency",
@@ -213,6 +214,7 @@ final class LocalizationTests: XCTestCase {
             "zh-Hans": [
                 "settings.exchangeRate.useLocationDefaults": "自动侦测旅行货币",
                 "settings.exchangeRate.useLocationDefaults.footer": "定位货币会随你的位置更新，手动旅行货币会持续生效，直到你清除为止。",
+                "settings.exchangeRate.travelSection": "旅行货币",
                 "settings.exchangeRate.detectedCurrency": "定位货币",
                 "settings.exchangeRate.currentTravelCurrency": "目前旅行货币",
                 "settings.exchangeRate.manualTravelCurrency": "手动旅行货币",
@@ -226,6 +228,7 @@ final class LocalizationTests: XCTestCase {
             "zh-Hant": [
                 "settings.exchangeRate.useLocationDefaults": "自動偵測旅行貨幣",
                 "settings.exchangeRate.useLocationDefaults.footer": "定位貨幣會隨你的位置更新，手動旅行貨幣會持續生效，直到你清除為止。",
+                "settings.exchangeRate.travelSection": "旅行貨幣",
                 "settings.exchangeRate.detectedCurrency": "定位貨幣",
                 "settings.exchangeRate.currentTravelCurrency": "目前旅行貨幣",
                 "settings.exchangeRate.manualTravelCurrency": "手動旅行貨幣",

@@ -4424,6 +4424,29 @@
         }
       }
     },
+    "settings.exchangeRate.travelSection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行货币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行貨幣"
+          }
+        }
+      }
+    },
     "settings.exchangeRate.refreshNow" : {
       "extractionState" : "stale",
       "localizations" : {

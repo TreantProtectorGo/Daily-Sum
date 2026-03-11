@@ -250,6 +250,14 @@ struct SettingsView: View {
             }
             .disabled(viewModel.isRefreshingRates)
 
+            if viewModel.isExchangeRateSyncStale {
+                Text(AppLocalization.string("settings.exchangeRate.staleWarning", defaultValue: "Rates may be outdated. Refresh to improve accuracy."))
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+
+        Section {
             Toggle(
                 AppLocalization.string(
                     "settings.exchangeRate.useLocationDefaults",
@@ -323,21 +331,20 @@ struct SettingsView: View {
                     )
                 )
             }
-
-            if viewModel.isExchangeRateSyncStale {
-                Text(AppLocalization.string("settings.exchangeRate.staleWarning", defaultValue: "Rates may be outdated. Refresh to improve accuracy."))
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-
+        } header: {
+            Text(
+                AppLocalization.string(
+                    "settings.exchangeRate.travelSection",
+                    defaultValue: "Travel Currency"
+                )
+            )
+        } footer: {
             Text(
                 AppLocalization.string(
                     "settings.exchangeRate.useLocationDefaults.footer",
                     defaultValue: "Detected currency follows your location. Manual travel currency stays active until you clear it."
                 )
             )
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
     }
 
