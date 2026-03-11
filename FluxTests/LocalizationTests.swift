@@ -206,7 +206,9 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.manualTravelCurrency.auto": "Use Detected Currency",
                 "transaction.travel": "Travel Transaction",
                 "transaction.travel.badge": "Travel",
-                "filter.travelTransactions": "Travel Transactions"
+                "filter.advanced": "Advanced Filters",
+                "filter.travelTransactions": "Show Travel Transactions Only",
+                "filter.showUpcomingScheduled": "Include Upcoming Subscriptions"
             ],
             "zh-Hans": [
                 "settings.exchangeRate.useLocationDefaults": "自动侦测旅行货币",
@@ -217,7 +219,9 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.manualTravelCurrency.auto": "使用定位货币",
                 "transaction.travel": "旅行交易",
                 "transaction.travel.badge": "旅行",
-                "filter.travelTransactions": "旅行交易"
+                "filter.advanced": "进阶筛选",
+                "filter.travelTransactions": "仅显示旅行交易",
+                "filter.showUpcomingScheduled": "显示即将到来的订阅交易"
             ],
             "zh-Hant": [
                 "settings.exchangeRate.useLocationDefaults": "自動偵測旅行貨幣",
@@ -228,7 +232,9 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.manualTravelCurrency.auto": "使用定位貨幣",
                 "transaction.travel": "旅行交易",
                 "transaction.travel.badge": "旅行",
-                "filter.travelTransactions": "旅行交易"
+                "filter.advanced": "進階篩選",
+                "filter.travelTransactions": "僅顯示旅遊交易",
+                "filter.showUpcomingScheduled": "顯示即將到來的訂閱交易"
             ]
         ]
 

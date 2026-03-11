@@ -500,17 +500,14 @@ struct TransactionFiltersSheet: View {
                     Toggle(
                         AppLocalization.string(
                             "filter.travelTransactions",
-                            defaultValue: "Travel Transactions"
+                            defaultValue: "Show Travel Transactions Only"
                         ),
                         isOn: $viewModel.showTravelTransactionsOnly
                     )
-                }
-
-                Section {
                     Toggle(
                         AppLocalization.string(
                             "filter.showUpcomingScheduled",
-                            defaultValue: "Show Upcoming Subscriptions"
+                            defaultValue: "Include Upcoming Subscriptions"
                         ),
                         isOn: Binding(
                             get: { viewModel.showUpcomingScheduled },
@@ -520,11 +517,13 @@ struct TransactionFiltersSheet: View {
                             }
                         )
                     )
+                } header: {
+                    Text(AppLocalization.string("filter.advanced", defaultValue: "Advanced Filters"))
                 } footer: {
                     Text(
                         AppLocalization.string(
                             "filter.showUpcomingScheduled.footer",
-                            defaultValue: "When off, upcoming auto-generated subscription transactions are hidden."
+                            defaultValue: "When turned off, future auto-generated subscription transactions stay hidden."
                         )
                     )
                 }

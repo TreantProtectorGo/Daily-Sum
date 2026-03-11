@@ -2879,6 +2879,29 @@
         }
       }
     },
+    "filter.advanced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced Filters"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "进阶筛选"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "進階篩選"
+          }
+        }
+      }
+    },
     "filter.clearAll" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2976,20 +2999,20 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Show Upcoming Subscriptions"
+            "state" : "translated",
+            "value" : "Include Upcoming Subscriptions"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "显示即将到期的订阅交易"
+            "value" : "显示即将到来的订阅交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "顯示即將到期的訂閱交易"
+            "value" : "顯示即將到來的訂閱交易"
           }
         }
       }
@@ -2999,8 +3022,8 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "When off, upcoming auto-generated subscription transactions are hidden."
+            "state" : "translated",
+            "value" : "When turned off, future auto-generated subscription transactions stay hidden."
           }
         },
         "zh-Hans" : {
@@ -3023,19 +3046,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel Transactions"
+            "value" : "Show Travel Transactions Only"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行交易"
+            "value" : "仅显示旅行交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行交易"
+            "value" : "僅顯示旅遊交易"
           }
         }
       }
