@@ -12,6 +12,8 @@ private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransact
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
 private let kUseLocationDefaults = "flux.useLocationDefaults"
+private let kDetectedTravelCurrencyCode = "flux.detectedTravelCurrencyCode"
+private let kManualTravelCurrencyCode = "flux.manualTravelCurrencyCode"
 private let kReportsCategoryRowLimit = "flux.reports.categoryRowLimit"
 
 /// Global accessor for user's preferred currency code
@@ -94,6 +96,8 @@ enum ExchangeRateSyncPreference {
 
 enum TravelCurrencyPreference {
     static let storageKey = kUseLocationDefaults
+    static let detectedCurrencyStorageKey = kDetectedTravelCurrencyCode
+    static let manualCurrencyStorageKey = kManualTravelCurrencyCode
 
     static var useLocationDefaults: Bool {
         get {
@@ -101,6 +105,36 @@ enum TravelCurrencyPreference {
         }
         set {
             UserDefaults.standard.set(newValue, forKey: storageKey)
+        }
+    }
+
+    static var detectedCurrencyCode: String? {
+        get {
+            TravelCurrencyState.normalizedCurrencyCode(
+                UserDefaults.standard.string(forKey: detectedCurrencyStorageKey)
+            )
+        }
+        set {
+            if let normalized = TravelCurrencyState.normalizedCurrencyCode(newValue) {
+                UserDefaults.standard.set(normalized, forKey: detectedCurrencyStorageKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: detectedCurrencyStorageKey)
+            }
+        }
+    }
+
+    static var manualCurrencyCode: String? {
+        get {
+            TravelCurrencyState.normalizedCurrencyCode(
+                UserDefaults.standard.string(forKey: manualCurrencyStorageKey)
+            )
+        }
+        set {
+            if let normalized = TravelCurrencyState.normalizedCurrencyCode(newValue) {
+                UserDefaults.standard.set(normalized, forKey: manualCurrencyStorageKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: manualCurrencyStorageKey)
+            }
         }
     }
 }
@@ -167,6 +201,18 @@ final class SettingsViewModel {
         }
     }
 
+    var detectedTravelCurrencyCode: String? {
+        didSet {
+            TravelCurrencyPreference.detectedCurrencyCode = detectedTravelCurrencyCode
+        }
+    }
+
+    var manualTravelCurrencyCode: String? {
+        didSet {
+            TravelCurrencyPreference.manualCurrencyCode = manualTravelCurrencyCode
+        }
+    }
+
     var reportsCategoryRowLimit: Int {
         didSet {
             ReportsCategoryRowLimitPreference.rowLimit = reportsCategoryRowLimit
@@ -210,6 +256,23 @@ final class SettingsViewModel {
         )
     }
 
+    private var resolvedTravelCurrencyState: ResolvedTravelCurrencyState {
+        TravelCurrencyState.resolve(
+            defaultCurrencyCode: defaultCurrencyCode,
+            useLocationDefaults: useLocationDefaults,
+            detectedCurrencyCode: detectedTravelCurrencyCode,
+            manualTravelCurrencyCode: manualTravelCurrencyCode
+        )
+    }
+
+    var detectedLocationCurrencyCode: String? {
+        resolvedTravelCurrencyState.detectedLocationCurrencyCode
+    }
+
+    var currentTravelCurrencyCode: String? {
+        resolvedTravelCurrencyState.currentTravelCurrencyCode
+    }
+
     var reminderStatusText: String {
         switch notificationAuthorizationStatus {
         case .authorized, .provisional, .ephemeral:
@@ -239,6 +302,8 @@ final class SettingsViewModel {
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
         self.appLanguage = AppLanguagePreference.language
         self.useLocationDefaults = TravelCurrencyPreference.useLocationDefaults
+        self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
+        self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         self.reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
     }
     
@@ -255,6 +320,7 @@ final class SettingsViewModel {
             categoryCount = try modelContext.fetchCount(FetchDescriptor<Category>())
             budgetCount = try modelContext.fetchCount(FetchDescriptor<Budget>())
             await refreshReminderAuthorizationStatus()
+            await refreshTravelCurrencyState()
             
         } catch {
             errorMessage = error.localizedDescription
@@ -283,6 +349,23 @@ final class SettingsViewModel {
             _ = await travelCurrencyLocationService.requestAuthorizationIfNeeded()
         }
         useLocationDefaults = enabled
+        await refreshTravelCurrencyState()
+    }
+
+    func setManualTravelCurrencyCode(_ currencyCode: String?) {
+        manualTravelCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(currencyCode)
+    }
+
+    func refreshTravelCurrencyState() async {
+        guard useLocationDefaults else {
+            return
+        }
+
+        guard travelCurrencyLocationService.authorizationStatus() == .authorized else {
+            return
+        }
+
+        detectedTravelCurrencyCode = await travelCurrencyLocationService.detectLocalCurrency()?.rawValue
     }
 
     func refreshReminderAuthorizationStatus() async {

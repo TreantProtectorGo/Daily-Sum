@@ -93,7 +93,7 @@ final class DashboardViewModel {
             let now = Date()
             let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
             
-            var monthlyTransactionDescriptor = FetchDescriptor<Transaction>(
+            let monthlyTransactionDescriptor = FetchDescriptor<Transaction>(
                 predicate: #Predicate<Transaction> { 
                     !$0.isRecurringTemplate && $0.date >= startOfMonth && $0.date <= now
                 }

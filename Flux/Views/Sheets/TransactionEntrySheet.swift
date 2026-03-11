@@ -35,6 +35,8 @@ struct TransactionEntrySheet: View {
     @State private var selectedAccount: Account?
     @State private var date: Date = Date()
     @State private var notes: String = ""
+    @State private var isTravelTransaction = false
+    @State private var hasTravelTransactionOverride = false
     @State private var scheduleMode: ScheduleFormMode = .oneTime
     @State private var dueDayOfMonth: Int = Calendar.current.component(.day, from: .now)
     @State private var reminderLeadDays: Int = TransactionReminderScheduler.defaultReminderLeadDays
@@ -122,6 +124,9 @@ struct TransactionEntrySheet: View {
             .onChange(of: accounts.count) { _, _ in
                 applyPreferredAccountIfNeeded()
             }
+            .onChange(of: selectedAccount?.id) { _, _ in
+                applyTravelTransactionDefaultIfNeeded()
+            }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),
                 isPresented: $showError
@@ -202,6 +207,20 @@ struct TransactionEntrySheet: View {
             .onChange(of: date) { _, newValue in
                 dueDayOfMonth = Calendar.current.component(.day, from: newValue)
             }
+
+            Toggle(
+                AppLocalization.string(
+                    "transaction.travel",
+                    defaultValue: "Travel Transaction"
+                ),
+                isOn: Binding(
+                    get: { isTravelTransaction },
+                    set: { newValue in
+                        hasTravelTransactionOverride = true
+                        isTravelTransaction = newValue
+                    }
+                )
+            )
         } header: {
             Text(AppLocalization.string("transaction.details", defaultValue: "Details"))
         }
@@ -298,6 +317,8 @@ struct TransactionEntrySheet: View {
         selectedAccount = nil
         date = now
         notes = ""
+        isTravelTransaction = false
+        hasTravelTransactionOverride = false
         scheduleMode = .oneTime
         dueDayOfMonth = Calendar.current.component(.day, from: now)
         reminderLeadDays = TransactionReminderScheduler.defaultReminderLeadDays
@@ -315,6 +336,8 @@ struct TransactionEntrySheet: View {
         selectedAccount = transaction.account
         date = transaction.date
         notes = transaction.notes ?? ""
+        isTravelTransaction = transaction.isTravelTransaction ?? false
+        hasTravelTransactionOverride = true
         dueDayOfMonth = transaction.dueDayOfMonth ?? Calendar.current.component(.day, from: transaction.date)
         reminderLeadDays = transaction.reminderLeadDays ?? TransactionReminderScheduler.defaultReminderLeadDays
 
@@ -345,10 +368,34 @@ struct TransactionEntrySheet: View {
         
         if let cashAccount = accounts.first(where: { $0.type == .cash }) {
             selectedAccount = cashAccount
+            applyTravelTransactionDefaultIfNeeded()
             return
         }
         
         selectedAccount = accounts.first
+        applyTravelTransactionDefaultIfNeeded()
+    }
+
+    private func applyTravelTransactionDefaultIfNeeded() {
+        guard existingTransaction == nil else { return }
+
+        let userOverride = hasTravelTransactionOverride ? isTravelTransaction : nil
+        let resolvedValue = TransactionTravelDefaults.resolveIsTravelTransaction(
+            accountCurrencyCode: selectedAccount?.currencyCode,
+            currentTravelCurrencyCode: resolvedCurrentTravelCurrencyCode,
+            userOverride: userOverride
+        )
+        isTravelTransaction = resolvedValue
+    }
+
+    private var resolvedCurrentTravelCurrencyCode: String? {
+        TravelCurrencyState.resolve(
+            defaultCurrencyCode: UserCurrencyPreference.resolvedCurrencyCode,
+            useLocationDefaults: TravelCurrencyPreference.useLocationDefaults,
+            detectedCurrencyCode: TravelCurrencyPreference.detectedCurrencyCode,
+            manualTravelCurrencyCode: TravelCurrencyPreference.manualCurrencyCode
+        )
+        .currentTravelCurrencyCode
     }
     
     private func saveTransaction() {
@@ -390,6 +437,7 @@ struct TransactionEntrySheet: View {
                             reminderLeadDays: reminderLeadDays,
                             account: account,
                             notes: notes.isEmpty ? nil : notes,
+                            isTravelTransaction: isTravelTransaction,
                             category: selectedCategory,
                             planType: selectedPlanType
                         )
@@ -426,6 +474,7 @@ struct TransactionEntrySheet: View {
                         template.account = account
                         template.date = date
                         template.notes = notes.isEmpty ? nil : notes
+                        template.isTravelTransaction = isTravelTransaction
                         template.currencyCode = account.currencyCode
                         try modelContext.save()
 
@@ -441,6 +490,7 @@ struct TransactionEntrySheet: View {
                     existing.account = account
                     existing.date = date
                     existing.notes = notes.isEmpty ? nil : notes
+                    existing.isTravelTransaction = isTravelTransaction
                     existing.currencyCode = account.currencyCode
 
                     try modelContext.save()
@@ -455,6 +505,7 @@ struct TransactionEntrySheet: View {
                         account: account,
                         category: selectedCategory,
                         notes: notes.isEmpty ? nil : notes,
+                        isTravelTransaction: isTravelTransaction,
                         planType: selectedPlanType
                     )
                     let generator = RecurringTransactionGenerator(context: modelContext)
@@ -474,6 +525,7 @@ struct TransactionEntrySheet: View {
                         type: transactionType,
                         date: date,
                         notes: notes.isEmpty ? nil : notes,
+                        isTravelTransaction: isTravelTransaction,
                         account: account,
                         category: selectedCategory
                     )

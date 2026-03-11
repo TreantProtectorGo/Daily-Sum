@@ -253,7 +253,7 @@ struct SettingsView: View {
             Toggle(
                 AppLocalization.string(
                     "settings.exchangeRate.useLocationDefaults",
-                    defaultValue: "Use location-based travel currency defaults"
+                    defaultValue: "Automatically Detect Travel Currency"
                 ),
                 isOn: Binding(
                     get: { viewModel.useLocationDefaults },
@@ -264,6 +264,54 @@ struct SettingsView: View {
                     }
                 )
             )
+
+            HStack {
+                Text(
+                    AppLocalization.string(
+                        "settings.exchangeRate.detectedCurrency",
+                        defaultValue: "Detected Currency"
+                    )
+                )
+                Spacer()
+                Text(viewModel.detectedLocationCurrencyCode ?? "None")
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text(
+                    AppLocalization.string(
+                        "settings.exchangeRate.currentTravelCurrency",
+                        defaultValue: "Current Travel Currency"
+                    )
+                )
+                Spacer()
+                Text(viewModel.currentTravelCurrencyCode ?? "None")
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker(
+                AppLocalization.string(
+                    "settings.exchangeRate.manualTravelCurrency",
+                    defaultValue: "Manual Travel Currency"
+                ),
+                selection: Binding(
+                    get: { viewModel.manualTravelCurrencyCode },
+                    set: { viewModel.setManualTravelCurrencyCode($0) }
+                )
+            ) {
+                Text(
+                    AppLocalization.string(
+                        "settings.exchangeRate.manualTravelCurrency.auto",
+                        defaultValue: "Use Detected Currency"
+                    )
+                )
+                .tag(nil as String?)
+
+                ForEach(viewModel.availableCurrencies, id: \.self) { currency in
+                    Text("\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)")
+                        .tag(currency.rawValue as String?)
+                }
+            }
 
             Button {
                 showExchangeCalculator = true
@@ -285,7 +333,7 @@ struct SettingsView: View {
             Text(
                 AppLocalization.string(
                     "settings.exchangeRate.useLocationDefaults.footer",
-                    defaultValue: "When enabled, the calculator can use your current region currency as the target."
+                    defaultValue: "Detected currency follows your location. Manual travel currency stays active until you clear it."
                 )
             )
             .font(.caption)

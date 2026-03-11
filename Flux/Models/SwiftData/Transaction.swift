@@ -23,6 +23,9 @@ final class Transaction {
     
     /// Optional user notes
     var notes: String?
+
+    /// Whether this transaction should be treated as a travel transaction.
+    var isTravelTransaction: Bool?
     
     /// Optional receipt image data (stored as binary)
     @Attribute(.externalStorage)
@@ -70,6 +73,7 @@ final class Transaction {
         type: TransactionType,
         date: Date = .now,
         notes: String? = nil,
+        isTravelTransaction: Bool? = nil,
         receiptImageData: Data? = nil,
         isRecurringTemplate: Bool = false,
         recurrenceRule: RecurrenceRule? = nil,
@@ -89,6 +93,7 @@ final class Transaction {
         self.type = type
         self.date = date
         self.notes = notes
+        self.isTravelTransaction = isTravelTransaction
         self.receiptImageData = receiptImageData
         self.isRecurringTemplate = isRecurringTemplate
         self.recurrenceRule = recurrenceRule
@@ -170,6 +175,7 @@ final class Transaction {
             type: template.type,
             date: date,
             notes: template.notes,
+            isTravelTransaction: template.isTravelTransaction,
             isRecurringTemplate: false,
             recurrenceRule: template.recurrenceRule,
             schedulePlanType: template.resolvedSchedulePlanType,

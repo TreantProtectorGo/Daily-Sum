@@ -8,6 +8,7 @@
 import XCTest
 import SwiftData
 import SwiftUI
+import UIKit
 @testable import Flux
 
 final class FluxTests: XCTestCase {
@@ -15,6 +16,8 @@ final class FluxTests: XCTestCase {
         "flux.showUpcomingScheduledTransactions.defaultVisibleMigrationCompleted"
     private var originalPreferredCurrencyCode: String?
     private var originalUseLocationDefaults: Bool?
+    private var originalDetectedTravelCurrencyCode: String?
+    private var originalManualTravelCurrencyCode: String?
     private var originalShowUpcomingScheduled: Bool?
     private var originalShowUpcomingScheduledMigration: Bool?
 
@@ -25,6 +28,12 @@ final class FluxTests: XCTestCase {
         originalUseLocationDefaults = UserDefaults.standard.object(
             forKey: TravelCurrencyPreference.storageKey
         ) as? Bool
+        originalDetectedTravelCurrencyCode = UserDefaults.standard.string(
+            forKey: TravelCurrencyPreference.detectedCurrencyStorageKey
+        )
+        originalManualTravelCurrencyCode = UserDefaults.standard.string(
+            forKey: TravelCurrencyPreference.manualCurrencyStorageKey
+        )
         originalShowUpcomingScheduled = UserDefaults.standard.object(
             forKey: TransactionListPreference.showUpcomingScheduledStorageKey
         ) as? Bool
@@ -46,6 +55,15 @@ final class FluxTests: XCTestCase {
         } else {
             UserDefaults.standard.removeObject(forKey: TravelCurrencyPreference.storageKey)
         }
+
+        UserDefaults.standard.set(
+            originalDetectedTravelCurrencyCode,
+            forKey: TravelCurrencyPreference.detectedCurrencyStorageKey
+        )
+        UserDefaults.standard.set(
+            originalManualTravelCurrencyCode,
+            forKey: TravelCurrencyPreference.manualCurrencyStorageKey
+        )
 
         if let originalShowUpcomingScheduled {
             UserDefaults.standard.set(
@@ -76,6 +94,17 @@ final class FluxTests: XCTestCase {
 
         TravelCurrencyPreference.useLocationDefaults = true
         XCTAssertTrue(TravelCurrencyPreference.useLocationDefaults)
+    }
+
+    func testTravelCurrencyPreferencePersistsDetectedAndManualCurrencyCodes() {
+        TravelCurrencyPreference.detectedCurrencyCode = "KRW"
+        TravelCurrencyPreference.manualCurrencyCode = "JPY"
+
+        XCTAssertEqual(TravelCurrencyPreference.detectedCurrencyCode, "KRW")
+        XCTAssertEqual(TravelCurrencyPreference.manualCurrencyCode, "JPY")
+
+        TravelCurrencyPreference.manualCurrencyCode = nil
+        XCTAssertNil(TravelCurrencyPreference.manualCurrencyCode)
     }
 
     func testTransactionAccountPreferencePersistsValues() throws {
@@ -178,6 +207,59 @@ final class FluxTests: XCTestCase {
         XCTAssertTrue(TransactionRowSnapshot(transaction: futureGenerated).shouldPromptScheduledDelete)
         XCTAssertFalse(TransactionRowSnapshot(transaction: todayGenerated).shouldPromptScheduledDelete)
         XCTAssertFalse(TransactionRowSnapshot(transaction: futureManual).shouldPromptScheduledDelete)
+    }
+
+    func testTransactionRowSnapshotIncludesTravelTransactionFlag() {
+        let account = Account(name: "Travel Card", type: .creditCard, currencyCode: "JPY")
+        let transaction = Transaction(
+            amount: 1200,
+            currencyCode: "JPY",
+            type: .expense,
+            date: .now,
+            isTravelTransaction: true,
+            account: account
+        )
+
+        XCTAssertTrue(TransactionRowSnapshot(transaction: transaction).isTravelTransaction)
+    }
+
+    @MainActor
+    func testTravelBadgeDoesNotIncreaseTransactionRowHeight() {
+        let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF3B30",
+            type: .expense,
+            isSystemDefault: true
+        )
+
+        let standardTransaction = Transaction(
+            amount: 42,
+            currencyCode: "USD",
+            type: .expense,
+            notes: "Hi",
+            account: account,
+            category: category
+        )
+        let travelTransaction = Transaction(
+            amount: 42,
+            currencyCode: "USD",
+            type: .expense,
+            notes: "Hi",
+            isTravelTransaction: true,
+            account: account,
+            category: category
+        )
+
+        let standardHeight = measuredHeight(
+            for: TransactionRowView(snapshot: TransactionRowSnapshot(transaction: standardTransaction))
+        )
+        let travelHeight = measuredHeight(
+            for: TransactionRowView(snapshot: TransactionRowSnapshot(transaction: travelTransaction))
+        )
+
+        XCTAssertEqual(travelHeight, standardHeight, accuracy: 1)
     }
 
     func testTransactionEntryValidationRequiresCategoryToSave() {
@@ -1199,6 +1281,23 @@ final class FluxTests: XCTestCase {
         self.measure {
             // Put the code you want to measure the time of here.
         }
+    }
+
+    @MainActor
+    private func measuredHeight<V: View>(for view: V, width: CGFloat = 320) -> CGFloat {
+        let host = UIHostingController(rootView: view)
+        let hostedView = host.view!
+        hostedView.bounds = CGRect(x: 0, y: 0, width: width, height: 1_000)
+        hostedView.backgroundColor = .clear
+        hostedView.setNeedsLayout()
+        hostedView.layoutIfNeeded()
+
+        let size = hostedView.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        return size.height
     }
 
 }

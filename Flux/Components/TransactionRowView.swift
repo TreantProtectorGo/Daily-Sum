@@ -13,6 +13,7 @@ struct TransactionRowSnapshot: Identifiable {
     let signedAmount: Decimal
     let currencyCode: String
     let date: Date
+    let isTravelTransaction: Bool
     let isGeneratedFromRecurring: Bool
     let isUpcoming: Bool
 
@@ -35,6 +36,7 @@ struct TransactionRowSnapshot: Identifiable {
         signedAmount = transaction.signedAmount
         currencyCode = transaction.currencyCode
         date = transaction.date
+        isTravelTransaction = transaction.isTravelTransaction ?? false
         isGeneratedFromRecurring = transaction.isGeneratedFromRecurring
         isUpcoming = transaction.isUpcoming
     }
@@ -59,9 +61,17 @@ struct TransactionRowView: View {
             
             // Details
             VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.categoryDisplayName)
-                    .font(.headline)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(snapshot.categoryDisplayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .layoutPriority(1)
+
+                    if snapshot.isTravelTransaction {
+                        TravelTransactionBadge()
+                            .fixedSize()
+                    }
+                }
 
                 if let scheduleDetail = scheduleDetailText {
                     Text(scheduleDetail)
@@ -122,6 +132,23 @@ struct TransactionRowView: View {
         } else {
             PlaceholderCategoryIcon()
         }
+    }
+}
+
+private struct TravelTransactionBadge: View {
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "airplane")
+                .font(.system(size: 9, weight: .semibold))
+
+            Text(AppLocalization.string("transaction.travel.badge", defaultValue: "Travel"))
+                .font(.system(size: 10, weight: .medium))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(.blue.opacity(0.08), in: Capsule())
+        .foregroundStyle(.blue)
     }
 }
 

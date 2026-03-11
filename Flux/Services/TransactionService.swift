@@ -36,6 +36,7 @@ final class TransactionService {
         type: TransactionType,
         date: Date = .now,
         notes: String? = nil,
+        isTravelTransaction: Bool = false,
         account: Account,
         category: Category?,
         receiptImageData: Data? = nil
@@ -46,6 +47,7 @@ final class TransactionService {
             type: type,
             date: date,
             notes: notes,
+            isTravelTransaction: isTravelTransaction,
             receiptImageData: receiptImageData,
             account: account,
             category: category
@@ -63,6 +65,7 @@ final class TransactionService {
         startDate: Date,
         recurrenceRule: RecurrenceRule,
         notes: String? = nil,
+        isTravelTransaction: Bool = false,
         account: Account,
         category: Category?
     ) throws -> Transaction {
@@ -72,6 +75,7 @@ final class TransactionService {
             type: type,
             date: startDate,
             notes: notes,
+            isTravelTransaction: isTravelTransaction,
             isRecurringTemplate: true,
             recurrenceRule: recurrenceRule,
             schedulePlanType: .recurring,
@@ -95,6 +99,7 @@ final class TransactionService {
         account: Account,
         category: Category?,
         notes: String? = nil,
+        isTravelTransaction: Bool = false,
         planType: ScheduledPlanKind
     ) throws -> Transaction {
         let normalizedDueDay = min(max(dueDayOfMonth, 1), 31)
@@ -111,6 +116,7 @@ final class TransactionService {
             type: .expense,
             date: startDate,
             notes: notes,
+            isTravelTransaction: isTravelTransaction,
             isRecurringTemplate: true,
             recurrenceRule: .monthly,
             schedulePlanType: .recurring,
@@ -194,6 +200,7 @@ final class TransactionService {
         type: TransactionType? = nil,
         date: Date? = nil,
         notes: String? = nil,
+        isTravelTransaction: Bool? = nil,
         category: Category? = nil,
         receiptImageData: Data? = nil
     ) throws {
@@ -201,6 +208,7 @@ final class TransactionService {
         if let type { transaction.type = type }
         if let date { transaction.date = date }
         if let notes { transaction.notes = notes }
+        if let isTravelTransaction { transaction.isTravelTransaction = isTravelTransaction }
         if let category { transaction.category = category }
         if let receiptImageData { transaction.receiptImageData = receiptImageData }
 
@@ -216,6 +224,7 @@ final class TransactionService {
         reminderLeadDays: Int,
         account: Account,
         notes: String?,
+        isTravelTransaction: Bool = false,
         category: Category?,
         planType: ScheduledPlanKind
     ) throws {
@@ -234,6 +243,7 @@ final class TransactionService {
         template.currencyCode = account.currencyCode
         template.account = account
         template.notes = notes
+        template.isTravelTransaction = isTravelTransaction
         template.category = category
         template.recurrenceRule = .monthly
         template.dueDayOfMonth = min(max(dueDayOfMonth, 1), 31)

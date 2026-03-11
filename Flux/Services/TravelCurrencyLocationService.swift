@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 
 enum TravelLocationAuthorizationStatus {
     case notDetermined
@@ -18,23 +19,18 @@ protocol TravelCurrencyLocationServicing {
 @MainActor
 final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServicing {
     private let locationManager: CLLocationManager
-    private let geocoder: CLGeocoder
 
     private var authorizationContinuation: CheckedContinuation<TravelLocationAuthorizationStatus, Never>?
     private var locationContinuation: CheckedContinuation<CLLocation?, Never>?
 
-    init(
-        locationManager: CLLocationManager = CLLocationManager(),
-        geocoder: CLGeocoder = CLGeocoder()
-    ) {
+    init(locationManager: CLLocationManager = CLLocationManager()) {
         self.locationManager = locationManager
-        self.geocoder = geocoder
         super.init()
         self.locationManager.delegate = self
     }
 
     func authorizationStatus() -> TravelLocationAuthorizationStatus {
-        mapAuthorizationStatus(CLLocationManager.authorizationStatus())
+        mapAuthorizationStatus(locationManager.authorizationStatus)
     }
 
     func requestAuthorizationIfNeeded() async -> TravelLocationAuthorizationStatus {
@@ -58,21 +54,30 @@ final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServi
             return nil
         }
 
-        do {
-            let placemarks = try await geocoder.reverseGeocodeLocation(location)
-            guard let regionCode = placemarks.first?.isoCountryCode else {
-                return nil
-            }
-            return SupportedCurrency.currency(forRegionCode: regionCode)
-        } catch {
+        guard let regionCode = await reverseGeocodeRegionCode(for: location) else {
             return nil
         }
+
+        return SupportedCurrency.currency(forRegionCode: regionCode)
     }
 
     private func requestLocation() async -> CLLocation? {
         await withCheckedContinuation { continuation in
             locationContinuation = continuation
             locationManager.requestLocation()
+        }
+    }
+
+    private func reverseGeocodeRegionCode(for location: CLLocation) async -> String? {
+        guard let request = MKReverseGeocodingRequest(location: location) else {
+            return nil
+        }
+
+        return await withCheckedContinuation { continuation in
+            request.getMapItems { mapItems, _ in
+                let regionCode = mapItems?.first?.addressRepresentations?.region?.identifier
+                continuation.resume(returning: regionCode)
+            }
         }
     }
 

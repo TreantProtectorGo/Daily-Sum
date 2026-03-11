@@ -10,7 +10,7 @@ enum ConversionMode: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// Best for net-worth style valuation cards.
-    static let defaultForDashboard: ConversionMode = .latest
+    nonisolated static let defaultForDashboard: ConversionMode = .latest
     /// Best for period-based reports and trends.
-    static let defaultForReports: ConversionMode = .historical
+    nonisolated static let defaultForReports: ConversionMode = .historical
 }

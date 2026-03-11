@@ -776,10 +776,7 @@ struct CategoryBreakdownRow: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                Text(category.percentage, format: .number.precision(.fractionLength(1)))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                + Text("%")
+                Text("\(category.percentage, format: .number.precision(.fractionLength(1)))%")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
