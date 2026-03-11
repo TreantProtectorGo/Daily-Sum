@@ -186,7 +186,62 @@ struct ExchangeCalculatorSheet: View {
                     systemImage: "arrow.up.arrow.down"
                 )
             }
+
+            rateSyncStatusView(viewModel: viewModel)
         }
+    }
+
+    @ViewBuilder
+    private func rateSyncStatusView(viewModel: ExchangeCalculatorViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(
+                    AppLocalization.string(
+                        "settings.exchangeRate.lastUpdated",
+                        defaultValue: "Last Updated"
+                    )
+                )
+                .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(viewModel.lastUpdatedText)
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    Task {
+                        await viewModel.refreshExchangeRates(force: true)
+                    }
+                } label: {
+                    if viewModel.isRefreshingRates {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text(
+                            AppLocalization.string(
+                                "settings.exchangeRate.refreshNow",
+                                defaultValue: "Refresh Now"
+                            )
+                        )
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isRefreshingRates)
+            }
+
+            if viewModel.isExchangeRateSyncStale {
+                Text(
+                    AppLocalization.string(
+                        "settings.exchangeRate.staleWarning",
+                        defaultValue: "Rates may be outdated. Refresh to improve accuracy."
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .font(.caption)
+        .padding(.top, 4)
     }
 }
 

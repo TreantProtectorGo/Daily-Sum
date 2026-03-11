@@ -220,43 +220,6 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func exchangeRateSection(viewModel: SettingsViewModel) -> some View {
-        Section(
-            AppLocalization.string("settings.exchangeRates", defaultValue: "Exchange Rates")
-        ) {
-            HStack {
-                Text(AppLocalization.string("settings.exchangeRate.lastUpdated", defaultValue: "Last Updated"))
-                Spacer()
-                Text(lastUpdatedText(viewModel: viewModel))
-                    .foregroundStyle(.secondary)
-            }
-
-            Button {
-                Task {
-                    await viewModel.refreshExchangeRates(force: true)
-                    if let message = viewModel.errorMessage, !message.isEmpty {
-                        errorMessage = message
-                        showError = true
-                    }
-                }
-            } label: {
-                HStack {
-                    Text(AppLocalization.string("settings.exchangeRate.refreshNow", defaultValue: "Refresh Now"))
-                    Spacer()
-                    if viewModel.isRefreshingRates {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                }
-            }
-            .disabled(viewModel.isRefreshingRates)
-
-            if viewModel.isExchangeRateSyncStale {
-                Text(AppLocalization.string("settings.exchangeRate.staleWarning", defaultValue: "Rates may be outdated. Refresh to improve accuracy."))
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-        }
-
         Section {
             Toggle(
                 AppLocalization.string(
@@ -458,12 +421,6 @@ struct SettingsView: View {
         }
     }
 
-    private func lastUpdatedText(viewModel: SettingsViewModel) -> String {
-        guard let lastUpdated = viewModel.lastSuccessfulRateSyncDate else {
-            return AppLocalization.string("settings.exchangeRate.never", defaultValue: "Never")
-        }
-        return DateFormatterUtility.shared.formatDateWithTime(lastUpdated)
-    }
 }
 
 // MARK: - Preview

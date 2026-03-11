@@ -8,6 +8,19 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
         let errorDescription: String? = "conversion failed"
     }
 
+    private struct MockExchangeRateProvider: ExchangeRateProvider {
+        let providerName: String = "mock-rates"
+        let snapshot: ExchangeRateSnapshot
+
+        func fetchRates(
+            baseCurrencyCode: String,
+            quoteCurrencyCodes: [String],
+            on date: Date?
+        ) async throws -> ExchangeRateSnapshot {
+            snapshot
+        }
+    }
+
     private final class MockConversionService: CurrencyQuoteProviding {
         var nextResult: Result<CurrencyConversionQuote, Error>
         private(set) var requests: [(amount: Decimal, from: String, to: String)] = []
@@ -63,13 +76,18 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
 
     private var container: ModelContainer!
     private var context: ModelContext!
+    private var originalLastSuccessfulSyncDate: Date?
 
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
         context = container.mainContext
+        originalLastSuccessfulSyncDate = ExchangeRateSyncPreference.lastSuccessfulSyncDate
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
     }
 
     override func tearDown() async throws {
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = originalLastSuccessfulSyncDate
+        originalLastSuccessfulSyncDate = nil
         container = nil
         context = nil
     }
@@ -316,5 +334,51 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.fromCurrencyCode, "USD")
         XCTAssertEqual(viewModel.toCurrencyCode, "TWD")
         XCTAssertFalse(conversionService.requests.isEmpty)
+    }
+
+    func testRefreshExchangeRatesUpdatesLastSuccessfulSyncDate() async throws {
+        let conversionService = MockConversionService(
+            nextResult: .success(
+                CurrencyConversionQuote(
+                    convertedAmount: 100,
+                    rate: 1,
+                    effectiveDate: Date(timeIntervalSince1970: 1_739_571_200),
+                    provider: "mock-provider"
+                )
+            )
+        )
+        let locationService = MockLocationService(
+            authorizationStatusValue: .denied,
+            requestAuthorizationResult: .denied,
+            detectedCurrency: nil
+        )
+        let scheduler = ExchangeRateRefreshScheduler(
+            refreshInterval: 60 * 60 * 24,
+            provider: MockExchangeRateProvider(
+                snapshot: ExchangeRateSnapshot(
+                    baseCurrencyCode: "USD",
+                    effectiveDate: Date(timeIntervalSince1970: 1_739_571_200),
+                    rates: ["HKD": 7.8, "TWD": 31.2],
+                    provider: "mock-rates"
+                )
+            )
+        )
+        let viewModel = ExchangeCalculatorViewModel(
+            modelContext: context,
+            conversionService: conversionService,
+            locationService: locationService,
+            exchangeRateRefreshScheduler: scheduler,
+            preferredCurrencyCode: "USD",
+            useLocationDefaults: false,
+            debounceDuration: .milliseconds(1)
+        )
+
+        XCTAssertNil(viewModel.lastSuccessfulRateSyncDate)
+
+        await viewModel.refreshExchangeRates(force: true)
+
+        XCTAssertNotNil(viewModel.lastSuccessfulRateSyncDate)
+        XCTAssertFalse(viewModel.isRefreshingRates)
+        XCTAssertNil(viewModel.errorMessage)
     }
 }

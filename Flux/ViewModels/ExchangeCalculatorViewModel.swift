@@ -7,6 +7,8 @@ import SwiftData
 final class ExchangeCalculatorViewModel {
     private let conversionService: any CurrencyQuoteProviding
     private let locationService: any TravelCurrencyLocationServicing
+    private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
+    private let modelContext: ModelContext
     private let preferredCurrencyCode: String
     private let useLocationDefaults: Bool
     private let debounceDuration: Duration
@@ -24,18 +26,23 @@ final class ExchangeCalculatorViewModel {
     var provider: String?
 
     var isLoading = false
+    var isRefreshingRates = false
     var errorMessage: String?
 
     init(
         modelContext: ModelContext,
         conversionService: (any CurrencyQuoteProviding)? = nil,
         locationService: (any TravelCurrencyLocationServicing)? = nil,
+        exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
         preferredCurrencyCode: String? = nil,
         useLocationDefaults: Bool? = nil,
         debounceDuration: Duration = .milliseconds(300)
     ) {
+        self.modelContext = modelContext
         self.conversionService = conversionService ?? CurrencyConversionService(context: modelContext)
         self.locationService = locationService ?? TravelCurrencyLocationService()
+        self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
+            ?? ExchangeRateRefreshScheduler()
         let resolvedPreferredCurrencyCode = preferredCurrencyCode
             ?? UserCurrencyPreference.resolvedCurrencyCode
         self.preferredCurrencyCode = UserCurrencyPreference.resolvedDisplayCurrencyCode(
@@ -47,6 +54,26 @@ final class ExchangeCalculatorViewModel {
 
         self.fromCurrencyCode = self.preferredCurrencyCode
         self.toCurrencyCode = "USD"
+    }
+
+    var lastSuccessfulRateSyncDate: Date? {
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate
+    }
+
+    var isExchangeRateSyncStale: Bool {
+        exchangeRateRefreshScheduler.shouldRefresh(
+            lastSuccessfulSyncDate: lastSuccessfulRateSyncDate
+        )
+    }
+
+    var lastUpdatedText: String {
+        guard let lastSuccessfulRateSyncDate else {
+            return AppLocalization.string(
+                "settings.exchangeRate.never",
+                defaultValue: "Never"
+            )
+        }
+        return DateFormatterUtility.shared.formatDateWithTime(lastSuccessfulRateSyncDate)
     }
 
     func initializeDefaults() async {
@@ -79,6 +106,22 @@ final class ExchangeCalculatorViewModel {
 
     func retry() {
         startCalculation(debounced: false)
+    }
+
+    func refreshExchangeRates(force: Bool = true) async {
+        isRefreshingRates = true
+        defer { isRefreshingRates = false }
+
+        do {
+            _ = try await exchangeRateRefreshScheduler.refreshLatestRatesIfNeeded(
+                context: modelContext,
+                baseCurrencyCode: preferredCurrencyCode,
+                force: force
+            )
+            retry()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func swapCurrencies() {
