@@ -139,6 +139,13 @@ enum TravelCurrencyPreference {
     }
 }
 
+enum TravelCurrencySelectionMode: String, CaseIterable, Identifiable {
+    case automatic
+    case manual
+
+    var id: Self { self }
+}
+
 enum ReportsCategoryRowLimitPreference {
     static let storageKey = kReportsCategoryRowLimit
     static let defaultValue = 5
@@ -273,6 +280,38 @@ final class SettingsViewModel {
         resolvedTravelCurrencyState.currentTravelCurrencyCode
     }
 
+    var travelCurrencySelectionMode: TravelCurrencySelectionMode {
+        manualTravelCurrencyCode == nil ? .automatic : .manual
+    }
+
+    var travelCurrencySettingSummary: String {
+        switch travelCurrencySelectionMode {
+        case .automatic:
+            if let currentTravelCurrencyCode {
+                return String(
+                    format: AppLocalization.string(
+                        "settings.exchangeRate.configuration.summary.automatic",
+                        defaultValue: "Automatic (Current: %@)"
+                    ),
+                    currentTravelCurrencyCode
+                )
+            }
+            return AppLocalization.string(
+                "settings.exchangeRate.configuration.automatic",
+                defaultValue: "Automatic"
+            )
+        case .manual:
+            let manualCurrencyCode = manualTravelCurrencyCode ?? defaultCurrencyCode
+            return String(
+                format: AppLocalization.string(
+                    "settings.exchangeRate.configuration.summary.manual",
+                    defaultValue: "Manual: %@"
+                ),
+                manualCurrencyCode
+            )
+        }
+    }
+
     var reminderStatusText: String {
         switch notificationAuthorizationStatus {
         case .authorized, .provisional, .ephemeral:
@@ -354,6 +393,22 @@ final class SettingsViewModel {
 
     func setManualTravelCurrencyCode(_ currencyCode: String?) {
         manualTravelCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(currencyCode)
+    }
+
+    func setTravelCurrencySelectionMode(_ mode: TravelCurrencySelectionMode) async {
+        switch mode {
+        case .automatic:
+            manualTravelCurrencyCode = nil
+            if !useLocationDefaults {
+                await setUseLocationDefaults(true)
+            } else {
+                await refreshTravelCurrencyState()
+            }
+        case .manual:
+            if manualTravelCurrencyCode == nil {
+                manualTravelCurrencyCode = currentTravelCurrencyCode ?? defaultCurrencyCode
+            }
+        }
     }
 
     func refreshTravelCurrencyState() async {

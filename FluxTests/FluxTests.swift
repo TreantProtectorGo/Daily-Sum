@@ -107,6 +107,40 @@ final class FluxTests: XCTestCase {
         XCTAssertNil(TravelCurrencyPreference.manualCurrencyCode)
     }
 
+    @MainActor
+    func testTravelCurrencySettingsSummaryUsesAutomaticCurrentCurrency() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let viewModel = SettingsViewModel(modelContext: container.mainContext)
+
+        viewModel.defaultCurrencyCode = "USD"
+        viewModel.useLocationDefaults = true
+        viewModel.detectedTravelCurrencyCode = "KRW"
+        viewModel.manualTravelCurrencyCode = nil
+
+        XCTAssertEqual(viewModel.travelCurrencySettingSummary, "Automatic (Current: KRW)")
+    }
+
+    @MainActor
+    func testTravelCurrencySettingsSummaryUsesManualCurrency() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let viewModel = SettingsViewModel(modelContext: container.mainContext)
+
+        viewModel.defaultCurrencyCode = "USD"
+        viewModel.useLocationDefaults = true
+        viewModel.detectedTravelCurrencyCode = "KRW"
+        viewModel.manualTravelCurrencyCode = "JPY"
+
+        XCTAssertEqual(viewModel.travelCurrencySettingSummary, "Manual: JPY")
+    }
+
     func testTransactionAccountPreferencePersistsValues() throws {
         let originalDefaultAccountId = TransactionAccountPreference.defaultAccountId
         let originalRememberLastUsed = TransactionAccountPreference.rememberLastUsedAccount

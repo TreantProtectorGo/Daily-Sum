@@ -15,6 +15,7 @@ struct SettingsView: View {
     
     @State private var showClearDataConfirmation = false
     @State private var showExchangeCalculator = false
+    @State private var showTravelCurrencySettings = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -98,6 +99,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showExchangeCalculator) {
             ExchangeCalculatorSheet()
+        }
+        .sheet(isPresented: $showTravelCurrencySettings) {
+            TravelCurrencySettingsSheet(viewModel: viewModel)
         }
         .onAppear {
             Task {
@@ -221,66 +225,22 @@ struct SettingsView: View {
     @ViewBuilder
     private func exchangeRateSection(viewModel: SettingsViewModel) -> some View {
         Section {
-            Toggle(
-                AppLocalization.string(
-                    "settings.exchangeRate.useLocationDefaults",
-                    defaultValue: "Automatically Detect Travel Currency"
-                ),
-                isOn: Binding(
-                    get: { viewModel.useLocationDefaults },
-                    set: { newValue in
-                        Task {
-                            await viewModel.setUseLocationDefaults(newValue)
-                        }
-                    }
-                )
-            )
-
-            HStack {
-                Text(
-                    AppLocalization.string(
-                        "settings.exchangeRate.detectedCurrency",
-                        defaultValue: "Detected Currency"
+            Button {
+                showTravelCurrencySettings = true
+            } label: {
+                HStack {
+                    Text(
+                        AppLocalization.string(
+                            "settings.exchangeRate.configuration",
+                            defaultValue: "Travel Currency Setting"
+                        )
                     )
-                )
-                Spacer()
-                Text(viewModel.detectedLocationCurrencyCode ?? "None")
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
-                Text(
-                    AppLocalization.string(
-                        "settings.exchangeRate.currentTravelCurrency",
-                        defaultValue: "Current Travel Currency"
-                    )
-                )
-                Spacer()
-                Text(viewModel.currentTravelCurrencyCode ?? "None")
-                    .foregroundStyle(.secondary)
-            }
-
-            Picker(
-                AppLocalization.string(
-                    "settings.exchangeRate.manualTravelCurrency",
-                    defaultValue: "Manual Travel Currency"
-                ),
-                selection: Binding(
-                    get: { viewModel.manualTravelCurrencyCode },
-                    set: { viewModel.setManualTravelCurrencyCode($0) }
-                )
-            ) {
-                Text(
-                    AppLocalization.string(
-                        "settings.exchangeRate.manualTravelCurrency.auto",
-                        defaultValue: "Use Detected Currency"
-                    )
-                )
-                .tag(nil as String?)
-
-                ForEach(viewModel.availableCurrencies, id: \.self) { currency in
-                    Text("\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)")
-                        .tag(currency.rawValue as String?)
+                    Spacer()
+                    Text(viewModel.travelCurrencySettingSummary)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
             }
 
@@ -299,13 +259,6 @@ struct SettingsView: View {
                 AppLocalization.string(
                     "settings.exchangeRate.travelSection",
                     defaultValue: "Travel Currency"
-                )
-            )
-        } footer: {
-            Text(
-                AppLocalization.string(
-                    "settings.exchangeRate.useLocationDefaults.footer",
-                    defaultValue: "Detected currency follows your location. Manual travel currency stays active until you clear it."
                 )
             )
         }
@@ -338,7 +291,7 @@ struct SettingsView: View {
             Text(AppLocalization.string("settings.language.footer", defaultValue: "Choose the language used by the app interface."))
         }
     }
-    
+
     // MARK: - Data Summary Section
     
     @ViewBuilder
@@ -421,6 +374,117 @@ struct SettingsView: View {
         }
     }
 
+}
+
+private struct TravelCurrencySettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var viewModel: SettingsViewModel
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker(
+                        AppLocalization.string(
+                            "settings.exchangeRate.configuration",
+                            defaultValue: "Travel Currency Setting"
+                        ),
+                        selection: Binding(
+                            get: { viewModel.travelCurrencySelectionMode },
+                            set: { newMode in
+                                Task {
+                                    await viewModel.setTravelCurrencySelectionMode(newMode)
+                                }
+                            }
+                        )
+                    ) {
+                        Text(
+                            AppLocalization.string(
+                                "settings.exchangeRate.configuration.automatic",
+                                defaultValue: "Automatic"
+                            )
+                        )
+                        .tag(TravelCurrencySelectionMode.automatic)
+
+                        Text(
+                            AppLocalization.string(
+                                "settings.exchangeRate.configuration.manual",
+                                defaultValue: "Manual"
+                            )
+                        )
+                        .tag(TravelCurrencySelectionMode.manual)
+                    }
+
+                    HStack {
+                        Text(
+                            AppLocalization.string(
+                                "settings.exchangeRate.detectedCurrency",
+                                defaultValue: "Detected Currency"
+                            )
+                        )
+                        Spacer()
+                        Text(viewModel.detectedLocationCurrencyCode ?? "None")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text(
+                            AppLocalization.string(
+                                "settings.exchangeRate.currentTravelCurrency",
+                                defaultValue: "Current Travel Currency"
+                            )
+                        )
+                        Spacer()
+                        Text(viewModel.currentTravelCurrencyCode ?? "None")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if viewModel.travelCurrencySelectionMode == .manual {
+                        Picker(
+                            AppLocalization.string(
+                                "settings.exchangeRate.manualTravelCurrency",
+                                defaultValue: "Manual Travel Currency"
+                            ),
+                            selection: Binding(
+                                get: {
+                                    viewModel.manualTravelCurrencyCode ?? viewModel.defaultCurrencyCode
+                                },
+                                set: { viewModel.setManualTravelCurrencyCode($0) }
+                            )
+                        ) {
+                            ForEach(viewModel.availableCurrencies, id: \.self) { currency in
+                                Text("\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)")
+                                    .tag(currency.rawValue)
+                            }
+                        }
+                    }
+                } footer: {
+                    Text(
+                        AppLocalization.string(
+                            "settings.exchangeRate.useLocationDefaults.footer",
+                            defaultValue: "Detected currency follows your location. Manual travel currency stays active until you clear it."
+                        )
+                    )
+                }
+            }
+            .navigationTitle(
+                AppLocalization.string(
+                    "settings.exchangeRate.configuration",
+                    defaultValue: "Travel Currency Setting"
+                )
+            )
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Preview
