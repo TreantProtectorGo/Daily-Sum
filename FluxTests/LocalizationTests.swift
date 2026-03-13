@@ -216,7 +216,7 @@ final class LocalizationTests: XCTestCase {
             ],
             "zh-Hans": [
                 "settings.exchangeRate.useLocationDefaults": "自动侦测旅行货币",
-                "settings.exchangeRate.useLocationDefaults.footer": "定位货币会随你的位置更新，手动旅行货币会持续生效，直到你清除为止。",
+                "settings.exchangeRate.useLocationDefaults.footer": "自动模式会按你所在位置更新货币。手动设定后，所选货币会一直生效，直至你切回自动模式。",
                 "settings.exchangeRate.travelSection": "旅行货币",
                 "settings.exchangeRate.configuration": "旅行货币设定",
                 "settings.exchangeRate.configuration.automatic": "自动",
