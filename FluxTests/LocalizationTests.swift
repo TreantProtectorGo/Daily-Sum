@@ -193,6 +193,20 @@ final class LocalizationTests: XCTestCase {
             ),
             "已關閉"
         )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "transaction.edit.expense",
+                locale: "zh-Hant"
+            ),
+            "編輯支出"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "transaction.edit.income",
+                locale: "zh-Hant"
+            ),
+            "編輯收入"
+        )
     }
 
     func testTravelCurrencyCopyMatchesCurrentWordingAcrossLanguages() {

@@ -40,12 +40,15 @@ final class FluxUITests: XCTestCase {
         app.tabBars.buttons["Transactions"].tap()
         app.buttons["transactions.addButton"].tap()
 
-        let pickerButtons = app.buttons.matching(identifier: "transaction.categoryPicker.trigger")
-        XCTAssertGreaterThan(pickerButtons.count, 0)
+        let typeControl = app.segmentedControls["transaction.type.mode"]
+        XCTAssertTrue(typeControl.waitForExistence(timeout: 10))
 
-        let categoryPicker = pickerButtons.allElementsBoundByIndex.first(where: \.isHittable) ?? pickerButtons.firstMatch
-        XCTAssertTrue(categoryPicker.waitForExistence(timeout: 2))
-        XCTAssertTrue(categoryPicker.isHittable)
+        let confirmButton = keypadButton(in: app, label: "Confirm")
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10))
+        confirmButton.tap()
+
+        let categoryPicker = app.buttons["transaction.categoryPicker.trigger"].firstMatch
+        XCTAssertTrue(categoryPicker.waitForExistence(timeout: 10))
         categoryPicker.tap()
 
         let pickerSheet = app.descendants(matching: .any)["transaction.categoryPicker.sheet"]
@@ -102,11 +105,61 @@ final class FluxUITests: XCTestCase {
         XCTAssertEqual(amountTrigger.value as? String, "24")
     }
 
+    @MainActor
+    func testIncomeCategoryPersistsWhenReopeningTransaction() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+
+        app.tabBars.buttons["Transactions"].tap()
+        app.buttons["transactions.addButton"].tap()
+
+        let typeControl = app.segmentedControls["transaction.type.mode"]
+        XCTAssertTrue(typeControl.waitForExistence(timeout: 10))
+
+        let confirmButton = keypadButton(in: app, label: "Confirm")
+        if !confirmButton.waitForExistence(timeout: 3) {
+            let amountTrigger = app.buttons["amountInput.trigger"]
+            XCTAssertTrue(amountTrigger.waitForExistence(timeout: 10))
+            XCTAssertTrue(amountTrigger.isHittable)
+            amountTrigger.tap()
+        }
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 10))
+        keypadButton(in: app, label: "1").tap()
+        keypadButton(in: app, label: "2").tap()
+        confirmButton.tap()
+
+        typeControl.buttons["Income"].tap()
+
+        let categoryPicker = app.buttons.matching(identifier: "transaction.categoryPicker.trigger").firstMatch
+        XCTAssertTrue(categoryPicker.waitForExistence(timeout: 2))
+        categoryPicker.tap()
+
+        let pickerSheet = app.descendants(matching: .any)["transaction.categoryPicker.sheet"]
+        XCTAssertTrue(pickerSheet.waitForExistence(timeout: 10))
+
+        let salaryButton = app.buttons["Salary"].firstMatch
+        XCTAssertTrue(salaryButton.waitForExistence(timeout: 2))
+        salaryButton.tap()
+
+        let saveButton = app.navigationBars.buttons["Save"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 2))
+        saveButton.tap()
+
+        let salaryRow = app.staticTexts["Salary"].firstMatch
+        XCTAssertTrue(salaryRow.waitForExistence(timeout: 10))
+        salaryRow.tap()
+
+        let reopenedCategoryPicker = app.buttons["transaction.categoryPicker.trigger"].firstMatch
+        XCTAssertTrue(reopenedCategoryPicker.waitForExistence(timeout: 2))
+        XCTAssertTrue(reopenedCategoryPicker.label.contains("Salary"))
+    }
+
     private func keypadButton(in app: XCUIApplication, label: String) -> XCUIElement {
         app.buttons.matching(
             NSPredicate(
-                format: "identifier == %@ AND label == %@",
-                "numberPad.sheet",
+                format: "identifier BEGINSWITH %@ AND label == %@",
+                "numberPad.",
                 label
             )
         ).firstMatch

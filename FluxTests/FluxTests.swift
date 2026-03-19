@@ -296,6 +296,44 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(travelHeight, standardHeight, accuracy: 1)
     }
 
+    func testProgrammaticTransactionTypeChangeKeepsExistingCategorySelection() {
+        let category = Category(
+            nameKey: "category.income.salary",
+            icon: "banknote",
+            colorHex: "#34C759",
+            type: .income,
+            isSystemDefault: true
+        )
+
+        let resolvedCategory = TransactionEntryCategorySelection.resolvedCategory(
+            currentCategory: category,
+            previousType: .expense,
+            nextType: .income,
+            changeSource: .programmatic
+        )
+
+        XCTAssertEqual(resolvedCategory?.id, category.id)
+    }
+
+    func testUserTransactionTypeChangeClearsCategorySelection() {
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF3B30",
+            type: .expense,
+            isSystemDefault: true
+        )
+
+        let resolvedCategory = TransactionEntryCategorySelection.resolvedCategory(
+            currentCategory: category,
+            previousType: .expense,
+            nextType: .income,
+            changeSource: .userSelection
+        )
+
+        XCTAssertNil(resolvedCategory)
+    }
+
     func testTransactionEntryValidationRequiresCategoryToSave() {
         let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
         let category = Category(
@@ -333,6 +371,80 @@ final class FluxTests: XCTestCase {
                 selectedAccount: nil,
                 selectedCategory: category
             )
+        )
+    }
+
+    func testProgrammaticTypeChangeClearsTravelTransactionForIncome() {
+        let resolvedCategory = TransactionEntryCategorySelection.resolvedCategory(
+            currentCategory: nil,
+            previousType: .expense,
+            nextType: .income,
+            changeSource: .programmatic
+        )
+
+        XCTAssertNil(resolvedCategory)
+        XCTAssertFalse(
+            TransactionTravelDefaults.resolveIsTravelTransaction(
+                transactionType: .income,
+                accountCurrencyCode: "JPY",
+                currentTravelCurrencyCode: "JPY",
+                userOverride: true
+            )
+        )
+    }
+
+    func testExistingTransactionCannotEditTransactionType() {
+        let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
+        let transaction = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            account: account,
+            category: nil
+        )
+
+        XCTAssertFalse(
+            TransactionEntryTypeEditing.canEditType(existingTransaction: transaction)
+        )
+        XCTAssertTrue(
+            TransactionEntryTypeEditing.canEditType(existingTransaction: nil)
+        )
+    }
+
+    func testTransactionEntryNavigationTitleUsesCreateAndEditModes() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
+        let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
+        let transaction = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            account: account,
+            category: nil
+        )
+
+        XCTAssertEqual(
+            TransactionEntryPresentation.navigationTitle(
+                existingTransaction: nil,
+                transactionType: .expense
+            ),
+            "Add Transaction"
+        )
+        XCTAssertEqual(
+            TransactionEntryPresentation.navigationTitle(
+                existingTransaction: transaction,
+                transactionType: .expense
+            ),
+            "Edit Expense"
+        )
+        XCTAssertEqual(
+            TransactionEntryPresentation.navigationTitle(
+                existingTransaction: transaction,
+                transactionType: .income
+            ),
+            "Edit Income"
         )
     }
 

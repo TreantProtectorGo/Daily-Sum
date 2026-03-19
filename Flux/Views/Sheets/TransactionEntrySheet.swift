@@ -18,6 +18,62 @@ enum TransactionEntryFormValidation {
     }
 }
 
+enum TransactionEntryTypeChangeSource {
+    case userSelection
+    case programmatic
+}
+
+enum TransactionEntryCategorySelection {
+    static func resolvedCategory(
+        currentCategory: Category?,
+        previousType: TransactionType,
+        nextType: TransactionType,
+        changeSource: TransactionEntryTypeChangeSource
+    ) -> Category? {
+        guard previousType != nextType else { return currentCategory }
+
+        switch changeSource {
+        case .userSelection:
+            return nil
+        case .programmatic:
+            return currentCategory
+        }
+    }
+}
+
+enum TransactionEntryTypeEditing {
+    static func canEditType(existingTransaction: Transaction?) -> Bool {
+        existingTransaction == nil
+    }
+}
+
+enum TransactionEntryPresentation {
+    static func navigationTitle(
+        existingTransaction: Transaction?,
+        transactionType: TransactionType
+    ) -> String {
+        if existingTransaction == nil {
+            return AppLocalization.string(
+                "transaction.add",
+                defaultValue: "Add Transaction"
+            )
+        }
+
+        switch transactionType {
+        case .expense:
+            return AppLocalization.string(
+                "transaction.edit.expense",
+                defaultValue: "Edit Expense"
+            )
+        case .income:
+            return AppLocalization.string(
+                "transaction.edit.income",
+                defaultValue: "Edit Income"
+            )
+        }
+    }
+}
+
 // MARK: - Transaction Entry Sheet
 
 /// Sheet for adding or editing a transaction
@@ -72,6 +128,12 @@ struct TransactionEntrySheet: View {
                 // Notes
                 notesSection
             }
+            .navigationTitle(
+                TransactionEntryPresentation.navigationTitle(
+                    existingTransaction: existingTransaction,
+                    transactionType: transactionType
+                )
+            )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -83,9 +145,11 @@ struct TransactionEntrySheet: View {
                     .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
                 }
                 
-                ToolbarItem(placement: .principal) {
-                    transactionTypePicker
-                        .frame(width: 220)
+                if TransactionEntryTypeEditing.canEditType(existingTransaction: existingTransaction) {
+                    ToolbarItem(placement: .principal) {
+                        transactionTypePicker
+                            .frame(width: 220)
+                    }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -142,7 +206,13 @@ struct TransactionEntrySheet: View {
     // MARK: - Form Sections
     
     private var transactionTypePicker: some View {
-        Picker(AppLocalization.string("transaction.type", defaultValue: "Type"), selection: $transactionType) {
+        Picker(
+            AppLocalization.string("transaction.type", defaultValue: "Type"),
+            selection: Binding(
+                get: { transactionType },
+                set: handleTransactionTypeSelection
+            )
+        ) {
             ForEach(TransactionType.allCases, id: \.self) { type in
                 Text(type.localizedName)
                     .tag(type)
@@ -150,13 +220,7 @@ struct TransactionEntrySheet: View {
         }
         .pickerStyle(.segmented)
         .accessibilityIdentifier("transaction.type.mode")
-        .onChange(of: transactionType) { _, _ in
-            // Reset category when type changes
-            selectedCategory = nil
-            if transactionType != .expense {
-                scheduleMode = .oneTime
-            }
-        }
+        .disabled(!TransactionEntryTypeEditing.canEditType(existingTransaction: existingTransaction))
     }
     
     private var amountSection: some View {
@@ -208,19 +272,21 @@ struct TransactionEntrySheet: View {
                 dueDayOfMonth = Calendar.current.component(.day, from: newValue)
             }
 
-            Toggle(
-                AppLocalization.string(
-                    "transaction.travel",
-                    defaultValue: "Travel Transaction"
-                ),
-                isOn: Binding(
-                    get: { isTravelTransaction },
-                    set: { newValue in
-                        hasTravelTransactionOverride = true
-                        isTravelTransaction = newValue
-                    }
+            if shouldShowTravelTransactionToggle {
+                Toggle(
+                    AppLocalization.string(
+                        "transaction.travel",
+                        defaultValue: "Travel Transaction"
+                    ),
+                    isOn: Binding(
+                        get: { isTravelTransaction },
+                        set: { newValue in
+                            hasTravelTransactionOverride = true
+                            isTravelTransaction = newValue
+                        }
+                    )
                 )
-            )
+            }
         } header: {
             Text(AppLocalization.string("transaction.details", defaultValue: "Details"))
         }
@@ -306,6 +372,10 @@ struct TransactionEntrySheet: View {
             selectedCategory: selectedCategory
         )
     }
+
+    private var shouldShowTravelTransactionToggle: Bool {
+        transactionType == .expense
+    }
     
     // MARK: - Actions
 
@@ -336,8 +406,8 @@ struct TransactionEntrySheet: View {
         selectedAccount = transaction.account
         date = transaction.date
         notes = transaction.notes ?? ""
-        isTravelTransaction = transaction.isTravelTransaction ?? false
-        hasTravelTransactionOverride = true
+        isTravelTransaction = transaction.type == .expense ? (transaction.isTravelTransaction ?? false) : false
+        hasTravelTransactionOverride = transaction.type == .expense
         dueDayOfMonth = transaction.dueDayOfMonth ?? Calendar.current.component(.day, from: transaction.date)
         reminderLeadDays = transaction.reminderLeadDays ?? TransactionReminderScheduler.defaultReminderLeadDays
 
@@ -345,6 +415,27 @@ struct TransactionEntrySheet: View {
             scheduleMode = .recurring
         } else {
             scheduleMode = .oneTime
+        }
+    }
+
+    private func handleTransactionTypeSelection(_ nextType: TransactionType) {
+        guard TransactionEntryTypeEditing.canEditType(existingTransaction: existingTransaction) else {
+            return
+        }
+
+        selectedCategory = TransactionEntryCategorySelection.resolvedCategory(
+            currentCategory: selectedCategory,
+            previousType: transactionType,
+            nextType: nextType,
+            changeSource: .userSelection
+        )
+        transactionType = nextType
+        if nextType != .expense {
+            scheduleMode = .oneTime
+            isTravelTransaction = false
+            hasTravelTransactionOverride = false
+        } else if existingTransaction == nil {
+            applyTravelTransactionDefaultIfNeeded()
         }
     }
     
@@ -381,6 +472,7 @@ struct TransactionEntrySheet: View {
 
         let userOverride = hasTravelTransactionOverride ? isTravelTransaction : nil
         let resolvedValue = TransactionTravelDefaults.resolveIsTravelTransaction(
+            transactionType: transactionType,
             accountCurrencyCode: selectedAccount?.currencyCode,
             currentTravelCurrencyCode: resolvedCurrentTravelCurrencyCode,
             userOverride: userOverride
@@ -420,6 +512,9 @@ struct TransactionEntrySheet: View {
         
         do {
             let service = TransactionService(context: modelContext)
+            let resolvedIsTravelTransaction = transactionType == .expense
+                ? isTravelTransaction
+                : false
             
             if let existing = existingTransaction {
                 let templateForScheduledEdit = try scheduledTemplateForEditing(
@@ -437,7 +532,7 @@ struct TransactionEntrySheet: View {
                             reminderLeadDays: reminderLeadDays,
                             account: account,
                             notes: notes.isEmpty ? nil : notes,
-                            isTravelTransaction: isTravelTransaction,
+                            isTravelTransaction: resolvedIsTravelTransaction,
                             category: selectedCategory,
                             planType: selectedPlanType
                         )
@@ -474,7 +569,7 @@ struct TransactionEntrySheet: View {
                         template.account = account
                         template.date = date
                         template.notes = notes.isEmpty ? nil : notes
-                        template.isTravelTransaction = isTravelTransaction
+                        template.isTravelTransaction = resolvedIsTravelTransaction
                         template.currencyCode = account.currencyCode
                         try modelContext.save()
 
@@ -490,7 +585,7 @@ struct TransactionEntrySheet: View {
                     existing.account = account
                     existing.date = date
                     existing.notes = notes.isEmpty ? nil : notes
-                    existing.isTravelTransaction = isTravelTransaction
+                    existing.isTravelTransaction = resolvedIsTravelTransaction
                     existing.currencyCode = account.currencyCode
 
                     try modelContext.save()
@@ -505,7 +600,7 @@ struct TransactionEntrySheet: View {
                         account: account,
                         category: selectedCategory,
                         notes: notes.isEmpty ? nil : notes,
-                        isTravelTransaction: isTravelTransaction,
+                        isTravelTransaction: resolvedIsTravelTransaction,
                         planType: selectedPlanType
                     )
                     let generator = RecurringTransactionGenerator(context: modelContext)
@@ -525,7 +620,7 @@ struct TransactionEntrySheet: View {
                         type: transactionType,
                         date: date,
                         notes: notes.isEmpty ? nil : notes,
-                        isTravelTransaction: isTravelTransaction,
+                        isTravelTransaction: resolvedIsTravelTransaction,
                         account: account,
                         category: selectedCategory
                     )
