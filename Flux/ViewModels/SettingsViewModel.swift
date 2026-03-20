@@ -11,7 +11,7 @@ private let kDefaultTransactionAccountId = "flux.defaultTransactionAccountId"
 private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransactionAccount"
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
-private let kUseLocationDefaults = "flux.useLocationDefaults"
+private let kTravelCurrencySource = "flux.travelCurrencySource"
 private let kDetectedTravelCurrencyCode = "flux.detectedTravelCurrencyCode"
 private let kManualTravelCurrencyCode = "flux.manualTravelCurrencyCode"
 private let kReportsCategoryRowLimit = "flux.reports.categoryRowLimit"
@@ -94,17 +94,25 @@ enum ExchangeRateSyncPreference {
     }
 }
 
+enum TravelCurrencySource: String, CaseIterable, Identifiable {
+    case automatic
+    case manual
+
+    var id: Self { self }
+}
+
 enum TravelCurrencyPreference {
-    static let storageKey = kUseLocationDefaults
+    static let sourceStorageKey = kTravelCurrencySource
     static let detectedCurrencyStorageKey = kDetectedTravelCurrencyCode
     static let manualCurrencyStorageKey = kManualTravelCurrencyCode
 
-    static var useLocationDefaults: Bool {
+    static var source: TravelCurrencySource {
         get {
-            UserDefaults.standard.object(forKey: storageKey) as? Bool ?? false
+            let rawValue = UserDefaults.standard.string(forKey: sourceStorageKey)
+            return TravelCurrencySource(rawValue: rawValue ?? "") ?? .automatic
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: storageKey)
+            UserDefaults.standard.set(newValue.rawValue, forKey: sourceStorageKey)
         }
     }
 
@@ -139,13 +147,6 @@ enum TravelCurrencyPreference {
     }
 }
 
-enum TravelCurrencySelectionMode: String, CaseIterable, Identifiable {
-    case automatic
-    case manual
-
-    var id: Self { self }
-}
-
 enum ReportsCategoryRowLimitPreference {
     static let storageKey = kReportsCategoryRowLimit
     static let defaultValue = 5
@@ -168,28 +169,78 @@ enum ReportsCategoryRowLimitPreference {
     }
 }
 
+enum TravelCurrencySettingSummaryFormatter {
+    static func string(
+        source: TravelCurrencySource,
+        currentTravelCurrencyCode: String?,
+        manualTravelCurrencyCode: String?,
+        defaultCurrencyCode: String
+    ) -> String {
+        switch source {
+        case .automatic:
+            if let currentTravelCurrencyCode {
+                return AppLocalization.string(
+                    "settings.exchangeRate.configuration.summary.automatic",
+                    defaultValue: "Automatic (Current: %@)"
+                )
+                .replacingOccurrences(of: "%@", with: currentTravelCurrencyCode)
+            }
+            return AppLocalization.string(
+                "settings.exchangeRate.configuration.automatic",
+                defaultValue: "Automatic"
+            )
+        case .manual:
+            guard let manualCurrencyCode = manualTravelCurrencyCode,
+                  manualCurrencyCode != defaultCurrencyCode else {
+                return AppLocalization.string(
+                    "settings.exchangeRate.configuration.summary.manual.unset",
+                    defaultValue: "Manual (Not Set)"
+                )
+            }
+            return AppLocalization.string(
+                "settings.exchangeRate.configuration.summary.manual",
+                defaultValue: "Manual: %@"
+            )
+            .replacingOccurrences(of: "%@", with: manualCurrencyCode)
+        }
+    }
+}
+
+enum TravelCurrencyManualSelection {
+    static func seededManualCurrencyCode(currentTravelCurrencyCode: String?) -> String? {
+        TravelCurrencyState.normalizedCurrencyCode(currentTravelCurrencyCode)
+    }
+
+    static func availableCurrencies(defaultCurrencyCode: String) -> [SupportedCurrency] {
+        let normalizedDefaultCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+            defaultCurrencyCode
+        )
+        return SupportedCurrency.allCases.filter { currency in
+            currency.rawValue != normalizedDefaultCurrencyCode
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class SettingsViewModel {
     private let modelContext: ModelContext
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
-    
-    var regionalSettings = RegionalSettings.shared
-    
+
     /// User's selected default currency - persisted to UserDefaults
     var defaultCurrencyCode: String {
         didSet {
             UserCurrencyPreference.currencyCode = defaultCurrencyCode
         }
     }
-    
+
     var defaultAccountId: UUID? {
         didSet {
             TransactionAccountPreference.defaultAccountId = defaultAccountId
         }
     }
-    
+
     var rememberLastUsedAccount: Bool {
         didSet {
             TransactionAccountPreference.rememberLastUsedAccount = rememberLastUsedAccount
@@ -202,9 +253,9 @@ final class SettingsViewModel {
         }
     }
 
-    var useLocationDefaults: Bool {
+    var travelCurrencySource: TravelCurrencySource {
         didSet {
-            TravelCurrencyPreference.useLocationDefaults = useLocationDefaults
+            TravelCurrencyPreference.source = travelCurrencySource
         }
     }
 
@@ -227,13 +278,13 @@ final class SettingsViewModel {
     }
 
     var notificationAuthorizationStatus: UNAuthorizationStatus = .notDetermined
-    
+
     var accountCount: Int = 0
     var transactionCount: Int = 0
     var categoryCount: Int = 0
     var budgetCount: Int = 0
     var isRefreshingRates = false
-    
+
     var isLoading = false
     var errorMessage: String?
     
@@ -247,6 +298,12 @@ final class SettingsViewModel {
     
     var availableCurrencies: [SupportedCurrency] {
         SupportedCurrency.allCases
+    }
+
+    var availableTravelCurrencies: [SupportedCurrency] {
+        TravelCurrencyManualSelection.availableCurrencies(
+            defaultCurrencyCode: defaultCurrencyCode
+        )
     }
 
     var exchangeRateProviderName: String {
@@ -266,7 +323,7 @@ final class SettingsViewModel {
     private var resolvedTravelCurrencyState: ResolvedTravelCurrencyState {
         TravelCurrencyState.resolve(
             defaultCurrencyCode: defaultCurrencyCode,
-            useLocationDefaults: useLocationDefaults,
+            source: travelCurrencySource,
             detectedCurrencyCode: detectedTravelCurrencyCode,
             manualTravelCurrencyCode: manualTravelCurrencyCode
         )
@@ -280,36 +337,13 @@ final class SettingsViewModel {
         resolvedTravelCurrencyState.currentTravelCurrencyCode
     }
 
-    var travelCurrencySelectionMode: TravelCurrencySelectionMode {
-        manualTravelCurrencyCode == nil ? .automatic : .manual
-    }
-
     var travelCurrencySettingSummary: String {
-        switch travelCurrencySelectionMode {
-        case .automatic:
-            if let currentTravelCurrencyCode {
-                return String(
-                    format: AppLocalization.string(
-                        "settings.exchangeRate.configuration.summary.automatic",
-                        defaultValue: "Automatic (Current: %@)"
-                    ),
-                    currentTravelCurrencyCode
-                )
-            }
-            return AppLocalization.string(
-                "settings.exchangeRate.configuration.automatic",
-                defaultValue: "Automatic"
-            )
-        case .manual:
-            let manualCurrencyCode = manualTravelCurrencyCode ?? defaultCurrencyCode
-            return String(
-                format: AppLocalization.string(
-                    "settings.exchangeRate.configuration.summary.manual",
-                    defaultValue: "Manual: %@"
-                ),
-                manualCurrencyCode
-            )
-        }
+        TravelCurrencySettingSummaryFormatter.string(
+            source: travelCurrencySource,
+            currentTravelCurrencyCode: currentTravelCurrencyCode,
+            manualTravelCurrencyCode: manualTravelCurrencyCode,
+            defaultCurrencyCode: defaultCurrencyCode
+        )
     }
 
     var reminderStatusText: String {
@@ -340,12 +374,12 @@ final class SettingsViewModel {
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
         self.appLanguage = AppLanguagePreference.language
-        self.useLocationDefaults = TravelCurrencyPreference.useLocationDefaults
+        self.travelCurrencySource = TravelCurrencyPreference.source
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         self.reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
     }
-    
+
     func loadSettings() async {
         isLoading = true
         
@@ -383,39 +417,31 @@ final class SettingsViewModel {
         }
     }
 
-    func setUseLocationDefaults(_ enabled: Bool) async {
-        if enabled {
+    func setTravelCurrencySource(_ source: TravelCurrencySource) async {
+        if source == .automatic {
             _ = await travelCurrencyLocationService.requestAuthorizationIfNeeded()
         }
-        useLocationDefaults = enabled
-        await refreshTravelCurrencyState()
+        travelCurrencySource = source
+
+        switch source {
+        case .automatic:
+            manualTravelCurrencyCode = nil
+            await refreshTravelCurrencyState()
+        case .manual:
+            if manualTravelCurrencyCode == nil {
+                manualTravelCurrencyCode = TravelCurrencyManualSelection.seededManualCurrencyCode(
+                    currentTravelCurrencyCode: currentTravelCurrencyCode
+                )
+            }
+            await refreshTravelCurrencyState()
+        }
     }
 
     func setManualTravelCurrencyCode(_ currencyCode: String?) {
         manualTravelCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(currencyCode)
     }
 
-    func setTravelCurrencySelectionMode(_ mode: TravelCurrencySelectionMode) async {
-        switch mode {
-        case .automatic:
-            manualTravelCurrencyCode = nil
-            if !useLocationDefaults {
-                await setUseLocationDefaults(true)
-            } else {
-                await refreshTravelCurrencyState()
-            }
-        case .manual:
-            if manualTravelCurrencyCode == nil {
-                manualTravelCurrencyCode = currentTravelCurrencyCode ?? defaultCurrencyCode
-            }
-        }
-    }
-
     func refreshTravelCurrencyState() async {
-        guard useLocationDefaults else {
-            return
-        }
-
         guard travelCurrencyLocationService.authorizationStatus() == .authorized else {
             return
         }

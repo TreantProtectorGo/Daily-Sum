@@ -10,7 +10,8 @@ final class ExchangeCalculatorViewModel {
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     private let modelContext: ModelContext
     private let preferredCurrencyCode: String
-    private let useLocationDefaults: Bool
+    private let travelCurrencySource: TravelCurrencySource
+    private let manualTravelCurrencyCode: String?
     private let debounceDuration: Duration
 
     private var conversionTask: Task<Void, Never>?
@@ -35,7 +36,8 @@ final class ExchangeCalculatorViewModel {
         locationService: (any TravelCurrencyLocationServicing)? = nil,
         exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
         preferredCurrencyCode: String? = nil,
-        useLocationDefaults: Bool? = nil,
+        travelCurrencySource: TravelCurrencySource? = nil,
+        manualTravelCurrencyCode: String? = nil,
         debounceDuration: Duration = .milliseconds(300)
     ) {
         self.modelContext = modelContext
@@ -48,8 +50,10 @@ final class ExchangeCalculatorViewModel {
         self.preferredCurrencyCode = UserCurrencyPreference.resolvedDisplayCurrencyCode(
             preferredCurrencyCode: resolvedPreferredCurrencyCode
         )
-        self.useLocationDefaults = useLocationDefaults
-            ?? TravelCurrencyPreference.useLocationDefaults
+        self.travelCurrencySource = travelCurrencySource
+            ?? TravelCurrencyPreference.source
+        self.manualTravelCurrencyCode = manualTravelCurrencyCode
+            ?? TravelCurrencyPreference.manualCurrencyCode
         self.debounceDuration = debounceDuration
 
         self.fromCurrencyCode = self.preferredCurrencyCode
@@ -84,13 +88,21 @@ final class ExchangeCalculatorViewModel {
 
         fromCurrencyCode = preferredCurrencyCode
 
-        var targetCurrencyCode = "USD"
-        if useLocationDefaults,
-           locationService.authorizationStatus() == .authorized,
-           let detected = await locationService.detectLocalCurrency(),
-           detected.rawValue != fromCurrencyCode {
-            targetCurrencyCode = detected.rawValue
+        let detectedCurrencyCode: String?
+        if locationService.authorizationStatus() == .authorized,
+           let detected = await locationService.detectLocalCurrency() {
+            detectedCurrencyCode = detected.rawValue
+        } else {
+            detectedCurrencyCode = nil
         }
+
+        let resolvedTravelCurrencyState = TravelCurrencyState.resolve(
+            defaultCurrencyCode: fromCurrencyCode,
+            source: travelCurrencySource,
+            detectedCurrencyCode: detectedCurrencyCode,
+            manualTravelCurrencyCode: manualTravelCurrencyCode
+        )
+        let targetCurrencyCode = resolvedTravelCurrencyState.currentTravelCurrencyCode ?? "USD"
 
         toCurrencyCode = resolvedTargetCurrency(
             sourceCurrencyCode: fromCurrencyCode,

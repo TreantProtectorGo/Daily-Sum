@@ -77,17 +77,32 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
     private var container: ModelContainer!
     private var context: ModelContext!
     private var originalLastSuccessfulSyncDate: Date?
+    private var originalTravelCurrencySource: TravelCurrencySource?
+    private var originalDetectedTravelCurrencyCode: String?
+    private var originalManualTravelCurrencyCode: String?
 
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
         context = container.mainContext
         originalLastSuccessfulSyncDate = ExchangeRateSyncPreference.lastSuccessfulSyncDate
+        originalTravelCurrencySource = TravelCurrencyPreference.source
+        originalDetectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
+        originalManualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
+        TravelCurrencyPreference.source = .automatic
+        TravelCurrencyPreference.detectedCurrencyCode = nil
+        TravelCurrencyPreference.manualCurrencyCode = nil
     }
 
     override func tearDown() async throws {
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = originalLastSuccessfulSyncDate
         originalLastSuccessfulSyncDate = nil
+        TravelCurrencyPreference.source = originalTravelCurrencySource ?? .automatic
+        TravelCurrencyPreference.detectedCurrencyCode = originalDetectedTravelCurrencyCode
+        TravelCurrencyPreference.manualCurrencyCode = originalManualTravelCurrencyCode
+        originalTravelCurrencySource = nil
+        originalDetectedTravelCurrencyCode = nil
+        originalManualTravelCurrencyCode = nil
         container = nil
         context = nil
     }
@@ -114,7 +129,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "EUR",
-            useLocationDefaults: false,
+            travelCurrencySource: .manual,
             debounceDuration: .milliseconds(1)
         )
 
@@ -146,7 +161,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "USD",
-            useLocationDefaults: true,
+            travelCurrencySource: .automatic,
             debounceDuration: .milliseconds(1)
         )
 
@@ -178,7 +193,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "CNY",
-            useLocationDefaults: true,
+            travelCurrencySource: .automatic,
             debounceDuration: .milliseconds(1)
         )
 
@@ -210,7 +225,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "USD",
-            useLocationDefaults: false,
+            travelCurrencySource: .manual,
             debounceDuration: .milliseconds(1)
         )
 
@@ -244,7 +259,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "USD",
-            useLocationDefaults: false,
+            travelCurrencySource: .manual,
             debounceDuration: .milliseconds(1)
         )
 
@@ -278,7 +293,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "USD",
-            useLocationDefaults: false,
+            travelCurrencySource: .manual,
             debounceDuration: .milliseconds(1)
         )
 
@@ -319,7 +334,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "USD",
-            useLocationDefaults: false,
+            travelCurrencySource: .manual,
             debounceDuration: .milliseconds(1)
         )
 
@@ -369,7 +384,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             locationService: locationService,
             exchangeRateRefreshScheduler: scheduler,
             preferredCurrencyCode: "USD",
-            useLocationDefaults: false,
+            travelCurrencySource: .manual,
             debounceDuration: .milliseconds(1)
         )
 

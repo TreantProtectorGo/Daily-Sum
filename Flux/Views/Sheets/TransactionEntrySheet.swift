@@ -483,7 +483,7 @@ struct TransactionEntrySheet: View {
     private var resolvedCurrentTravelCurrencyCode: String? {
         TravelCurrencyState.resolve(
             defaultCurrencyCode: UserCurrencyPreference.resolvedCurrencyCode,
-            useLocationDefaults: TravelCurrencyPreference.useLocationDefaults,
+            source: TravelCurrencyPreference.source,
             detectedCurrencyCode: TravelCurrencyPreference.detectedCurrencyCode,
             manualTravelCurrencyCode: TravelCurrencyPreference.manualCurrencyCode
         )

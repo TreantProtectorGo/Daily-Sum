@@ -4407,13 +4407,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Exchange Calculator"
+            "value" : "Exchange Calculator"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开汇率计算器"
+            "value" : "汇率计算器"
           }
         },
         "zh-Hant" : {
@@ -4430,7 +4430,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel Currency Setting"
+            "value" : "Travel Currency Mode"
           }
         },
         "zh-Hans" : {
@@ -4535,6 +4535,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "手動：%@"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.configuration.summary.manual.unset" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual (Not Set)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动（未设定）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動（未設定）"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.configuration.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic mode follows your current location. Manual mode stays active until you switch back."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动模式会根据你目前的位置更新旅行货币。手动模式会持续生效，直到你切回自动。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動模式會根據你目前的位置更新旅行貨幣。手動模式會持續生效，直到你切回自動。"
           }
         }
       }
@@ -4700,6 +4746,29 @@
         }
       }
     },
+    "settings.exchangeRate.detectedCurrency.none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Detected"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未侦测到"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未偵測到"
+          }
+        }
+      }
+    },
     "settings.exchangeRate.currentTravelCurrency" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4723,25 +4792,71 @@
         }
       }
     },
+    "settings.exchangeRate.currentTravelCurrency.none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inactive"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未启用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未啟用"
+          }
+        }
+      }
+    },
     "settings.exchangeRate.manualTravelCurrency" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Manual Travel Currency"
+            "value" : "Selected Travel Currency"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "手动旅行货币"
+            "value" : "选择的旅行货币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "手動旅行貨幣"
+            "value" : "選擇的旅行貨幣"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.manualTravelCurrency.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请选择货币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請選擇貨幣"
           }
         }
       }

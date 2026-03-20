@@ -15,7 +15,7 @@ final class FluxTests: XCTestCase {
     private static let showUpcomingScheduledMigrationKey =
         "flux.showUpcomingScheduledTransactions.defaultVisibleMigrationCompleted"
     private var originalPreferredCurrencyCode: String?
-    private var originalUseLocationDefaults: Bool?
+    private var originalTravelCurrencySource: String?
     private var originalDetectedTravelCurrencyCode: String?
     private var originalManualTravelCurrencyCode: String?
     private var originalShowUpcomingScheduled: Bool?
@@ -25,9 +25,9 @@ final class FluxTests: XCTestCase {
         originalPreferredCurrencyCode = UserDefaults.standard.string(
             forKey: UserCurrencyPreference.storageKey
         )
-        originalUseLocationDefaults = UserDefaults.standard.object(
-            forKey: TravelCurrencyPreference.storageKey
-        ) as? Bool
+        originalTravelCurrencySource = UserDefaults.standard.string(
+            forKey: TravelCurrencyPreference.sourceStorageKey
+        )
         originalDetectedTravelCurrencyCode = UserDefaults.standard.string(
             forKey: TravelCurrencyPreference.detectedCurrencyStorageKey
         )
@@ -47,13 +47,13 @@ final class FluxTests: XCTestCase {
             originalPreferredCurrencyCode,
             forKey: UserCurrencyPreference.storageKey
         )
-        if let originalUseLocationDefaults {
+        if let originalTravelCurrencySource {
             UserDefaults.standard.set(
-                originalUseLocationDefaults,
-                forKey: TravelCurrencyPreference.storageKey
+                originalTravelCurrencySource,
+                forKey: TravelCurrencyPreference.sourceStorageKey
             )
         } else {
-            UserDefaults.standard.removeObject(forKey: TravelCurrencyPreference.storageKey)
+            UserDefaults.standard.removeObject(forKey: TravelCurrencyPreference.sourceStorageKey)
         }
 
         UserDefaults.standard.set(
@@ -88,12 +88,12 @@ final class FluxTests: XCTestCase {
         }
     }
 
-    func testTravelCurrencyPreferencePersistsValue() {
-        TravelCurrencyPreference.useLocationDefaults = false
-        XCTAssertFalse(TravelCurrencyPreference.useLocationDefaults)
+    func testTravelCurrencyPreferencePersistsSource() {
+        TravelCurrencyPreference.source = .manual
+        XCTAssertEqual(TravelCurrencyPreference.source, .manual)
 
-        TravelCurrencyPreference.useLocationDefaults = true
-        XCTAssertTrue(TravelCurrencyPreference.useLocationDefaults)
+        TravelCurrencyPreference.source = .automatic
+        XCTAssertEqual(TravelCurrencyPreference.source, .automatic)
     }
 
     func testTravelCurrencyPreferencePersistsDetectedAndManualCurrencyCodes() {
@@ -113,15 +113,15 @@ final class FluxTests: XCTestCase {
         defer { AppLanguagePreference.language = originalLanguage }
         AppLanguagePreference.language = .english
 
-        let container = try ModelContainerConfiguration.createTestContainer()
-        let viewModel = SettingsViewModel(modelContext: container.mainContext)
-
-        viewModel.defaultCurrencyCode = "USD"
-        viewModel.useLocationDefaults = true
-        viewModel.detectedTravelCurrencyCode = "KRW"
-        viewModel.manualTravelCurrencyCode = nil
-
-        XCTAssertEqual(viewModel.travelCurrencySettingSummary, "Automatic (Current: KRW)")
+        XCTAssertEqual(
+            TravelCurrencySettingSummaryFormatter.string(
+                source: .automatic,
+                currentTravelCurrencyCode: "KRW",
+                manualTravelCurrencyCode: nil,
+                defaultCurrencyCode: "USD"
+            ),
+            "Automatic (Current: KRW)"
+        )
     }
 
     @MainActor
@@ -130,15 +130,32 @@ final class FluxTests: XCTestCase {
         defer { AppLanguagePreference.language = originalLanguage }
         AppLanguagePreference.language = .english
 
-        let container = try ModelContainerConfiguration.createTestContainer()
-        let viewModel = SettingsViewModel(modelContext: container.mainContext)
+        XCTAssertEqual(
+            TravelCurrencySettingSummaryFormatter.string(
+                source: .manual,
+                currentTravelCurrencyCode: "JPY",
+                manualTravelCurrencyCode: "JPY",
+                defaultCurrencyCode: "USD"
+            ),
+            "Manual: JPY"
+        )
+    }
 
-        viewModel.defaultCurrencyCode = "USD"
-        viewModel.useLocationDefaults = true
-        viewModel.detectedTravelCurrencyCode = "KRW"
-        viewModel.manualTravelCurrencyCode = "JPY"
+    @MainActor
+    func testTravelCurrencySettingsSummaryUsesManualUnsetState() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
 
-        XCTAssertEqual(viewModel.travelCurrencySettingSummary, "Manual: JPY")
+        XCTAssertEqual(
+            TravelCurrencySettingSummaryFormatter.string(
+                source: .manual,
+                currentTravelCurrencyCode: nil,
+                manualTravelCurrencyCode: nil,
+                defaultCurrencyCode: "USD"
+            ),
+            "Manual (Not Set)"
+        )
     }
 
     func testTransactionAccountPreferencePersistsValues() throws {
