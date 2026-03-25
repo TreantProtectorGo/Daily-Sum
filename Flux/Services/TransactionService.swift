@@ -54,6 +54,7 @@ final class TransactionService {
         )
         context.insert(transaction)
         try context.save()
+        syncBudgetAlerts()
         return transaction
     }
 
@@ -213,6 +214,7 @@ final class TransactionService {
         if let receiptImageData { transaction.receiptImageData = receiptImageData }
 
         try context.save()
+        syncBudgetAlerts()
     }
 
     /// Updates a scheduled template and removes future generated entries so they can be regenerated.
@@ -339,6 +341,7 @@ final class TransactionService {
             try deleteOccurrenceExceptions(forTemplateId: templateId)
             context.delete(transaction)
             try context.save()
+            syncBudgetAlerts()
 
             Task { @MainActor in
                 let reminderScheduler = TransactionReminderScheduler(context: context)
@@ -349,6 +352,7 @@ final class TransactionService {
 
         context.delete(transaction)
         try context.save()
+        syncBudgetAlerts()
     }
 
     /// Deletes multiple transactions
@@ -361,6 +365,7 @@ final class TransactionService {
             context.delete(transaction)
         }
         try context.save()
+        syncBudgetAlerts()
 
         let templateIds = transactions
             .filter(\.isRecurringTemplate)
@@ -373,6 +378,13 @@ final class TransactionService {
                     await reminderScheduler.removeReminders(forTemplateId: templateId)
                 }
             }
+        }
+    }
+
+    private func syncBudgetAlerts() {
+        Task { @MainActor in
+            let scheduler = BudgetAlertScheduler(context: context)
+            try? await scheduler.syncAlerts()
         }
     }
 

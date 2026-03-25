@@ -15,12 +15,10 @@ struct BudgetEntrySheet: View {
     @State private var selectedCategory: Category?
     @State private var currencyCode: String = UserCurrencyPreference.resolvedCurrencyCode
     @State private var alertThreshold: Decimal = 0.8
-    @State private var alertsEnabled: Bool = true
     
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
-    @State private var selectedDetent: PresentationDetent = .medium
     
     private var currencyOptions: [SupportedCurrency] {
         SupportedCurrency.allCases.map { $0 }
@@ -38,7 +36,6 @@ struct BudgetEntrySheet: View {
             Form {
                 amountSection
                 categorySection
-                statusSection
             }
             .navigationTitle(isEditing 
                 ? AppLocalization.string("budget.edit.title", defaultValue: "Edit Budget")
@@ -65,7 +62,6 @@ struct BudgetEntrySheet: View {
                 }
             }
             .onAppear {
-                selectedDetent = isEditing ? .medium : .large
                 loadExistingBudget()
             }
             .alert(
@@ -77,7 +73,7 @@ struct BudgetEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large], selection: $selectedDetent)
+        .presentationDetents([.large])
     }
     
     // MARK: - Form Sections
@@ -124,15 +120,6 @@ struct BudgetEntrySheet: View {
         }
     }
     
-    private var statusSection: some View {
-        Section {
-            Toggle(
-                AppLocalization.string("budget.alertsEnabled", defaultValue: "Enable Alerts"),
-                isOn: $alertsEnabled
-            )
-        }
-    }
-    
     // MARK: - Validation
     
     private var isFormValid: Bool {
@@ -149,7 +136,6 @@ struct BudgetEntrySheet: View {
         selectedCategory = budget.category
         currencyCode = budget.currencyCode
         alertThreshold = budget.alertThreshold
-        alertsEnabled = budget.alertsEnabled
     }
     
     private func saveBudget() {
@@ -169,8 +155,7 @@ struct BudgetEntrySheet: View {
                     shouldUpdateCategory: true,
                     currencyCode: currencyCode,
                     isActive: true,
-                    alertThreshold: alertThreshold,
-                    alertsEnabled: alertsEnabled
+                    alertThreshold: alertThreshold
                 )
             } else {
                 _ = try budgetService.create(
@@ -179,7 +164,6 @@ struct BudgetEntrySheet: View {
                     currencyCode: currencyCode,
                     period: period,
                     alertThreshold: alertThreshold,
-                    alertsEnabled: alertsEnabled,
                     isActive: true
                 )
             }

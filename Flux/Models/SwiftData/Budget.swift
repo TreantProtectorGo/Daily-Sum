@@ -23,6 +23,15 @@ final class Budget {
     
     /// Whether alerts are enabled for this budget
     var alertsEnabled: Bool
+
+    /// Start date of the budget period whose progressive alerts are currently tracked.
+    var alertTrackingPeriodStart: Date?
+
+    /// Whether the 80% warning has been sent in the tracked period.
+    var hasSentWarningAlertInTrackedPeriod: Bool
+
+    /// Whether the 100% exceeded alert has been sent in the tracked period.
+    var hasSentExceededAlertInTrackedPeriod: Bool
     
     /// Date the budget was created
     var createdAt: Date
@@ -41,6 +50,9 @@ final class Budget {
         period: BudgetPeriod = .monthly,
         alertThreshold: Decimal = 0.8,
         alertsEnabled: Bool = true,
+        alertTrackingPeriodStart: Date? = nil,
+        hasSentWarningAlertInTrackedPeriod: Bool = false,
+        hasSentExceededAlertInTrackedPeriod: Bool = false,
         createdAt: Date = .now,
         isActive: Bool = true,
         category: Category? = nil
@@ -51,6 +63,9 @@ final class Budget {
         self.period = period
         self.alertThreshold = alertThreshold
         self.alertsEnabled = alertsEnabled
+        self.alertTrackingPeriodStart = alertTrackingPeriodStart
+        self.hasSentWarningAlertInTrackedPeriod = hasSentWarningAlertInTrackedPeriod
+        self.hasSentExceededAlertInTrackedPeriod = hasSentExceededAlertInTrackedPeriod
         self.createdAt = createdAt
         self.isActive = isActive
         self.category = category
@@ -102,12 +117,25 @@ final class Budget {
     
     /// Whether the budget alert threshold has been reached
     func isAlertTriggered(in context: ModelContext, for date: Date = .now) -> Bool {
-        guard alertsEnabled else { return false }
         return usagePercentage(in: context, for: date) >= alertThreshold
     }
     
     /// Whether the budget has been exceeded
     func isExceeded(in context: ModelContext, for date: Date = .now) -> Bool {
         usagePercentage(in: context, for: date) >= 1.0
+    }
+
+    /// Resets per-period progressive alert state when entering a new budget period.
+    @discardableResult
+    func resetTrackedAlertStateIfNeeded(for date: Date, calendar: Calendar = .current) -> Bool {
+        let periodStart = period.dateRange(containing: date, calendar: calendar).start
+        guard alertTrackingPeriodStart != periodStart else {
+            return false
+        }
+
+        alertTrackingPeriodStart = periodStart
+        hasSentWarningAlertInTrackedPeriod = false
+        hasSentExceededAlertInTrackedPeriod = false
+        return true
     }
 }

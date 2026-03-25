@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct FluxApp: App {
@@ -15,6 +16,10 @@ struct FluxApp: App {
     @State private var isLoading = true
     @State private var loadError: Error?
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
+
+    init() {
+        UNUserNotificationCenter.current().delegate = ForegroundNotificationPresentationDelegate.shared
+    }
     
     var body: some Scene {
         WindowGroup {
@@ -72,6 +77,7 @@ struct FluxApp: App {
             container = try await ModelContainer.createAndSeed(enableCloudKit: enableCloudKit)
             
             if let container {
+                await requestNotificationAuthorizationIfNeeded(in: container)
                 Task { @MainActor in
                     await refreshScheduledTransactionsAndReminders(in: container)
                     await refreshExchangeRatesIfNeeded(in: container)
@@ -100,6 +106,17 @@ struct FluxApp: App {
     }
 
     @MainActor
+    private func requestNotificationAuthorizationIfNeeded(in container: ModelContainer) async {
+        let status = await UNUserNotificationCenter.current().authorizationStatusValue()
+        guard NotificationAuthorizationStartupPolicy.shouldRequestOnAppLaunch(for: status) else {
+            return
+        }
+
+        let scheduler = TransactionReminderScheduler(context: container.mainContext)
+        _ = try? await scheduler.requestAuthorizationIfNeeded()
+    }
+
+    @MainActor
     private func refreshScheduledTransactionsAndReminders(in container: ModelContainer) async {
         do {
             let service = TransactionService(context: container.mainContext)
@@ -108,6 +125,8 @@ struct FluxApp: App {
             _ = try generator.generatePendingTransactions()
             let reminderScheduler = TransactionReminderScheduler(context: container.mainContext)
             try await reminderScheduler.resyncAllPendingReminders()
+            let budgetAlertScheduler = BudgetAlertScheduler(context: container.mainContext)
+            try await budgetAlertScheduler.syncAlerts()
         } catch {
             print("Scheduled transaction refresh failed: \(error.localizedDescription)")
         }

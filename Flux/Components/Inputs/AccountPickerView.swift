@@ -4,80 +4,106 @@ import SwiftData
 struct AccountPickerView: View {
     @Binding var selectedAccount: Account?
     let showBalance: Bool
+    let expansionTrigger: Int
     
     @Query(sort: \Account.createdAt) private var accounts: [Account]
-    @State private var isExpanded = false
+    @State private var showAccountSheet = false
     
-    init(selectedAccount: Binding<Account?>, showBalance: Bool = true) {
+    init(
+        selectedAccount: Binding<Account?>,
+        showBalance: Bool = true,
+        expansionTrigger: Int = 0
+    ) {
         self._selectedAccount = selectedAccount
         self.showBalance = showBalance
+        self.expansionTrigger = expansionTrigger
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(.spring(duration: 0.3)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    if let account = selectedAccount {
-                        AccountTypeIcon(accountType: account.type, size: .small)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(account.name)
-                                .font(.headline)
-                            if showBalance {
-                                Text(CurrencyFormatter.shared.format(account.currentBalance, currencyCode: account.currencyCode))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+        Button {
+            showAccountSheet = true
+        } label: {
+            HStack {
+                if let account = selectedAccount {
+                    AccountTypeIcon(accountType: account.type, size: .small)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(account.name)
+                            .font(.body)
+                        if showBalance {
+                            Text(
+                                CurrencyFormatter.shared.format(
+                                    account.currentBalance,
+                                    currencyCode: account.currencyCode
+                                )
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         }
-                    } else {
-                        Image(systemName: "building.columns")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 32, height: 32)
-                        Text(AppLocalization.string("account.select", defaultValue: "Select Account"))
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
+                } else {
+                    Image(systemName: "building.columns")
+                        .font(.title3)
                         .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .frame(width: 32, height: 32)
+                    Text(AppLocalization.string("account.select", defaultValue: "Select Account"))
+                        .font(.body)
+                        .foregroundStyle(.secondary)
                 }
-                .padding()
-                .glassBackground(cornerRadius: 12, isInteractive: true)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            
-            if isExpanded {
-                accountList
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("transaction.accountPicker.trigger")
+        .onChange(of: expansionTrigger) { _, _ in
+            guard accounts.count > 1 else { return }
+            showAccountSheet = true
+        }
+        .sheet(isPresented: $showAccountSheet) {
+            AccountSelectionSheet(
+                selectedAccount: $selectedAccount,
+                accounts: accounts,
+                showBalance: showBalance
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
-    
-    private var accountList: some View {
-        VStack(spacing: 8) {
-            ForEach(accounts) { account in
+}
+
+private struct AccountSelectionSheet: View {
+    @Binding var selectedAccount: Account?
+    let accounts: [Account]
+    let showBalance: Bool
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(accounts) { account in
                 AccountPickerRow(
                     account: account,
                     isSelected: selectedAccount?.id == account.id,
                     showBalance: showBalance
                 ) {
                     selectedAccount = account
-                    withAnimation(.spring(duration: 0.3)) {
-                        isExpanded = false
-                    }
+                    dismiss()
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
+            .listStyle(.plain)
+            .accessibilityIdentifier("transaction.accountPicker.sheet")
+            .navigationTitle(AppLocalization.string("account.select", defaultValue: "Select Account"))
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .padding()
-        .glassBackground(cornerRadius: 16)
     }
 }
 
@@ -115,10 +141,10 @@ private struct AccountPickerRow: View {
                         .foregroundStyle(.blue)
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .padding(.horizontal, 12)
-            .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(isSelected ? Color.blue.opacity(0.08) : Color.secondary.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
     }

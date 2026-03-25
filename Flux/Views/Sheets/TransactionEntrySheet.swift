@@ -74,6 +74,26 @@ enum TransactionEntryPresentation {
     }
 }
 
+enum TransactionEntryCategoryPresentation {
+    static func shouldAutoPresentAfterAmountConfirmation(
+        existingTransaction: Transaction?,
+        amount: Decimal,
+        selectedCategory: Category?
+    ) -> Bool {
+        existingTransaction == nil && amount > 0 && selectedCategory == nil
+    }
+}
+
+enum TransactionEntryAccountPresentation {
+    static func shouldAutoPresentAfterCategorySelection(
+        isEnabled: Bool,
+        selectedCategory: Category?,
+        availableAccountsCount: Int
+    ) -> Bool {
+        isEnabled && selectedCategory != nil && availableAccountsCount > 1
+    }
+}
+
 // MARK: - Transaction Entry Sheet
 
 /// Sheet for adding or editing a transaction
@@ -99,7 +119,8 @@ struct TransactionEntrySheet: View {
     @State private var sheetOpenedAt: Date?
     @State private var hasLoggedFirstAmountInput = false
     @State private var amountFieldFocusedAt: Date?
-    @State private var selectedDetent: PresentationDetent = .medium
+    @State private var categoryPresentationTrigger = 0
+    @State private var accountPresentationTrigger = 0
     
     @State private var isSaving = false
     @State private var showError = false
@@ -169,10 +190,6 @@ struct TransactionEntrySheet: View {
                     metadata: "mode=\(mode)"
                 )
     
-                // Start in large detent for create flow so auto-focused keypad
-                // does not wait on a medium->large expansion animation.
-                selectedDetent = existingTransaction == nil ? .large : .medium
-
                 if existingTransaction != nil {
                     loadExistingTransaction()
                 } else {
@@ -200,7 +217,7 @@ struct TransactionEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large], selection: $selectedDetent)
+        .presentationDetents([.large])
     }
     
     // MARK: - Form Sections
@@ -230,7 +247,8 @@ struct TransactionEntrySheet: View {
                 currencyCode: selectedAccount?.currencyCode ?? UserCurrencyPreference.resolvedCurrencyCode,
                 autoFocus: existingTransaction == nil,
                 onFirstUserInput: handleFirstAmountInput,
-                onFocusChanged: handleAmountFieldFocusChanged
+                onFocusChanged: handleAmountFieldFocusChanged,
+                onConfirm: handleAmountInputConfirmed
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -241,26 +259,20 @@ struct TransactionEntrySheet: View {
         Section {
             CategoryPickerView(
                 selectedCategory: $selectedCategory,
-                transactionType: transactionType
+                transactionType: transactionType,
+                presentationTrigger: categoryPresentationTrigger,
+                onSelectionCompleted: handleCategorySelectionCompleted
             )
 
             if accounts.isEmpty {
                 Text(AppLocalization.string("transaction.noAccounts", defaultValue: "No accounts available. Please create an account first."))
                     .foregroundStyle(.secondary)
             } else {
-                Picker(AppLocalization.string("transaction.account", defaultValue: "Account"), selection: $selectedAccount) {
-                    Text(AppLocalization.string("transaction.selectAccount", defaultValue: "Select Account"))
-                        .tag(nil as Account?)
-                    
-                    ForEach(accounts) { account in
-                        HStack {
-                            Image(systemName: account.type.icon)
-                                .foregroundStyle(account.type.color)
-                            Text(account.name)
-                        }
-                        .tag(account as Account?)
-                    }
-                }
+                AccountPickerView(
+                    selectedAccount: $selectedAccount,
+                    showBalance: true,
+                    expansionTrigger: accountPresentationTrigger
+                )
             }
 
             DatePicker(
@@ -666,10 +678,33 @@ struct TransactionEntrySheet: View {
         if isFocused {
             amountFieldFocusedAt = Date()
             PerformanceLogger.mark("TransactionEntrySheet.CustomPad.Open")
-            selectedDetent = .large
         } else {
             amountFieldFocusedAt = nil
         }
+    }
+
+    private func handleAmountInputConfirmed() {
+        guard TransactionEntryCategoryPresentation.shouldAutoPresentAfterAmountConfirmation(
+            existingTransaction: existingTransaction,
+            amount: amount,
+            selectedCategory: selectedCategory
+        ) else {
+            return
+        }
+
+        categoryPresentationTrigger += 1
+    }
+
+    private func handleCategorySelectionCompleted(_ category: Category?) {
+        guard TransactionEntryAccountPresentation.shouldAutoPresentAfterCategorySelection(
+            isEnabled: TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection,
+            selectedCategory: category,
+            availableAccountsCount: accounts.count
+        ) else {
+            return
+        }
+
+        accountPresentationTrigger += 1
     }
 
     private func scheduledTemplateForEditing(

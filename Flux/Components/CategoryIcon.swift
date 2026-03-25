@@ -102,6 +102,27 @@ struct PlaceholderCategoryIcon: View {
     }
 }
 
+enum BudgetAllCategoriesPresentation {
+    static let icon = CategoryPickerMode.budgetExpense.placeholderIcon
+}
+
+struct BudgetAllCategoriesIcon: View {
+    let size: CategoryIcon.Size
+
+    init(size: CategoryIcon.Size = .medium) {
+        self.size = size
+    }
+
+    var body: some View {
+        Image(systemName: BudgetAllCategoriesPresentation.icon)
+            .font(size.iconFont)
+            .foregroundStyle(.secondary)
+            .frame(width: size.dimension, height: size.dimension)
+            .background(Color.secondary.opacity(0.15))
+            .clipShape(Circle())
+    }
+}
+
 // MARK: - Account Type Icon
 
 /// An icon representing an account type

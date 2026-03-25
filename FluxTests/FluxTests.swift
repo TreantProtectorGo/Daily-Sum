@@ -20,6 +20,7 @@ final class FluxTests: XCTestCase {
     private var originalManualTravelCurrencyCode: String?
     private var originalShowUpcomingScheduled: Bool?
     private var originalShowUpcomingScheduledMigration: Bool?
+    private var originalAutoPresentAccountAfterCategorySelection: Any?
 
     override func setUpWithError() throws {
         originalPreferredCurrencyCode = UserDefaults.standard.string(
@@ -40,6 +41,9 @@ final class FluxTests: XCTestCase {
         originalShowUpcomingScheduledMigration = UserDefaults.standard.object(
             forKey: Self.showUpcomingScheduledMigrationKey
         ) as? Bool
+        originalAutoPresentAccountAfterCategorySelection = UserDefaults.standard.object(
+            forKey: "flux.autoPresentAccountAfterCategorySelection"
+        )
     }
 
     override func tearDownWithError() throws {
@@ -84,6 +88,17 @@ final class FluxTests: XCTestCase {
         } else {
             UserDefaults.standard.removeObject(
                 forKey: Self.showUpcomingScheduledMigrationKey
+            )
+        }
+
+        if let originalAutoPresentAccountAfterCategorySelection {
+            UserDefaults.standard.set(
+                originalAutoPresentAccountAfterCategorySelection,
+                forKey: "flux.autoPresentAccountAfterCategorySelection"
+            )
+        } else {
+            UserDefaults.standard.removeObject(
+                forKey: "flux.autoPresentAccountAfterCategorySelection"
             )
         }
     }
@@ -178,6 +193,12 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(TransactionAccountPreference.defaultAccountId, accountId)
         XCTAssertTrue(TransactionAccountPreference.rememberLastUsedAccount)
         XCTAssertEqual(TransactionAccountPreference.lastUsedAccountId, accountId)
+    }
+
+    func testTransactionAccountPreferenceDefaultsToRememberingLastUsedAccountWhenUnset() {
+        UserDefaults.standard.removeObject(forKey: "flux.rememberLastUsedTransactionAccount")
+
+        XCTAssertTrue(TransactionAccountPreference.rememberLastUsedAccount)
     }
 
     func testTransactionListPreferencePersistsShowUpcomingScheduled() {
@@ -387,6 +408,102 @@ final class FluxTests: XCTestCase {
                 amount: 12.34,
                 selectedAccount: nil,
                 selectedCategory: category
+            )
+        )
+    }
+
+    func testAmountConfirmationAutoPresentsCategoryForNewTransactionWithoutCategory() {
+        XCTAssertTrue(
+            TransactionEntryCategoryPresentation.shouldAutoPresentAfterAmountConfirmation(
+                existingTransaction: nil,
+                amount: 12.34,
+                selectedCategory: nil
+            )
+        )
+    }
+
+    func testAmountConfirmationDoesNotAutoPresentCategoryForExistingOrAlreadyCategorizedTransaction() {
+        let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF3B30",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let transaction = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            account: account,
+            category: nil
+        )
+
+        XCTAssertFalse(
+            TransactionEntryCategoryPresentation.shouldAutoPresentAfterAmountConfirmation(
+                existingTransaction: transaction,
+                amount: 12.34,
+                selectedCategory: nil
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryCategoryPresentation.shouldAutoPresentAfterAmountConfirmation(
+                existingTransaction: nil,
+                amount: 12.34,
+                selectedCategory: category
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryCategoryPresentation.shouldAutoPresentAfterAmountConfirmation(
+                existingTransaction: nil,
+                amount: 0,
+                selectedCategory: nil
+            )
+        )
+    }
+
+    func testCategorySelectionAutoPresentsAccountOnlyWhenEnabledAndCategorySelected() {
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF3B30",
+            type: .expense,
+            isSystemDefault: true
+        )
+
+        XCTAssertTrue(
+            TransactionEntryAccountPresentation.shouldAutoPresentAfterCategorySelection(
+                isEnabled: true,
+                selectedCategory: category,
+                availableAccountsCount: 2
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryAccountPresentation.shouldAutoPresentAfterCategorySelection(
+                isEnabled: false,
+                selectedCategory: category,
+                availableAccountsCount: 2
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryAccountPresentation.shouldAutoPresentAfterCategorySelection(
+                isEnabled: true,
+                selectedCategory: category,
+                availableAccountsCount: 1
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryAccountPresentation.shouldAutoPresentAfterCategorySelection(
+                isEnabled: true,
+                selectedCategory: nil,
+                availableAccountsCount: 2
+            )
+        )
+        XCTAssertFalse(
+            TransactionEntryAccountPresentation.shouldAutoPresentAfterCategorySelection(
+                isEnabled: true,
+                selectedCategory: category,
+                availableAccountsCount: 0
             )
         )
     }

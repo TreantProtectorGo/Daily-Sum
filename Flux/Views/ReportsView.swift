@@ -576,6 +576,7 @@ struct ReportsView: View {
             ForEach(budgets) { budget in
                 BudgetRowCard(
                     budget: budget,
+                    status: viewModel.status(for: budget),
                     onTap: { selectedBudget = budget },
                     onDelete: {
                         Task { try? await viewModel.deleteBudget(budget) }
@@ -904,6 +905,7 @@ struct MonthlyTrendRow: View {
 
 struct BudgetRowCard: View {
     let budget: Budget
+    let status: BudgetService.BudgetStatus?
     let onTap: () -> Void
     let onDelete: () -> Void
     
@@ -919,8 +921,7 @@ struct BudgetRowCard: View {
                             .font(.subheadline)
                             .fontWeight(.semibold)
                     } else {
-                        Image(systemName: "chart.pie.fill")
-                            .foregroundStyle(.secondary)
+                        BudgetAllCategoriesIcon(size: .small)
                         Text(AppLocalization.string("budget.allCategories", defaultValue: "All Categories"))
                             .font(.subheadline)
                             .fontWeight(.semibold)
@@ -939,6 +940,7 @@ struct BudgetRowCard: View {
                 
                 BudgetProgressView(
                     budget: budget,
+                    status: status,
                     showsCategoryHeader: false,
                     isCompact: true
                 )

@@ -19,7 +19,6 @@ struct AccountEntrySheet: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showDeleteConfirmation = false
-    @State private var selectedDetent: PresentationDetent = .medium
     
     private var isEditing: Bool { existingAccount != nil }
     
@@ -32,8 +31,6 @@ struct AccountEntrySheet: View {
         NavigationStack {
             Form {
                 basicInfoSection
-                accountTypeSection
-                balanceSection
                 
                 if isEditing {
                     deleteSection
@@ -64,7 +61,6 @@ struct AccountEntrySheet: View {
                 }
             }
             .onAppear {
-                selectedDetent = isEditing ? .medium : .large
                 loadExistingAccount()
             }
             .alert(
@@ -76,7 +72,7 @@ struct AccountEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .presentationDetents([.medium, .large], selection: $selectedDetent)
+        .presentationDetents([.large])
         .alert(
             AppLocalization.string("account.delete.confirm.title", defaultValue: "Do you want to delete this Account?"),
             isPresented: $showDeleteConfirmation,
@@ -99,11 +95,7 @@ struct AccountEntrySheet: View {
                 text: $name
             )
             .textInputAutocapitalization(.words)
-        }
-    }
-    
-    private var accountTypeSection: some View {
-        Section(AppLocalization.string("account.type", defaultValue: "Account Type")) {
+
             Picker(AppLocalization.string("account.type", defaultValue: "Type"), selection: $accountType) {
                 ForEach(AccountType.allCases, id: \.self) { type in
                     HStack {
@@ -114,11 +106,7 @@ struct AccountEntrySheet: View {
                 }
             }
             .pickerStyle(.menu)
-        }
-    }
-    
-    private var balanceSection: some View {
-        Section(AppLocalization.string("account.balance", defaultValue: "Balance")) {
+
             currencyPicker
 
             CompactAmountInput(

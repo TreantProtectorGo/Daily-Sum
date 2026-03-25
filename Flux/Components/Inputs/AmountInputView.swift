@@ -12,12 +12,14 @@ struct AmountInputView: View {
     let useOuterPadding: Bool
     let onFirstUserInput: (() -> Void)?
     let onFocusChanged: ((Bool) -> Void)?
+    let onConfirm: (() -> Void)?
 
     @State private var hasAttemptedAutoFocus = false
     @State private var hasReportedFirstInput = false
     @State private var inputBuffer = NumericExpressionBuffer(maxFractionDigits: 4)
     @State private var isNumberPadPresented = false
     @State private var shouldCommitDraftOnDismiss = false
+    @State private var shouldRunConfirmActionOnDismiss = false
 
     init(
         amount: Binding<Decimal>,
@@ -27,7 +29,8 @@ struct AmountInputView: View {
         useGlassBackground: Bool = true,
         useOuterPadding: Bool = true,
         onFirstUserInput: (() -> Void)? = nil,
-        onFocusChanged: ((Bool) -> Void)? = nil
+        onFocusChanged: ((Bool) -> Void)? = nil,
+        onConfirm: (() -> Void)? = nil
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
@@ -37,6 +40,7 @@ struct AmountInputView: View {
         self.useOuterPadding = useOuterPadding
         self.onFirstUserInput = onFirstUserInput
         self.onFocusChanged = onFocusChanged
+        self.onConfirm = onConfirm
     }
 
     var body: some View {
@@ -149,6 +153,10 @@ struct AmountInputView: View {
         }
         shouldCommitDraftOnDismiss = false
         onFocusChanged?(false)
+        if shouldRunConfirmActionOnDismiss {
+            shouldRunConfirmActionOnDismiss = false
+            onConfirm?()
+        }
     }
 
     private func reportFirstUserInputIfNeeded() {
@@ -180,6 +188,7 @@ struct AmountInputView: View {
         case .confirm:
             _ = commitDraft()
             shouldCommitDraftOnDismiss = false
+            shouldRunConfirmActionOnDismiss = true
             setNumberPadPresented(false)
             return .accepted
         }
@@ -230,22 +239,26 @@ struct CompactAmountInput: View {
     let currencyCode: String
     let label: String
     let autoFocus: Bool
+    let onConfirm: (() -> Void)?
 
     @State private var hasAttemptedAutoFocus = false
     @State private var inputBuffer = NumericExpressionBuffer(maxFractionDigits: 4)
     @State private var isNumberPadPresented = false
     @State private var shouldCommitDraftOnDismiss = false
+    @State private var shouldRunConfirmActionOnDismiss = false
 
     init(
         amount: Binding<Decimal>,
         currencyCode: String,
         label: String,
-        autoFocus: Bool = false
+        autoFocus: Bool = false,
+        onConfirm: (() -> Void)? = nil
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
         self.label = label
         self.autoFocus = autoFocus
+        self.onConfirm = onConfirm
     }
 
     var body: some View {
@@ -347,6 +360,10 @@ struct CompactAmountInput: View {
             _ = commitDraft()
         }
         shouldCommitDraftOnDismiss = false
+        if shouldRunConfirmActionOnDismiss {
+            shouldRunConfirmActionOnDismiss = false
+            onConfirm?()
+        }
     }
 
     private func syncBufferFromAmount() {
@@ -382,6 +399,7 @@ struct CompactAmountInput: View {
         case .confirm:
             _ = commitDraft()
             shouldCommitDraftOnDismiss = false
+            shouldRunConfirmActionOnDismiss = true
             setNumberPadPresented(false)
             return .accepted
         }

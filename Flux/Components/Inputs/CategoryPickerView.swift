@@ -98,6 +98,8 @@ enum CategoryPickerMode {
 struct CategoryPickerView: View {
     @Binding var selectedCategory: Category?
     let mode: CategoryPickerMode
+    let presentationTrigger: Int
+    let onSelectionCompleted: ((Category?) -> Void)?
     
     @Query(sort: \Category.nameKey) private var allCategories: [Category]
     @State private var showCategorySheet = false
@@ -113,14 +115,28 @@ struct CategoryPickerView: View {
         }
     }
     
-    init(selectedCategory: Binding<Category?>, transactionType: TransactionType) {
+    init(
+        selectedCategory: Binding<Category?>,
+        transactionType: TransactionType,
+        presentationTrigger: Int = 0,
+        onSelectionCompleted: ((Category?) -> Void)? = nil
+    ) {
         self._selectedCategory = selectedCategory
         self.mode = .transaction(transactionType)
+        self.presentationTrigger = presentationTrigger
+        self.onSelectionCompleted = onSelectionCompleted
     }
 
-    init(selectedCategory: Binding<Category?>, mode: CategoryPickerMode) {
+    init(
+        selectedCategory: Binding<Category?>,
+        mode: CategoryPickerMode,
+        presentationTrigger: Int = 0,
+        onSelectionCompleted: ((Category?) -> Void)? = nil
+    ) {
         self._selectedCategory = selectedCategory
         self.mode = mode
+        self.presentationTrigger = presentationTrigger
+        self.onSelectionCompleted = onSelectionCompleted
     }
     
     var body: some View {
@@ -133,7 +149,11 @@ struct CategoryPickerView: View {
                     Text(category.displayName)
                         .font(.body)
                 } else {
-                    PlaceholderCategoryIcon(size: .small)
+                    if mode.showsPlaceholderOption {
+                        BudgetAllCategoriesIcon(size: .small)
+                    } else {
+                        PlaceholderCategoryIcon(size: .small)
+                    }
                     Text(mode.placeholderTitle)
                         .font(.body)
                         .foregroundStyle(.secondary)
@@ -150,11 +170,15 @@ struct CategoryPickerView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("transaction.categoryPicker.trigger")
+        .onChange(of: presentationTrigger) { _, _ in
+            showCategorySheet = true
+        }
         .sheet(isPresented: $showCategorySheet) {
             CategorySelectionSheet(
                 selectedCategory: $selectedCategory,
                 categories: categories,
-                mode: mode
+                mode: mode,
+                onSelectionCompleted: onSelectionCompleted
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -166,6 +190,7 @@ private struct CategorySelectionSheet: View {
     @Binding var selectedCategory: Category?
     let categories: [Category]
     let mode: CategoryPickerMode
+    let onSelectionCompleted: ((Category?) -> Void)?
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -179,6 +204,7 @@ private struct CategorySelectionSheet: View {
                             isSelected: selectedCategory == nil
                         ) {
                             selectedCategory = nil
+                            onSelectionCompleted?(nil)
                             dismiss()
                         }
                     }
@@ -189,6 +215,7 @@ private struct CategorySelectionSheet: View {
                             isSelected: selectedCategory?.id == category.id
                         ) {
                             selectedCategory = category
+                            onSelectionCompleted?(category)
                             dismiss()
                         }
                     }

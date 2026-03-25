@@ -5,6 +5,7 @@ import SwiftData
 
 struct BudgetProgressView: View {
     let budget: Budget
+    let status: BudgetService.BudgetStatus?
     let showsCategoryHeader: Bool
     let isCompact: Bool
     
@@ -13,24 +14,26 @@ struct BudgetProgressView: View {
 
     init(
         budget: Budget,
+        status: BudgetService.BudgetStatus? = nil,
         showsCategoryHeader: Bool = true,
         isCompact: Bool = false
     ) {
         self.budget = budget
+        self.status = status
         self.showsCategoryHeader = showsCategoryHeader
         self.isCompact = isCompact
     }
     
     private var spentAmount: Decimal {
-        budget.spentAmount(in: modelContext)
+        status?.spent ?? budget.spentAmount(in: modelContext)
     }
     
     private var progress: Double {
-        NSDecimalNumber(decimal: budget.usagePercentage(in: modelContext)).doubleValue
+        NSDecimalNumber(decimal: status?.percentage ?? budget.usagePercentage(in: modelContext)).doubleValue
     }
     
     private var remainingAmount: Decimal {
-        budget.remainingAmount(in: modelContext)
+        status?.remaining ?? budget.remainingAmount(in: modelContext)
     }
     
     var body: some View {
@@ -43,6 +46,7 @@ struct BudgetProgressView: View {
                         Text(category.displayName)
                             .font(.headline)
                     } else {
+                        BudgetAllCategoriesIcon(size: .small)
                         Text(AppLocalization.string("budget.allCategories", defaultValue: "All Categories"))
                             .font(.headline)
                     }

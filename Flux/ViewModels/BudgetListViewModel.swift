@@ -13,6 +13,7 @@ final class BudgetListViewModel {
     var budgets: [Budget] = []
     var activeBudgets: [Budget] = []
     var inactiveBudgets: [Budget] = []
+    var budgetStatusesByID: [UUID: BudgetService.BudgetStatus] = [:]
     var totalBudgeted: Decimal = 0
     var totalSpent: Decimal = 0
     
@@ -25,14 +26,11 @@ final class BudgetListViewModel {
     }
     
     var budgetsOverLimit: Int {
-        activeBudgets.filter { $0.usagePercentage(in: modelContext) >= 1.0 }.count
+        activeBudgetStatuses.filter(\.isExceeded).count
     }
     
     var budgetsNearLimit: Int {
-        activeBudgets.filter { 
-            let usage = $0.usagePercentage(in: modelContext)
-            return usage >= 0.8 && usage < 1.0
-        }.count
+        activeBudgetStatuses.filter { $0.isAlertTriggered && !$0.isExceeded }.count
     }
     
     init(
@@ -55,11 +53,16 @@ final class BudgetListViewModel {
                 sortBy: [SortDescriptor(\Budget.createdAt, order: .reverse)]
             )
             budgets = try modelContext.fetch(descriptor)
+            budgetStatusesByID = Dictionary(
+                uniqueKeysWithValues: budgets.map { budget in
+                    (budget.id, budgetService.status(for: budget))
+                }
+            )
             
             // Active state is no longer user-facing; treat all budgets as visible.
             activeBudgets = budgets
             inactiveBudgets = []
-            let totals = try await calculateConvertedTotals(for: activeBudgets)
+            let totals = try await calculateConvertedTotals(for: activeBudgetStatuses)
             totalBudgeted = totals.budgeted
             totalSpent = totals.spent
             
@@ -75,17 +78,25 @@ final class BudgetListViewModel {
         await loadBudgets()
     }
 
+    func status(for budget: Budget) -> BudgetService.BudgetStatus? {
+        budgetStatusesByID[budget.id]
+    }
+
+    private var activeBudgetStatuses: [BudgetService.BudgetStatus] {
+        activeBudgets.compactMap { budgetStatusesByID[$0.id] }
+    }
+
     private func calculateConvertedTotals(
-        for budgets: [Budget]
+        for statuses: [BudgetService.BudgetStatus]
     ) async throws -> (budgeted: Decimal, spent: Decimal) {
         var totalBudgeted: Decimal = 0
         var totalSpent: Decimal = 0
         let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
 
-        for budget in budgets {
+        for status in statuses {
             let convertedLimit = try await conversionService.convert(
-                budget.limitAmount,
-                from: budget.currencyCode,
+                status.limit,
+                from: status.budget.currencyCode,
                 to: displayCurrencyCode,
                 on: .now,
                 mode: conversionMode
@@ -93,8 +104,8 @@ final class BudgetListViewModel {
             totalBudgeted += convertedLimit
 
             let convertedSpent = try await conversionService.convert(
-                budget.spentAmount(in: modelContext),
-                from: budget.currencyCode,
+                status.spent,
+                from: status.budget.currencyCode,
                 to: displayCurrencyCode,
                 on: .now,
                 mode: conversionMode

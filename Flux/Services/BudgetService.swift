@@ -155,22 +155,57 @@ final class BudgetService {
     /// Gets the status of all active budgets
     func allBudgetStatuses(for date: Date = .now) throws -> [BudgetStatus] {
         let budgets = try fetch(activeOnly: true)
-        return budgets.map { budget in
-            BudgetStatus(
-                budget: budget,
-                spent: budget.spentAmount(in: context, for: date),
-                limit: budget.limitAmount,
-                isAlertTriggered: budget.isAlertTriggered(in: context, for: date),
-                isExceeded: budget.isExceeded(in: context, for: date)
-            )
-        }
+        return budgets.map { status(for: $0, date: date) }
+    }
+
+    func status(for budget: Budget, date: Date = .now) -> BudgetStatus {
+        BudgetStatus(
+            budget: budget,
+            spent: budget.spentAmount(in: context, for: date),
+            limit: budget.limitAmount,
+            isAlertTriggered: budget.isAlertTriggered(in: context, for: date),
+            isExceeded: budget.isExceeded(in: context, for: date)
+        )
     }
     
     /// Gets budgets that have triggered alerts
-    func triggeredAlerts(for date: Date = .now) throws -> [Budget] {
-        try fetch(activeOnly: true).filter { budget in
-            budget.isAlertTriggered(in: context, for: date)
+    func triggeredAlerts(for date: Date = .now) throws -> [BudgetAlert] {
+        let budgets = try fetch(activeOnly: true)
+        var alerts: [BudgetAlert] = []
+        var requiresSave = false
+
+        for budget in budgets {
+            if budget.resetTrackedAlertStateIfNeeded(for: date) {
+                requiresSave = true
+            }
+
+            let usage = budget.usagePercentage(in: context, for: date)
+            if usage >= 1.0 {
+                if !budget.hasSentWarningAlertInTrackedPeriod {
+                    budget.hasSentWarningAlertInTrackedPeriod = true
+                    requiresSave = true
+                }
+
+                if !budget.hasSentExceededAlertInTrackedPeriod {
+                    budget.hasSentExceededAlertInTrackedPeriod = true
+                    alerts.append(BudgetAlert(budget: budget, stage: .exceeded))
+                    requiresSave = true
+                }
+                continue
+            }
+
+            if usage >= budget.alertThreshold, !budget.hasSentWarningAlertInTrackedPeriod {
+                budget.hasSentWarningAlertInTrackedPeriod = true
+                alerts.append(BudgetAlert(budget: budget, stage: .warning))
+                requiresSave = true
+            }
         }
+
+        if requiresSave {
+            try context.save()
+        }
+
+        return alerts
     }
     
     // MARK: - Types
@@ -184,6 +219,16 @@ final class BudgetService {
         
         var remaining: Decimal { limit - spent }
         var percentage: Decimal { limit > 0 ? spent / limit : 0 }
+    }
+
+    struct BudgetAlert {
+        let budget: Budget
+        let stage: BudgetAlertStage
+    }
+
+    enum BudgetAlertStage {
+        case warning
+        case exceeded
     }
     
     // MARK: - Errors

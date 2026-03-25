@@ -9,6 +9,7 @@ struct SettingsView: View {
     private let autoPopWhenTabSwitch: Bool
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: SettingsViewModel?
     @Query(sort: \Account.createdAt) private var accounts: [Account]
@@ -108,6 +109,12 @@ struct SettingsView: View {
                 await viewModel.refreshReminderAuthorizationStatus()
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await viewModel.refreshReminderAuthorizationStatus()
+            }
+        }
     }
     
     // MARK: - Transaction Defaults Section
@@ -138,10 +145,26 @@ struct SettingsView: View {
                     set: { viewModel.rememberLastUsedAccount = $0 }
                 )
             )
+
+            Toggle(
+                AppLocalization.string(
+                    "settings.autoOpenAccountAfterCategory",
+                    defaultValue: "Auto-Open Account After Category"
+                ),
+                isOn: Binding(
+                    get: { viewModel.autoPresentAccountAfterCategorySelection },
+                    set: { viewModel.autoPresentAccountAfterCategorySelection = $0 }
+                )
+            )
         } header: {
             Text(AppLocalization.string("settings.transactionDefaults", defaultValue: "Transaction Defaults"))
         } footer: {
-            Text(AppLocalization.string("settings.rememberLastAccount.footer", defaultValue: "When enabled, Add Transaction opens with your last used account. Otherwise it uses Default Account."))
+            Text(
+                AppLocalization.string(
+                    "settings.transactionDefaults.footer",
+                    defaultValue: "Remember Last Used Account is on by default. Turn on Auto-Open Account After Category if you want the account picker to open immediately after choosing a category."
+                )
+            )
         }
     }
 
@@ -178,28 +201,28 @@ struct SettingsView: View {
     @ViewBuilder
     private func remindersSection(viewModel: SettingsViewModel) -> some View {
         Section {
-            HStack {
-                Text(AppLocalization.string("settings.reminders.status", defaultValue: "Due Date Reminders"))
-                Spacer()
-                Text(viewModel.reminderStatusText)
-                    .foregroundStyle(.secondary)
-            }
-
-            if viewModel.notificationAuthorizationStatus == .notDetermined {
-                Button(AppLocalization.string("settings.reminders.enable", defaultValue: "Enable Notifications")) {
-                    Task {
-                        await viewModel.requestReminderAuthorization()
+            Toggle(
+                AppLocalization.string("settings.reminders.status", defaultValue: "All Notifications"),
+                isOn: Binding(
+                    get: { viewModel.allNotificationsEnabled },
+                    set: { isEnabled in
+                        Task {
+                            let action = await viewModel.setAllNotificationsEnabled(isEnabled)
+                            if action == .openSystemSettings {
+                                openSystemSettings()
+                            }
+                        }
                     }
-                }
-            } else if viewModel.notificationAuthorizationStatus == .denied {
-                Button(AppLocalization.string("settings.reminders.openSettings", defaultValue: "Open iOS Settings")) {
-                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                    UIApplication.shared.open(url)
-                }
-            }
+                )
+            )
         } header: {
             Text(AppLocalization.string("settings.reminders", defaultValue: "Notifications"))
         }
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
     
     // MARK: - Currency Section

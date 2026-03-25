@@ -654,6 +654,160 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(center.removedIdentifiers, [identifier])
     }
 
+    func testBudgetAlertSchedulerSchedulesWarningNotificationOnce() async throws {
+        let category = Category(
+            nameKey: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF6600",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(category)
+
+        let account = Account(name: "Wallet", type: .cash, currencyCode: "USD", initialBalance: 1000)
+        context.insert(account)
+
+        let budget = Budget(
+            limitAmount: 100,
+            currencyCode: "USD",
+            period: .monthly,
+            alertThreshold: 0.8,
+            category: category
+        )
+        context.insert(budget)
+
+        let date = Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 3, day: 25, hour: 10)
+        )!
+        context.insert(Transaction(
+            amount: 80,
+            currencyCode: "USD",
+            type: .expense,
+            date: date,
+            account: account,
+            category: category
+        ))
+        try context.save()
+
+        let center = MockUserNotificationCenter()
+        let scheduler = BudgetAlertScheduler(
+            context: context,
+            notificationCenter: center,
+            calendar: Calendar(identifier: .gregorian)
+        )
+
+        try await scheduler.syncAlerts(for: date)
+        try await scheduler.syncAlerts(for: date)
+
+        XCTAssertEqual(center.addedRequests.count, 1)
+        XCTAssertEqual(
+            center.addedRequests.first?.identifier,
+            BudgetAlertScheduler.identifier(
+                budgetId: budget.id,
+                periodStart: budget.period.dateRange(containing: date, calendar: Calendar(identifier: .gregorian)).start,
+                stage: .warning
+            )
+        )
+        let trigger = try XCTUnwrap(center.addedRequests.first?.trigger as? UNTimeIntervalNotificationTrigger)
+        XCTAssertEqual(trigger.timeInterval, 1, accuracy: 0.1)
+        XCTAssertFalse(trigger.repeats)
+    }
+
+    func testBudgetAlertSchedulerSchedulesExceededNotification() async throws {
+        let category = Category(
+            nameKey: "Travel",
+            icon: "airplane",
+            colorHex: "#00AA88",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(category)
+
+        let account = Account(name: "Card", type: .cash, currencyCode: "USD", initialBalance: 1000)
+        context.insert(account)
+
+        let budget = Budget(
+            limitAmount: 100,
+            currencyCode: "USD",
+            period: .monthly,
+            alertThreshold: 0.8,
+            category: category
+        )
+        context.insert(budget)
+
+        let date = Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 3, day: 25, hour: 10)
+        )!
+        context.insert(Transaction(
+            amount: 120,
+            currencyCode: "USD",
+            type: .expense,
+            date: date,
+            account: account,
+            category: category
+        ))
+        try context.save()
+
+        let center = MockUserNotificationCenter()
+        let scheduler = BudgetAlertScheduler(
+            context: context,
+            notificationCenter: center,
+            calendar: Calendar(identifier: .gregorian)
+        )
+
+        try await scheduler.syncAlerts(for: date)
+
+        XCTAssertEqual(center.addedRequests.count, 1)
+        XCTAssertEqual(
+            center.addedRequests.first?.identifier,
+            BudgetAlertScheduler.identifier(
+                budgetId: budget.id,
+                periodStart: budget.period.dateRange(containing: date, calendar: Calendar(identifier: .gregorian)).start,
+                stage: .exceeded
+            )
+        )
+    }
+
+    func testForegroundNotificationPresentationDelegateUsesBannerListAndSound() {
+        let options = ForegroundNotificationPresentationDelegate.presentationOptions
+
+        XCTAssertTrue(options.contains(.banner))
+        XCTAssertTrue(options.contains(.list))
+        XCTAssertTrue(options.contains(.sound))
+    }
+
+    func testSettingsViewModelReportsAllNotificationsToggleStateFromAuthorizationStatus() {
+        let viewModel = SettingsViewModel(modelContext: context)
+
+        viewModel.notificationAuthorizationStatus = .authorized
+        XCTAssertTrue(viewModel.allNotificationsEnabled)
+
+        viewModel.notificationAuthorizationStatus = .notDetermined
+        XCTAssertFalse(viewModel.allNotificationsEnabled)
+    }
+
+    func testSettingsViewModelTurningOnNotificationsWhenDeniedOpensSystemSettings() async {
+        let viewModel = SettingsViewModel(modelContext: context)
+        viewModel.notificationAuthorizationStatus = .denied
+
+        let action = await viewModel.setAllNotificationsEnabled(true)
+
+        XCTAssertEqual(action, .openSystemSettings)
+    }
+
+    func testNotificationAuthorizationStartupPolicyOnlyRequestsWhenStatusIsNotDetermined() {
+        XCTAssertTrue(NotificationAuthorizationStartupPolicy.shouldRequestOnAppLaunch(for: .notDetermined))
+        XCTAssertFalse(NotificationAuthorizationStartupPolicy.shouldRequestOnAppLaunch(for: .authorized))
+        XCTAssertFalse(NotificationAuthorizationStartupPolicy.shouldRequestOnAppLaunch(for: .denied))
+    }
+
+    func testBudgetAllCategoriesPresentationUsesBudgetPickerPlaceholderIcon() {
+        XCTAssertEqual(
+            BudgetAllCategoriesPresentation.icon,
+            CategoryPickerMode.budgetExpense.placeholderIcon
+        )
+    }
+
     // MARK: - AccountService Tests
     
     func testAccountServiceTotalBalance() async throws {
@@ -808,7 +962,7 @@ final class ServiceTests: XCTestCase {
     
     // MARK: - BudgetService Tests
     
-    func testBudgetServiceAlerts() async throws {
+    func testBudgetServiceTriggersWarningAtEightyPercentOncePerPeriod() async throws {
         let categoryService = CategoryService(context: context)
         let transactionService = TransactionService(context: context)
         let budgetService = BudgetService(context: context)
@@ -832,12 +986,11 @@ final class ServiceTests: XCTestCase {
             category: category,
             limitAmount: 100,
             currencyCode: "USD",
-            alertThreshold: 0.5
+            alertThreshold: 0.8
         )
         
-        // Add expense that triggers alert (> 50%)
         let _ = try transactionService.create(
-            amount: 60,
+            amount: 80,
             type: .expense,
             account: account,
             category: category
@@ -845,7 +998,207 @@ final class ServiceTests: XCTestCase {
         
         let triggered = try budgetService.triggeredAlerts()
         XCTAssertEqual(triggered.count, 1)
-        XCTAssertEqual(triggered.first?.id, budget.id)
+        XCTAssertEqual(triggered.first?.budget.id, budget.id)
+        XCTAssertEqual(triggered.first?.stage, .warning)
+
+        let secondTriggered = try budgetService.triggeredAlerts()
+        XCTAssertTrue(secondTriggered.isEmpty)
+    }
+
+    func testBudgetServiceIgnoresLegacyAlertsEnabledFlag() async throws {
+        let categoryService = CategoryService(context: context)
+        let transactionService = TransactionService(context: context)
+        let budgetService = BudgetService(context: context)
+        let accountService = AccountService(context: context)
+
+        let category = try categoryService.create(
+            name: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF6600",
+            type: .expense
+        )
+
+        let account = try accountService.create(
+            name: "Cash",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 10000
+        )
+
+        let budget = try budgetService.create(
+            category: category,
+            limitAmount: 100,
+            currencyCode: "USD",
+            alertThreshold: 0.8,
+            alertsEnabled: false
+        )
+
+        let _ = try transactionService.create(
+            amount: 80,
+            type: .expense,
+            account: account,
+            category: category
+        )
+
+        let triggered = try budgetService.triggeredAlerts()
+        XCTAssertEqual(triggered.count, 1)
+        XCTAssertEqual(triggered.first?.budget.id, budget.id)
+        XCTAssertEqual(triggered.first?.stage, .warning)
+    }
+
+    func testBudgetServiceTriggersExceededAtOneHundredPercentOncePerPeriod() async throws {
+        let categoryService = CategoryService(context: context)
+        let transactionService = TransactionService(context: context)
+        let budgetService = BudgetService(context: context)
+        let accountService = AccountService(context: context)
+
+        let category = try categoryService.create(
+            name: "Bills",
+            icon: "doc.text",
+            colorHex: "#3366FF",
+            type: .expense
+        )
+
+        let account = try accountService.create(
+            name: "Checking",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 10000
+        )
+
+        let budget = try budgetService.create(
+            category: category,
+            limitAmount: 100,
+            currencyCode: "USD",
+            alertThreshold: 0.8
+        )
+
+        let _ = try transactionService.create(
+            amount: 120,
+            type: .expense,
+            account: account,
+            category: category
+        )
+
+        let triggered = try budgetService.triggeredAlerts()
+        XCTAssertEqual(triggered.count, 1)
+        XCTAssertEqual(triggered.first?.budget.id, budget.id)
+        XCTAssertEqual(triggered.first?.stage, .exceeded)
+        XCTAssertTrue(budget.hasSentWarningAlertInTrackedPeriod)
+        XCTAssertTrue(budget.hasSentExceededAlertInTrackedPeriod)
+
+        let secondTriggered = try budgetService.triggeredAlerts()
+        XCTAssertTrue(secondTriggered.isEmpty)
+    }
+
+    func testBudgetServiceDoesNotRetriggerWarningAfterUsageDropsInSamePeriod() async throws {
+        let categoryService = CategoryService(context: context)
+        let transactionService = TransactionService(context: context)
+        let budgetService = BudgetService(context: context)
+        let accountService = AccountService(context: context)
+
+        let category = try categoryService.create(
+            name: "Food",
+            icon: "fork.knife",
+            colorHex: "#FF6600",
+            type: .expense
+        )
+
+        let account = try accountService.create(
+            name: "Cash",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 10000
+        )
+
+        _ = try budgetService.create(
+            category: category,
+            limitAmount: 100,
+            currencyCode: "USD",
+            alertThreshold: 0.8
+        )
+
+        let expense = try transactionService.create(
+            amount: 80,
+            type: .expense,
+            account: account,
+            category: category
+        )
+
+        XCTAssertEqual(try budgetService.triggeredAlerts().first?.stage, .warning)
+
+        try transactionService.delete(expense)
+
+        let _ = try transactionService.create(
+            amount: 80,
+            type: .expense,
+            account: account,
+            category: category
+        )
+
+        let triggeredAgain = try budgetService.triggeredAlerts()
+        XCTAssertTrue(triggeredAgain.isEmpty)
+    }
+
+    func testBudgetServiceResetsProgressiveAlertsForNewPeriod() async throws {
+        let categoryService = CategoryService(context: context)
+        let transactionService = TransactionService(context: context)
+        let budgetService = BudgetService(context: context)
+        let accountService = AccountService(context: context)
+        let calendar = Calendar(identifier: .gregorian)
+
+        let category = try categoryService.create(
+            name: "Travel",
+            icon: "airplane",
+            colorHex: "#00AA88",
+            type: .expense
+        )
+
+        let account = try accountService.create(
+            name: "Debit",
+            type: .cash,
+            currencyCode: "USD",
+            initialBalance: 10000
+        )
+
+        _ = try budgetService.create(
+            category: category,
+            limitAmount: 100,
+            currencyCode: "USD",
+            period: .monthly,
+            alertThreshold: 0.8
+        )
+
+        let januaryDate = calendar.date(from: DateComponents(year: 2026, month: 1, day: 15))!
+        let februaryDate = calendar.date(from: DateComponents(year: 2026, month: 2, day: 15))!
+
+        let januaryExpense = try transactionService.create(
+            amount: 80,
+            type: .expense,
+            date: januaryDate,
+            account: account,
+            category: category
+        )
+
+        XCTAssertEqual(
+            try budgetService.triggeredAlerts(for: januaryDate).first?.stage,
+            .warning
+        )
+
+        try transactionService.delete(januaryExpense)
+
+        let _ = try transactionService.create(
+            amount: 80,
+            type: .expense,
+            date: februaryDate,
+            account: account,
+            category: category
+        )
+
+        XCTAssertEqual(
+            try budgetService.triggeredAlerts(for: februaryDate).first?.stage,
+            .warning
+        )
     }
     
     func testBudgetServiceRejectsDuplicateCategoryAndPeriod() async throws {
@@ -929,6 +1282,39 @@ final class ServiceTests: XCTestCase {
         )
 
         XCTAssertNil(budget.category)
+    }
+
+    func testBudgetListViewModelReloadRefreshesPerBudgetStatus() async throws {
+        let currencyCode = UserCurrencyPreference.resolvedCurrencyCode
+        let budgetService = BudgetService(context: context)
+        let viewModel = BudgetListViewModel(modelContext: context)
+
+        let budget = try budgetService.create(
+            category: nil,
+            limitAmount: 50,
+            currencyCode: currencyCode,
+            period: .monthly
+        )
+
+        await viewModel.loadBudgets()
+        XCTAssertEqual(viewModel.status(for: budget)?.spent, Decimal.zero)
+        XCTAssertEqual(viewModel.totalSpent, Decimal.zero)
+
+        let transaction = Transaction(
+            amount: 30,
+            currencyCode: currencyCode,
+            type: .expense,
+            date: .now
+        )
+        context.insert(transaction)
+        try context.save()
+
+        await viewModel.loadBudgets()
+
+        XCTAssertEqual(viewModel.status(for: budget)?.spent, Decimal(30))
+        XCTAssertEqual(viewModel.status(for: budget)?.remaining, Decimal(20))
+        XCTAssertEqual(viewModel.totalSpent, Decimal(30))
+        XCTAssertEqual(viewModel.budgetsNearLimit, 0)
     }
 
     // MARK: - ExchangeRateRefreshScheduler Tests

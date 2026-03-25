@@ -10,6 +10,7 @@ private let kDefaultCurrencyCode = "flux.defaultCurrencyCode"
 private let kDefaultTransactionAccountId = "flux.defaultTransactionAccountId"
 private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransactionAccount"
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
+private let kAutoPresentAccountAfterCategorySelection = "flux.autoPresentAccountAfterCategorySelection"
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
 private let kTravelCurrencySource = "flux.travelCurrencySource"
 private let kDetectedTravelCurrencyCode = "flux.detectedTravelCurrencyCode"
@@ -63,7 +64,7 @@ enum TransactionAccountPreference {
     
     static var rememberLastUsedAccount: Bool {
         get {
-            UserDefaults.standard.object(forKey: kRememberLastUsedTransactionAccount) as? Bool ?? false
+            UserDefaults.standard.object(forKey: kRememberLastUsedTransactionAccount) as? Bool ?? true
         }
         set {
             UserDefaults.standard.set(newValue, forKey: kRememberLastUsedTransactionAccount)
@@ -79,6 +80,17 @@ enum TransactionAccountPreference {
         }
         set {
             UserDefaults.standard.set(newValue?.uuidString, forKey: kLastUsedTransactionAccountId)
+        }
+    }
+}
+
+enum TransactionEntryFlowPreference {
+    static var autoPresentAccountAfterCategorySelection: Bool {
+        get {
+            UserDefaults.standard.object(forKey: kAutoPresentAccountAfterCategorySelection) as? Bool ?? false
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: kAutoPresentAccountAfterCategorySelection)
         }
     }
 }
@@ -247,6 +259,12 @@ final class SettingsViewModel {
         }
     }
 
+    var autoPresentAccountAfterCategorySelection: Bool {
+        didSet {
+            TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection = autoPresentAccountAfterCategorySelection
+        }
+    }
+
     var appLanguage: AppLanguage {
         didSet {
             AppLanguagePreference.language = appLanguage
@@ -358,6 +376,22 @@ final class SettingsViewModel {
             AppLocalization.string("settings.reminders.unknown", defaultValue: "Unknown")
         }
     }
+
+    var allNotificationsEnabled: Bool {
+        switch notificationAuthorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            true
+        case .denied, .notDetermined:
+            false
+        @unknown default:
+            false
+        }
+    }
+
+    enum NotificationSettingsAction: Equatable {
+        case none
+        case openSystemSettings
+    }
     
     init(
         modelContext: ModelContext,
@@ -373,6 +407,7 @@ final class SettingsViewModel {
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
+        self.autoPresentAccountAfterCategorySelection = TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
         self.appLanguage = AppLanguagePreference.language
         self.travelCurrencySource = TravelCurrencyPreference.source
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
@@ -462,6 +497,21 @@ final class SettingsViewModel {
             errorMessage = error.localizedDescription
         }
         await refreshReminderAuthorizationStatus()
+    }
+
+    func setAllNotificationsEnabled(_ isEnabled: Bool) async -> NotificationSettingsAction {
+        switch notificationAuthorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return isEnabled ? .none : .openSystemSettings
+        case .denied:
+            return .openSystemSettings
+        case .notDetermined:
+            guard isEnabled else { return .none }
+            await requestReminderAuthorization()
+            return .none
+        @unknown default:
+            return .none
+        }
     }
     
     func clearAllData() async throws {
