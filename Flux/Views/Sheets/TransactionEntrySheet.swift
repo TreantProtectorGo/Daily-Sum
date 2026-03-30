@@ -248,19 +248,41 @@ struct TransactionEntrySheet: View {
     
     private var amountSection: some View {
         Section(AppLocalization.string("transaction.amount", defaultValue: "Amount")) {
-            AmountInputView(
-                amount: $amount,
-                currencyCode: amountInputCurrencyCode,
-                autoFocus: existingTransaction == nil,
-                onFirstUserInput: handleFirstAmountInput,
-                onFocusChanged: handleAmountFieldFocusChanged,
-                onConfirm: handleAmountInputConfirmed
-            )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-
             if travelInputCurrencyCode != nil {
-                travelPreviewView()
+                VStack(spacing: 0) {
+                    AmountInputView(
+                        amount: $amount,
+                        currencyCode: amountInputCurrencyCode,
+                        autoFocus: existingTransaction == nil,
+                        useGlassBackground: false,
+                        onFirstUserInput: handleFirstAmountInput,
+                        onFocusChanged: handleAmountFieldFocusChanged,
+                        onConfirm: handleAmountInputConfirmed
+                    )
+
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(height: 1)
+                        .padding(.horizontal, 16)
+
+                    travelPreviewView()
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                }
+                .glassBackground(cornerRadius: 12, isInteractive: true)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            } else {
+                AmountInputView(
+                    amount: $amount,
+                    currencyCode: amountInputCurrencyCode,
+                    autoFocus: existingTransaction == nil,
+                    onFirstUserInput: handleFirstAmountInput,
+                    onFocusChanged: handleAmountFieldFocusChanged,
+                    onConfirm: handleAmountInputConfirmed
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             }
         }
     }
@@ -446,7 +468,7 @@ struct TransactionEntrySheet: View {
 
     @ViewBuilder
     private func travelPreviewView() -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack {
             if let travelPreview {
                 let accountAmountText = CurrencyFormatter.shared.format(
                     travelPreview.accountAmount,
@@ -463,8 +485,9 @@ struct TransactionEntrySheet: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+
+            Spacer(minLength: 0)
         }
-        .padding(.top, 4)
     }
     
     // MARK: - Actions
