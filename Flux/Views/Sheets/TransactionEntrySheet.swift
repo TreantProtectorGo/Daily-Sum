@@ -259,8 +259,8 @@ struct TransactionEntrySheet: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
 
-            if let travelInputCurrencyCode {
-                travelPreviewView(travelCurrencyCode: travelInputCurrencyCode)
+            if travelInputCurrencyCode != nil {
+                travelPreviewView()
             }
         }
     }
@@ -445,49 +445,22 @@ struct TransactionEntrySheet: View {
     }
 
     @ViewBuilder
-    private func travelPreviewView(travelCurrencyCode: String) -> some View {
+    private func travelPreviewView() -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(
-                AppLocalization.formatted(
-                    "transaction.travel.modeHelper",
-                    defaultValue: "Travel mode on — amount is entered in %@",
-                    travelCurrencyCode
-                )
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
             if let travelPreview {
+                let accountAmountText = CurrencyFormatter.shared.format(
+                    travelPreview.accountAmount,
+                    currencyCode: travelPreview.accountCurrencyCode
+                )
                 Text(
-                    AppLocalization.string(
-                        "transaction.travel.chargedAs",
-                        defaultValue: "Charged as"
-                    ) + " " +
-                    CurrencyFormatter.shared.format(
-                        travelPreview.accountAmount,
-                        currencyCode: travelPreview.accountCurrencyCode
-                    )
+                    existingTransaction == nil
+                        ? "= \(accountAmountText)"
+                        : AppLocalization.string(
+                            "transaction.travel.chargedAs",
+                            defaultValue: "Charged as"
+                        ) + " " + accountAmountText
                 )
                 .font(.caption)
-                .foregroundStyle(.primary)
-
-                Text(
-                    "1 \(travelPreview.travelCurrencyCode) = \(CurrencyFormatter.shared.format(travelPreview.exchangeRate, currencyCode: travelPreview.accountCurrencyCode))"
-                )
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-                Text(
-                    AppLocalization.formatted(
-                        "transaction.travel.rateDetails",
-                        defaultValue: "%@ • %@",
-                        DateFormatterUtility.shared.formatTransactionDate(
-                            travelPreview.effectiveDate
-                        ),
-                        travelPreview.provider
-                    )
-                )
-                .font(.caption2)
                 .foregroundStyle(.secondary)
             }
         }
