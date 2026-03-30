@@ -55,7 +55,6 @@ enum TravelCurrencyState {
 enum TransactionTravelDefaults {
     static func resolveIsTravelTransaction(
         transactionType: TransactionType,
-        accountCurrencyCode: String?,
         currentTravelCurrencyCode: String?,
         userOverride: Bool?
     ) -> Bool {
@@ -67,15 +66,8 @@ enum TransactionTravelDefaults {
             return userOverride
         }
 
-        guard let normalizedAccountCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
-            accountCurrencyCode
-        ),
-        let normalizedCurrentTravelCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+        return TravelCurrencyState.normalizedCurrencyCode(
             currentTravelCurrencyCode
-        ) else {
-            return false
-        }
-
-        return normalizedAccountCurrencyCode == normalizedCurrentTravelCurrencyCode
+        ) != nil
     }
 }

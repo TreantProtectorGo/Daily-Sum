@@ -5,6 +5,7 @@ struct AccountPickerView: View {
     @Binding var selectedAccount: Account?
     let showBalance: Bool
     let expansionTrigger: Int
+    let availableAccounts: [Account]?
     
     @Query(sort: \Account.createdAt) private var accounts: [Account]
     @State private var showAccountSheet = false
@@ -12,11 +13,17 @@ struct AccountPickerView: View {
     init(
         selectedAccount: Binding<Account?>,
         showBalance: Bool = true,
-        expansionTrigger: Int = 0
+        expansionTrigger: Int = 0,
+        availableAccounts: [Account]? = nil
     ) {
         self._selectedAccount = selectedAccount
         self.showBalance = showBalance
         self.expansionTrigger = expansionTrigger
+        self.availableAccounts = availableAccounts
+    }
+
+    private var resolvedAccounts: [Account] {
+        availableAccounts ?? accounts
     }
     
     var body: some View {
@@ -62,13 +69,13 @@ struct AccountPickerView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("transaction.accountPicker.trigger")
         .onChange(of: expansionTrigger) { _, _ in
-            guard accounts.count > 1 else { return }
+            guard resolvedAccounts.count > 1 else { return }
             showAccountSheet = true
         }
         .sheet(isPresented: $showAccountSheet) {
             AccountSelectionSheet(
                 selectedAccount: $selectedAccount,
-                accounts: accounts,
+                accounts: resolvedAccounts,
                 showBalance: showBalance
             )
             .presentationDetents([.medium, .large])

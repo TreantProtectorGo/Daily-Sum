@@ -228,9 +228,12 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.openCalculator": "Exchange Calculator",
                 "transaction.travel": "Travel Transaction",
                 "transaction.travel.badge": "Travel",
+                "transaction.travel.chargedAs": "Charged as",
+                "transaction.travel.modeHelper": "Travel mode on — amount is entered in %@",
                 "filter.advanced": "Advanced Filters",
                 "filter.travelTransactions": "Show Travel Transactions Only",
-                "filter.showUpcomingScheduled": "Include Upcoming Subscriptions"
+                "filter.showUpcomingScheduled": "Include Upcoming Subscriptions",
+                "account.error.travelCurrencyChangeUnsupported": "This account has travel transactions. Create a new account instead of changing its currency."
             ],
             "zh-Hans": [
                 "settings.exchangeRate.travelSection": "旅行货币",
@@ -249,9 +252,12 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.openCalculator": "汇率计算器",
                 "transaction.travel": "旅行交易",
                 "transaction.travel.badge": "旅行",
+                "transaction.travel.chargedAs": "入账为",
+                "transaction.travel.modeHelper": "旅行模式已开启，金额会以 %@ 输入",
                 "filter.advanced": "进阶筛选",
                 "filter.travelTransactions": "仅显示旅行交易",
-                "filter.showUpcomingScheduled": "显示即将到来的订阅交易"
+                "filter.showUpcomingScheduled": "显示即将到来的订阅交易",
+                "account.error.travelCurrencyChangeUnsupported": "此账户已有旅行交易。请改为建立新账户，而不是直接更改币别。"
             ],
             "zh-Hant": [
                 "settings.exchangeRate.travelSection": "旅行貨幣",
@@ -270,9 +276,12 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.openCalculator": "匯率計算器",
                 "transaction.travel": "旅行交易",
                 "transaction.travel.badge": "旅行",
+                "transaction.travel.chargedAs": "入帳為",
+                "transaction.travel.modeHelper": "旅行模式已開啟，金額會以 %@ 輸入",
                 "filter.advanced": "進階篩選",
                 "filter.travelTransactions": "僅顯示旅遊交易",
-                "filter.showUpcomingScheduled": "顯示即將到來的訂閱交易"
+                "filter.showUpcomingScheduled": "顯示即將到來的訂閱交易",
+                "account.error.travelCurrencyChangeUnsupported": "此帳戶已有旅行交易。請改為建立新帳戶，而不是直接更改幣別。"
             ]
         ]
 

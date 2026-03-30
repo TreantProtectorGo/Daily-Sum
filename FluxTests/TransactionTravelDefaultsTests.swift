@@ -5,7 +5,6 @@ final class TransactionTravelDefaultsTests: XCTestCase {
     func testMatchingCurrentTravelCurrencyDefaultsToggleOn() {
         let value = TransactionTravelDefaults.resolveIsTravelTransaction(
             transactionType: .expense,
-            accountCurrencyCode: "JPY",
             currentTravelCurrencyCode: "JPY",
             userOverride: nil
         )
@@ -13,11 +12,10 @@ final class TransactionTravelDefaultsTests: XCTestCase {
         XCTAssertTrue(value)
     }
 
-    func testDifferentCurrencyDefaultsToggleOff() {
+    func testMissingTravelCurrencyDefaultsToggleOff() {
         let value = TransactionTravelDefaults.resolveIsTravelTransaction(
             transactionType: .expense,
-            accountCurrencyCode: "USD",
-            currentTravelCurrencyCode: "JPY",
+            currentTravelCurrencyCode: nil,
             userOverride: nil
         )
 
@@ -27,7 +25,6 @@ final class TransactionTravelDefaultsTests: XCTestCase {
     func testUserOverrideWinsOverAutomaticDefault() {
         let value = TransactionTravelDefaults.resolveIsTravelTransaction(
             transactionType: .expense,
-            accountCurrencyCode: "JPY",
             currentTravelCurrencyCode: "JPY",
             userOverride: false
         )
@@ -38,7 +35,6 @@ final class TransactionTravelDefaultsTests: XCTestCase {
     func testIncomeNeverDefaultsToTravelTransaction() {
         let value = TransactionTravelDefaults.resolveIsTravelTransaction(
             transactionType: .income,
-            accountCurrencyCode: "JPY",
             currentTravelCurrencyCode: "JPY",
             userOverride: true
         )

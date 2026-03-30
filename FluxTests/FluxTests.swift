@@ -284,15 +284,43 @@ final class FluxTests: XCTestCase {
     func testTransactionRowSnapshotIncludesTravelTransactionFlag() {
         let account = Account(name: "Travel Card", type: .creditCard, currencyCode: "JPY")
         let transaction = Transaction(
-            amount: 1200,
-            currencyCode: "JPY",
+            amount: 62.52,
+            currencyCode: "HKD",
             type: .expense,
             date: .now,
             isTravelTransaction: true,
+            travelAmount: 1200,
+            travelCurrencyCode: "JPY",
+            travelExchangeRate: 0.0521,
+            travelExchangeRateEffectiveDate: .now,
+            travelExchangeRateProvider: "mock",
             account: account
         )
 
         XCTAssertTrue(TransactionRowSnapshot(transaction: transaction).isTravelTransaction)
+    }
+
+    func testTransactionRowSnapshotUsesTravelAmountAsPrimaryDisplay() {
+        let account = Account(name: "Travel Card", type: .creditCard, currencyCode: "HKD")
+        let transaction = Transaction(
+            amount: 62.52,
+            currencyCode: "HKD",
+            type: .expense,
+            date: .now,
+            isTravelTransaction: true,
+            travelAmount: 1200,
+            travelCurrencyCode: "JPY",
+            travelExchangeRate: 0.0521,
+            travelExchangeRateEffectiveDate: .now,
+            travelExchangeRateProvider: "mock",
+            account: account
+        )
+
+        let snapshot = TransactionRowSnapshot(transaction: transaction)
+
+        XCTAssertEqual(snapshot.primarySignedAmount, -1200)
+        XCTAssertEqual(snapshot.primaryCurrencyCode, "JPY")
+        XCTAssertNotNil(snapshot.chargedAmountText)
     }
 
     @MainActor
@@ -520,7 +548,6 @@ final class FluxTests: XCTestCase {
         XCTAssertFalse(
             TransactionTravelDefaults.resolveIsTravelTransaction(
                 transactionType: .income,
-                accountCurrencyCode: "JPY",
                 currentTravelCurrencyCode: "JPY",
                 userOverride: true
             )

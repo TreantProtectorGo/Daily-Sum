@@ -169,6 +169,39 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(limited.count, 2)
     }
 
+    func testTransactionServiceCreatePersistsTravelSnapshotAndAccountAmount() async throws {
+        let service = TransactionService(context: context)
+
+        let account = Account(name: "HK Card", type: .creditCard, currencyCode: "HKD", initialBalance: 1000)
+        context.insert(account)
+        try context.save()
+
+        let snapshot = TravelTransactionSnapshot(
+            travelAmount: 3000,
+            travelCurrencyCode: "JPY",
+            accountAmount: 156.3,
+            accountCurrencyCode: "HKD",
+            exchangeRate: 0.0521,
+            effectiveDate: .now,
+            provider: "mock"
+        )
+
+        let transaction = try service.create(
+            amount: 3000,
+            type: .expense,
+            isTravelTransaction: true,
+            travelSnapshot: snapshot,
+            account: account,
+            category: nil
+        )
+
+        XCTAssertEqual(transaction.amount, 156.3)
+        XCTAssertEqual(transaction.currencyCode, "HKD")
+        XCTAssertEqual(transaction.travelAmount, 3000)
+        XCTAssertEqual(transaction.travelCurrencyCode, "JPY")
+        XCTAssertEqual(account.currentBalance, 843.7)
+    }
+
     func testRecurringGeneratorMonthlyDayAnchorsToMonthEnd() throws {
         let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
         context.insert(account)
@@ -906,6 +939,35 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(adjustment?.amount, 10)
         XCTAssertEqual(adjustment?.notes, "Manual balance adjustment")
         XCTAssertEqual(account.currentBalance, 50)
+    }
+
+    func testAccountServiceRejectsChangingCurrencyWhenTravelTransactionsExist() async throws {
+        let accountService = AccountService(context: context)
+
+        let account = Account(name: "Travel Card", type: .creditCard, currencyCode: "HKD")
+        context.insert(account)
+        context.insert(
+            Transaction(
+                amount: 156.3,
+                currencyCode: "HKD",
+                type: .expense,
+                isTravelTransaction: true,
+                travelAmount: 3000,
+                travelCurrencyCode: "JPY",
+                travelExchangeRate: 0.0521,
+                travelExchangeRateEffectiveDate: .now,
+                travelExchangeRateProvider: "mock",
+                account: account
+            )
+        )
+        try context.save()
+
+        do {
+            try accountService.update(account, currencyCode: "USD")
+            XCTFail("Expected currency change to be rejected")
+        } catch let error as AccountServiceError {
+            XCTAssertEqual(error, .cannotChangeCurrencyWithTravelTransactions)
+        }
     }
     
     // MARK: - CategoryService Tests

@@ -26,6 +26,21 @@ final class Transaction {
 
     /// Whether this transaction should be treated as a travel transaction.
     var isTravelTransaction: Bool?
+
+    /// Original travel-side amount entered by the user.
+    var travelAmount: Decimal?
+
+    /// Original travel-side ISO 4217 currency code.
+    var travelCurrencyCode: String?
+
+    /// Account currency amount for one unit of travel currency.
+    var travelExchangeRate: Decimal?
+
+    /// Date of the locked exchange rate snapshot.
+    var travelExchangeRateEffectiveDate: Date?
+
+    /// Exchange-rate provider used to create the snapshot.
+    var travelExchangeRateProvider: String?
     
     /// Optional receipt image data (stored as binary)
     @Attribute(.externalStorage)
@@ -74,6 +89,11 @@ final class Transaction {
         date: Date = .now,
         notes: String? = nil,
         isTravelTransaction: Bool? = nil,
+        travelAmount: Decimal? = nil,
+        travelCurrencyCode: String? = nil,
+        travelExchangeRate: Decimal? = nil,
+        travelExchangeRateEffectiveDate: Date? = nil,
+        travelExchangeRateProvider: String? = nil,
         receiptImageData: Data? = nil,
         isRecurringTemplate: Bool = false,
         recurrenceRule: RecurrenceRule? = nil,
@@ -94,6 +114,11 @@ final class Transaction {
         self.date = date
         self.notes = notes
         self.isTravelTransaction = isTravelTransaction
+        self.travelAmount = travelAmount
+        self.travelCurrencyCode = travelCurrencyCode
+        self.travelExchangeRate = travelExchangeRate
+        self.travelExchangeRateEffectiveDate = travelExchangeRateEffectiveDate
+        self.travelExchangeRateProvider = travelExchangeRateProvider
         self.receiptImageData = receiptImageData
         self.isRecurringTemplate = isRecurringTemplate
         self.recurrenceRule = recurrenceRule
@@ -155,6 +180,10 @@ final class Transaction {
     var currencySymbol: String {
         SupportedCurrency(rawValue: currencyCode)?.symbol ?? currencyCode
     }
+
+    var resolvedTravelSnapshot: TravelTransactionSnapshot? {
+        TravelTransactionSnapshots.snapshot(from: self)
+    }
     
     /// Whether this transaction has a receipt attached
     var hasReceipt: Bool {
@@ -176,6 +205,11 @@ final class Transaction {
             date: date,
             notes: template.notes,
             isTravelTransaction: template.isTravelTransaction,
+            travelAmount: template.travelAmount,
+            travelCurrencyCode: template.travelCurrencyCode,
+            travelExchangeRate: template.travelExchangeRate,
+            travelExchangeRateEffectiveDate: template.travelExchangeRateEffectiveDate,
+            travelExchangeRateProvider: template.travelExchangeRateProvider,
             isRecurringTemplate: false,
             recurrenceRule: template.recurrenceRule,
             schedulePlanType: template.resolvedSchedulePlanType,

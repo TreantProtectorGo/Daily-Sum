@@ -12,6 +12,8 @@ struct TransactionRowSnapshot: Identifiable {
     let notes: String?
     let signedAmount: Decimal
     let currencyCode: String
+    let travelAmount: Decimal?
+    let travelCurrencyCode: String?
     let date: Date
     let isTravelTransaction: Bool
     let isGeneratedFromRecurring: Bool
@@ -35,10 +37,49 @@ struct TransactionRowSnapshot: Identifiable {
         notes = transaction.notes
         signedAmount = transaction.signedAmount
         currencyCode = transaction.currencyCode
+        travelAmount = transaction.resolvedTravelSnapshot?.travelAmount
+        travelCurrencyCode = transaction.resolvedTravelSnapshot?.travelCurrencyCode
         date = transaction.date
         isTravelTransaction = transaction.isTravelTransaction ?? false
         isGeneratedFromRecurring = transaction.isGeneratedFromRecurring
         isUpcoming = transaction.isUpcoming
+    }
+
+    var primarySignedAmount: Decimal {
+        if let travelAmount, isTravelTransaction {
+            return signedAmount < 0 ? -travelAmount : travelAmount
+        }
+        return signedAmount
+    }
+
+    var primaryCurrencyCode: String {
+        if let travelCurrencyCode, isTravelTransaction {
+            return travelCurrencyCode
+        }
+        return currencyCode
+    }
+
+    var chargedAmountText: String? {
+        guard isTravelTransaction,
+              let travelCurrencyCode,
+              travelCurrencyCode != currencyCode else {
+            return nil
+        }
+
+        let chargedPrefix = AppLocalization.string(
+            "transaction.travel.chargedAs",
+            defaultValue: "Charged as"
+        )
+        let formatted = CurrencyFormatter.shared.format(abs(signedAmount), currencyCode: currencyCode)
+        return "\(chargedPrefix) \(formatted)"
+    }
+
+    var trailingSecondaryText: String {
+        let dateText = DateFormatterUtility.shared.formatTransactionDate(date)
+        guard let chargedAmountText else {
+            return dateText
+        }
+        return "\(chargedAmountText) • \(dateText)"
     }
 }
 
@@ -86,6 +127,7 @@ struct TransactionRowView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+
             }
             
             Spacer()
@@ -93,15 +135,16 @@ struct TransactionRowView: View {
             // Amount and Date
             VStack(alignment: .trailing, spacing: 2) {
                 AmountText(
-                    snapshot.signedAmount,
-                    currencyCode: snapshot.currencyCode,
+                    snapshot.primarySignedAmount,
+                    currencyCode: snapshot.primaryCurrencyCode,
                     showSign: true,
                     fontWeight: .semibold
                 )
                 
-                Text(DateFormatterUtility.shared.formatTransactionDate(snapshot.date))
+                Text(snapshot.trailingSecondaryText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
         .padding(.vertical, 4)

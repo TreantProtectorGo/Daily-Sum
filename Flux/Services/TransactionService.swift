@@ -37,17 +37,23 @@ final class TransactionService {
         date: Date = .now,
         notes: String? = nil,
         isTravelTransaction: Bool = false,
+        travelSnapshot: TravelTransactionSnapshot? = nil,
         account: Account,
         category: Category?,
         receiptImageData: Data? = nil
     ) throws -> Transaction {
         let transaction = Transaction(
-            amount: amount,
-            currencyCode: account.currencyCode,
+            amount: travelSnapshot?.accountAmount ?? amount,
+            currencyCode: travelSnapshot?.accountCurrencyCode ?? account.currencyCode,
             type: type,
             date: date,
             notes: notes,
-            isTravelTransaction: isTravelTransaction,
+            isTravelTransaction: travelSnapshot != nil ? true : isTravelTransaction,
+            travelAmount: travelSnapshot?.travelAmount,
+            travelCurrencyCode: travelSnapshot?.travelCurrencyCode,
+            travelExchangeRate: travelSnapshot?.exchangeRate,
+            travelExchangeRateEffectiveDate: travelSnapshot?.effectiveDate,
+            travelExchangeRateProvider: travelSnapshot?.provider,
             receiptImageData: receiptImageData,
             account: account,
             category: category
@@ -67,16 +73,22 @@ final class TransactionService {
         recurrenceRule: RecurrenceRule,
         notes: String? = nil,
         isTravelTransaction: Bool = false,
+        travelSnapshot: TravelTransactionSnapshot? = nil,
         account: Account,
         category: Category?
     ) throws -> Transaction {
         let template = Transaction(
-            amount: amount,
-            currencyCode: account.currencyCode,
+            amount: travelSnapshot?.accountAmount ?? amount,
+            currencyCode: travelSnapshot?.accountCurrencyCode ?? account.currencyCode,
             type: type,
             date: startDate,
             notes: notes,
-            isTravelTransaction: isTravelTransaction,
+            isTravelTransaction: travelSnapshot != nil ? true : isTravelTransaction,
+            travelAmount: travelSnapshot?.travelAmount,
+            travelCurrencyCode: travelSnapshot?.travelCurrencyCode,
+            travelExchangeRate: travelSnapshot?.exchangeRate,
+            travelExchangeRateEffectiveDate: travelSnapshot?.effectiveDate,
+            travelExchangeRateProvider: travelSnapshot?.provider,
             isRecurringTemplate: true,
             recurrenceRule: recurrenceRule,
             schedulePlanType: .recurring,
@@ -101,6 +113,7 @@ final class TransactionService {
         category: Category?,
         notes: String? = nil,
         isTravelTransaction: Bool = false,
+        travelSnapshot: TravelTransactionSnapshot? = nil,
         planType: ScheduledPlanKind
     ) throws -> Transaction {
         let normalizedDueDay = min(max(dueDayOfMonth, 1), 31)
@@ -112,12 +125,17 @@ final class TransactionService {
         }
 
         let template = Transaction(
-            amount: amount,
-            currencyCode: account.currencyCode,
+            amount: travelSnapshot?.accountAmount ?? amount,
+            currencyCode: travelSnapshot?.accountCurrencyCode ?? account.currencyCode,
             type: .expense,
             date: startDate,
             notes: notes,
-            isTravelTransaction: isTravelTransaction,
+            isTravelTransaction: travelSnapshot != nil ? true : isTravelTransaction,
+            travelAmount: travelSnapshot?.travelAmount,
+            travelCurrencyCode: travelSnapshot?.travelCurrencyCode,
+            travelExchangeRate: travelSnapshot?.exchangeRate,
+            travelExchangeRateEffectiveDate: travelSnapshot?.effectiveDate,
+            travelExchangeRateProvider: travelSnapshot?.provider,
             isRecurringTemplate: true,
             recurrenceRule: .monthly,
             schedulePlanType: .recurring,
@@ -202,14 +220,25 @@ final class TransactionService {
         date: Date? = nil,
         notes: String? = nil,
         isTravelTransaction: Bool? = nil,
+        travelSnapshot: TravelTransactionSnapshot? = nil,
         category: Category? = nil,
         receiptImageData: Data? = nil
     ) throws {
-        if let amount { transaction.amount = amount }
+        if let travelSnapshot {
+            TravelTransactionSnapshots.apply(travelSnapshot, to: transaction)
+        } else {
+            if let amount { transaction.amount = amount }
+            if let isTravelTransaction {
+                if isTravelTransaction {
+                    transaction.isTravelTransaction = true
+                } else {
+                    TravelTransactionSnapshots.apply(nil, to: transaction)
+                }
+            }
+        }
         if let type { transaction.type = type }
         if let date { transaction.date = date }
         if let notes { transaction.notes = notes }
-        if let isTravelTransaction { transaction.isTravelTransaction = isTravelTransaction }
         if let category { transaction.category = category }
         if let receiptImageData { transaction.receiptImageData = receiptImageData }
 
@@ -227,6 +256,7 @@ final class TransactionService {
         account: Account,
         notes: String?,
         isTravelTransaction: Bool = false,
+        travelSnapshot: TravelTransactionSnapshot? = nil,
         category: Category?,
         planType: ScheduledPlanKind
     ) throws {
@@ -239,13 +269,18 @@ final class TransactionService {
 
         try deleteFutureGeneratedTransactions(forTemplateId: template.id)
 
-        template.amount = amount
+        template.amount = travelSnapshot?.accountAmount ?? amount
         template.type = .expense
         template.date = startDate
-        template.currencyCode = account.currencyCode
+        template.currencyCode = travelSnapshot?.accountCurrencyCode ?? account.currencyCode
         template.account = account
         template.notes = notes
-        template.isTravelTransaction = isTravelTransaction
+        template.isTravelTransaction = travelSnapshot != nil ? true : isTravelTransaction
+        template.travelAmount = travelSnapshot?.travelAmount
+        template.travelCurrencyCode = travelSnapshot?.travelCurrencyCode
+        template.travelExchangeRate = travelSnapshot?.exchangeRate
+        template.travelExchangeRateEffectiveDate = travelSnapshot?.effectiveDate
+        template.travelExchangeRateProvider = travelSnapshot?.provider
         template.category = category
         template.recurrenceRule = .monthly
         template.dueDayOfMonth = min(max(dueDayOfMonth, 1), 31)

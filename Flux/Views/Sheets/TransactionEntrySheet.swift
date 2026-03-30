@@ -113,6 +113,7 @@ struct TransactionEntrySheet: View {
     @State private var notes: String = ""
     @State private var isTravelTransaction = false
     @State private var hasTravelTransactionOverride = false
+    @State private var travelPreview: TravelTransactionSnapshot?
     @State private var scheduleMode: ScheduleFormMode = .oneTime
     @State private var dueDayOfMonth: Int = Calendar.current.component(.day, from: .now)
     @State private var reminderLeadDays: Int = TransactionReminderScheduler.defaultReminderLeadDays
@@ -175,7 +176,9 @@ struct TransactionEntrySheet: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        saveTransaction()
+                        Task {
+                            await saveTransaction()
+                        }
                     } label: {
                         Image(systemName: "checkmark")
                     }
@@ -207,6 +210,9 @@ struct TransactionEntrySheet: View {
             }
             .onChange(of: selectedAccount?.id) { _, _ in
                 applyTravelTransactionDefaultIfNeeded()
+            }
+            .task(id: travelPreviewRefreshKey) {
+                await refreshTravelPreviewIfNeeded()
             }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),
@@ -244,7 +250,7 @@ struct TransactionEntrySheet: View {
         Section(AppLocalization.string("transaction.amount", defaultValue: "Amount")) {
             AmountInputView(
                 amount: $amount,
-                currencyCode: selectedAccount?.currencyCode ?? UserCurrencyPreference.resolvedCurrencyCode,
+                currencyCode: amountInputCurrencyCode,
                 autoFocus: existingTransaction == nil,
                 onFirstUserInput: handleFirstAmountInput,
                 onFocusChanged: handleAmountFieldFocusChanged,
@@ -252,6 +258,10 @@ struct TransactionEntrySheet: View {
             )
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
+
+            if let travelInputCurrencyCode {
+                travelPreviewView(travelCurrencyCode: travelInputCurrencyCode)
+            }
         }
     }
     
@@ -271,7 +281,8 @@ struct TransactionEntrySheet: View {
                 AccountPickerView(
                     selectedAccount: $selectedAccount,
                     showBalance: true,
-                    expansionTrigger: accountPresentationTrigger
+                    expansionTrigger: accountPresentationTrigger,
+                    availableAccounts: availableAccounts
                 )
             }
 
@@ -292,10 +303,7 @@ struct TransactionEntrySheet: View {
                     ),
                     isOn: Binding(
                         get: { isTravelTransaction },
-                        set: { newValue in
-                            hasTravelTransactionOverride = true
-                            isTravelTransaction = newValue
-                        }
+                        set: handleTravelTransactionToggleChange
                     )
                 )
             }
@@ -382,11 +390,108 @@ struct TransactionEntrySheet: View {
             amount: amount,
             selectedAccount: selectedAccount,
             selectedCategory: selectedCategory
-        )
+        ) && (!isTravelTransaction || travelInputCurrencyCode != nil)
     }
 
     private var shouldShowTravelTransactionToggle: Bool {
-        transactionType == .expense
+        guard transactionType == .expense else {
+            return false
+        }
+
+        return existingTravelSnapshot != nil || resolvedCurrentTravelCurrencyCode != nil
+    }
+
+    private var existingTravelSnapshot: TravelTransactionSnapshot? {
+        existingTransaction?.resolvedTravelSnapshot
+    }
+
+    private var travelInputCurrencyCode: String? {
+        TravelTransactionSnapshots.inputCurrencyCode(
+            existingTransaction: existingTransaction,
+            isTravelTransaction: isTravelTransaction,
+            currentTravelCurrencyCode: resolvedCurrentTravelCurrencyCode
+        )
+    }
+
+    private var amountInputCurrencyCode: String {
+        travelInputCurrencyCode
+            ?? selectedAccount?.currencyCode
+            ?? UserCurrencyPreference.resolvedCurrencyCode
+    }
+
+    private var availableAccounts: [Account] {
+        guard let existingTravelSnapshot,
+              existingTransaction != nil,
+              isTravelTransaction else {
+            return accounts
+        }
+
+        return accounts.filter {
+            TravelCurrencyState.normalizedCurrencyCode($0.currencyCode)
+                == existingTravelSnapshot.accountCurrencyCode
+        }
+    }
+
+    private var travelPreviewRefreshKey: String {
+        [
+            existingTransaction?.id.uuidString ?? "new",
+            transactionType.rawValue,
+            isTravelTransaction.description,
+            selectedAccount?.id.uuidString ?? "no-account",
+            NSDecimalNumber(decimal: amount).stringValue,
+            String(Int(date.timeIntervalSinceReferenceDate)),
+            travelInputCurrencyCode ?? "no-travel-currency"
+        ].joined(separator: "|")
+    }
+
+    @ViewBuilder
+    private func travelPreviewView(travelCurrencyCode: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(
+                AppLocalization.formatted(
+                    "transaction.travel.modeHelper",
+                    defaultValue: "Travel mode on — amount is entered in %@",
+                    travelCurrencyCode
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if let travelPreview {
+                Text(
+                    AppLocalization.string(
+                        "transaction.travel.chargedAs",
+                        defaultValue: "Charged as"
+                    ) + " " +
+                    CurrencyFormatter.shared.format(
+                        travelPreview.accountAmount,
+                        currencyCode: travelPreview.accountCurrencyCode
+                    )
+                )
+                .font(.caption)
+                .foregroundStyle(.primary)
+
+                Text(
+                    "1 \(travelPreview.travelCurrencyCode) = \(CurrencyFormatter.shared.format(travelPreview.exchangeRate, currencyCode: travelPreview.accountCurrencyCode))"
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+                Text(
+                    AppLocalization.formatted(
+                        "transaction.travel.rateDetails",
+                        defaultValue: "%@ • %@",
+                        DateFormatterUtility.shared.formatTransactionDate(
+                            travelPreview.effectiveDate
+                        ),
+                        travelPreview.provider
+                    )
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.top, 4)
     }
     
     // MARK: - Actions
@@ -401,6 +506,7 @@ struct TransactionEntrySheet: View {
         notes = ""
         isTravelTransaction = false
         hasTravelTransactionOverride = false
+        travelPreview = nil
         scheduleMode = .oneTime
         dueDayOfMonth = Calendar.current.component(.day, from: now)
         reminderLeadDays = TransactionReminderScheduler.defaultReminderLeadDays
@@ -418,8 +524,12 @@ struct TransactionEntrySheet: View {
         selectedAccount = transaction.account
         date = transaction.date
         notes = transaction.notes ?? ""
-        isTravelTransaction = transaction.type == .expense ? (transaction.isTravelTransaction ?? false) : false
+        isTravelTransaction = transaction.type == .expense ? (transaction.resolvedTravelSnapshot != nil) : false
         hasTravelTransactionOverride = transaction.type == .expense
+        travelPreview = transaction.resolvedTravelSnapshot
+        if let existingTravelSnapshot = transaction.resolvedTravelSnapshot {
+            amount = existingTravelSnapshot.travelAmount
+        }
         dueDayOfMonth = transaction.dueDayOfMonth ?? Calendar.current.component(.day, from: transaction.date)
         reminderLeadDays = transaction.reminderLeadDays ?? TransactionReminderScheduler.defaultReminderLeadDays
 
@@ -446,6 +556,7 @@ struct TransactionEntrySheet: View {
             scheduleMode = .oneTime
             isTravelTransaction = false
             hasTravelTransactionOverride = false
+            travelPreview = nil
         } else if existingTransaction == nil {
             applyTravelTransactionDefaultIfNeeded()
         }
@@ -485,11 +596,70 @@ struct TransactionEntrySheet: View {
         let userOverride = hasTravelTransactionOverride ? isTravelTransaction : nil
         let resolvedValue = TransactionTravelDefaults.resolveIsTravelTransaction(
             transactionType: transactionType,
-            accountCurrencyCode: selectedAccount?.currencyCode,
             currentTravelCurrencyCode: resolvedCurrentTravelCurrencyCode,
             userOverride: userOverride
         )
         isTravelTransaction = resolvedValue
+        if !resolvedValue {
+            travelPreview = nil
+        }
+    }
+
+    private func handleTravelTransactionToggleChange(_ newValue: Bool) {
+        hasTravelTransactionOverride = true
+
+        if newValue {
+            enableTravelTransactionMode()
+        } else {
+            disableTravelTransactionMode()
+        }
+    }
+
+    private func enableTravelTransactionMode() {
+        guard transactionType == .expense else { return }
+        isTravelTransaction = true
+
+        if let existingTravelSnapshot {
+            amount = existingTravelSnapshot.travelAmount
+            travelPreview = existingTravelSnapshot
+            return
+        }
+
+        guard let account = selectedAccount,
+              let travelCurrencyCode = travelInputCurrencyCode,
+              amount > 0 else {
+            return
+        }
+
+        let currentAccountAmount = amount
+        Task {
+            let conversionService = CurrencyConversionService(context: modelContext)
+            do {
+                let quote = try await conversionService.convertWithQuote(
+                    currentAccountAmount,
+                    from: account.currencyCode,
+                    to: travelCurrencyCode,
+                    on: date,
+                    mode: .historical
+                )
+                amount = quote.convertedAmount
+            } catch {
+                amount = currentAccountAmount
+            }
+        }
+    }
+
+    private func disableTravelTransactionMode() {
+        let accountAmount = travelPreview?.accountAmount
+            ?? existingTravelSnapshot?.accountAmount
+            ?? existingTransaction?.amount
+
+        isTravelTransaction = false
+        travelPreview = nil
+
+        if let accountAmount {
+            amount = accountAmount
+        }
     }
 
     private var resolvedCurrentTravelCurrencyCode: String? {
@@ -502,7 +672,7 @@ struct TransactionEntrySheet: View {
         .currentTravelCurrencyCode
     }
     
-    private func saveTransaction() {
+    private func saveTransaction() async {
         guard isFormValid,
               let account = selectedAccount,
               let selectedCategory else { return }
@@ -524,9 +694,8 @@ struct TransactionEntrySheet: View {
         
         do {
             let service = TransactionService(context: modelContext)
-            let resolvedIsTravelTransaction = transactionType == .expense
-                ? isTravelTransaction
-                : false
+            let resolvedTravelSnapshot = try await resolveTravelSnapshotForSave(account: account)
+            let resolvedIsTravelTransaction = resolvedTravelSnapshot != nil
             
             if let existing = existingTransaction {
                 let templateForScheduledEdit = try scheduledTemplateForEditing(
@@ -545,6 +714,7 @@ struct TransactionEntrySheet: View {
                             account: account,
                             notes: notes.isEmpty ? nil : notes,
                             isTravelTransaction: resolvedIsTravelTransaction,
+                            travelSnapshot: resolvedTravelSnapshot,
                             category: selectedCategory,
                             planType: selectedPlanType
                         )
@@ -576,13 +746,18 @@ struct TransactionEntrySheet: View {
                         template.generatedDate = nil
 
                         template.type = transactionType
-                        template.amount = amount
                         template.category = selectedCategory
                         template.account = account
                         template.date = date
                         template.notes = notes.isEmpty ? nil : notes
-                        template.isTravelTransaction = resolvedIsTravelTransaction
-                        template.currencyCode = account.currencyCode
+                        TravelTransactionSnapshots.apply(
+                            resolvedTravelSnapshot,
+                            to: template
+                        )
+                        if resolvedTravelSnapshot == nil {
+                            template.amount = amount
+                            template.currencyCode = account.currencyCode
+                        }
                         try modelContext.save()
 
                         let reminderScheduler = TransactionReminderScheduler(context: modelContext)
@@ -592,13 +767,18 @@ struct TransactionEntrySheet: View {
                     }
                 } else {
                     existing.type = transactionType
-                    existing.amount = amount
                     existing.category = selectedCategory
                     existing.account = account
                     existing.date = date
                     existing.notes = notes.isEmpty ? nil : notes
-                    existing.isTravelTransaction = resolvedIsTravelTransaction
-                    existing.currencyCode = account.currencyCode
+                    TravelTransactionSnapshots.apply(
+                        resolvedTravelSnapshot,
+                        to: existing
+                    )
+                    if resolvedTravelSnapshot == nil {
+                        existing.amount = amount
+                        existing.currencyCode = account.currencyCode
+                    }
 
                     try modelContext.save()
                 }
@@ -613,6 +793,7 @@ struct TransactionEntrySheet: View {
                         category: selectedCategory,
                         notes: notes.isEmpty ? nil : notes,
                         isTravelTransaction: resolvedIsTravelTransaction,
+                        travelSnapshot: resolvedTravelSnapshot,
                         planType: selectedPlanType
                     )
                     let generator = RecurringTransactionGenerator(context: modelContext)
@@ -633,6 +814,7 @@ struct TransactionEntrySheet: View {
                         date: date,
                         notes: notes.isEmpty ? nil : notes,
                         isTravelTransaction: resolvedIsTravelTransaction,
+                        travelSnapshot: resolvedTravelSnapshot,
                         account: account,
                         category: selectedCategory
                     )
@@ -649,6 +831,76 @@ struct TransactionEntrySheet: View {
             saveStatus = "error"
             errorMessage = error.localizedDescription
             showError = true
+        }
+    }
+
+    private func resolveTravelSnapshotForSave(account: Account) async throws -> TravelTransactionSnapshot? {
+        guard transactionType == .expense,
+              isTravelTransaction,
+              let travelCurrencyCode = travelInputCurrencyCode else {
+            return nil
+        }
+
+        if let existingTravelSnapshot,
+           existingTransaction != nil {
+            return TravelTransactionSnapshots.recomputeLockedSnapshot(
+                existingSnapshot: existingTravelSnapshot,
+                updatedTravelAmount: amount
+            )
+        }
+
+        let conversionService = CurrencyConversionService(context: modelContext)
+        return try await TravelTransactionSnapshots.buildSnapshot(
+            travelAmount: amount,
+            travelCurrencyCode: travelCurrencyCode,
+            accountCurrencyCode: account.currencyCode,
+            date: date,
+            conversionService: conversionService
+        )
+    }
+
+    private func refreshTravelPreviewIfNeeded() async {
+        guard transactionType == .expense,
+              isTravelTransaction,
+              let account = selectedAccount,
+              amount > 0,
+              let travelCurrencyCode = travelInputCurrencyCode else {
+            travelPreview = isTravelTransaction ? existingTravelSnapshot : nil
+            return
+        }
+
+        let refreshKey = travelPreviewRefreshKey
+
+        do {
+            let snapshot: TravelTransactionSnapshot
+            if let existingTravelSnapshot,
+               existingTransaction != nil {
+                guard TravelCurrencyState.normalizedCurrencyCode(account.currencyCode)
+                        == existingTravelSnapshot.accountCurrencyCode else {
+                    travelPreview = nil
+                    return
+                }
+
+                snapshot = TravelTransactionSnapshots.recomputeLockedSnapshot(
+                    existingSnapshot: existingTravelSnapshot,
+                    updatedTravelAmount: amount
+                )
+            } else {
+                let conversionService = CurrencyConversionService(context: modelContext)
+                snapshot = try await TravelTransactionSnapshots.buildSnapshot(
+                    travelAmount: amount,
+                    travelCurrencyCode: travelCurrencyCode,
+                    accountCurrencyCode: account.currencyCode,
+                    date: date,
+                    conversionService: conversionService
+                )
+            }
+
+            guard refreshKey == travelPreviewRefreshKey else { return }
+            travelPreview = snapshot
+        } catch {
+            guard refreshKey == travelPreviewRefreshKey else { return }
+            travelPreview = nil
         }
     }
 

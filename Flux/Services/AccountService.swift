@@ -1,6 +1,20 @@
 import Foundation
 import SwiftData
 
+enum AccountServiceError: LocalizedError, Equatable {
+    case cannotChangeCurrencyWithTravelTransactions
+
+    var errorDescription: String? {
+        switch self {
+        case .cannotChangeCurrencyWithTravelTransactions:
+            return AppLocalization.string(
+                "account.error.travelCurrencyChangeUnsupported",
+                defaultValue: "This account has travel transactions. Create a new account instead of changing its currency."
+            )
+        }
+    }
+}
+
 /// Service for managing Account CRUD operations
 @MainActor
 @Observable
@@ -80,6 +94,12 @@ final class AccountService {
         includeInTotal: Bool? = nil
     ) throws {
         let previousCurrencyCode = account.currencyCode
+
+        if let currencyCode,
+           currencyCode != previousCurrencyCode,
+           account.transactions.contains(where: { $0.resolvedTravelSnapshot != nil }) {
+            throw AccountServiceError.cannotChangeCurrencyWithTravelTransactions
+        }
         
         if let name { account.name = name }
         if let type { account.type = type }

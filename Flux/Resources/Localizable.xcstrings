@@ -222,6 +222,29 @@
         }
       }
     },
+    "account.error.travelCurrencyChangeUnsupported" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This account has travel transactions. Create a new account instead of changing its currency."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此账户已有旅行交易。请改为建立新账户，而不是直接更改币别。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此帳戶已有旅行交易。請改為建立新帳戶，而不是直接更改幣別。"
+          }
+        }
+      }
+    },
     "account.delete" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6471,6 +6494,75 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "旅行"
+          }
+        }
+      }
+    },
+    "transaction.travel.chargedAs" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charged as"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入账为"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "入帳為"
+          }
+        }
+      }
+    },
+    "transaction.travel.modeHelper" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Travel mode on — amount is entered in %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行模式已开启，金额会以 %@ 输入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行模式已開啟，金額會以 %@ 輸入"
+          }
+        }
+      }
+    },
+    "transaction.travel.rateDetails" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ • %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ • %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ • %@"
           }
         }
       }
