@@ -239,6 +239,7 @@ final class SettingsViewModel {
     private let modelContext: ModelContext
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
+    private let backupExportService: any BackupExportServicing
 
     /// User's selected default currency - persisted to UserDefaults
     var defaultCurrencyCode: String {
@@ -302,6 +303,9 @@ final class SettingsViewModel {
     var categoryCount: Int = 0
     var budgetCount: Int = 0
     var isRefreshingRates = false
+    var isPreparingBackupExport = false
+    var preparedBackupArchive: BackupArchive?
+    var backupExportErrorMessage: String?
 
     var isLoading = false
     var errorMessage: String?
@@ -396,13 +400,16 @@ final class SettingsViewModel {
     init(
         modelContext: ModelContext,
         exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
-        travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil
+        travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil,
+        backupExportService: (any BackupExportServicing)? = nil
     ) {
         self.modelContext = modelContext
         self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
             ?? ExchangeRateRefreshScheduler()
         self.travelCurrencyLocationService = travelCurrencyLocationService
             ?? TravelCurrencyLocationService()
+        self.backupExportService = backupExportService
+            ?? BackupExportService(context: modelContext)
         // Load persisted currency preference on init
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
@@ -413,6 +420,22 @@ final class SettingsViewModel {
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         self.reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
+    }
+
+    func prepareBackupExport() {
+        isPreparingBackupExport = true
+        backupExportErrorMessage = nil
+        preparedBackupArchive = nil
+
+        defer {
+            isPreparingBackupExport = false
+        }
+
+        do {
+            preparedBackupArchive = try backupExportService.makeBackupArchive()
+        } catch {
+            backupExportErrorMessage = error.localizedDescription
+        }
     }
 
     func loadSettings() async {
