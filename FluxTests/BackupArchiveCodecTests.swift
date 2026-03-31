@@ -108,12 +108,11 @@ final class BackupArchiveCodecTests: XCTestCase {
             preferences: BackupPreferences(
                 crossDevice: BackupCrossDevicePreferences(
                     preferredCurrencyCode: "USD",
-                    appLanguageCode: AppLanguage.english.rawValue,
-                    travelCurrencySource: TravelCurrencySource.manual.rawValue,
+                    appLanguage: .english,
+                    travelCurrencySource: .manual,
                     detectedTravelCurrencyCode: "HKD",
                     manualTravelCurrencyCode: "JPY",
-                    reportsCategoryRowLimit: 8,
-                    showUpcomingScheduledTransactions: false
+                    reportsCategoryRowLimit: 8
                 ),
                 deviceLocal: BackupDeviceLocalPreferences(
                     defaultTransactionAccountId: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
@@ -151,12 +150,11 @@ final class BackupArchiveCodecTests: XCTestCase {
         let preferences = BackupPreferences(
             crossDevice: BackupCrossDevicePreferences(
                 preferredCurrencyCode: "HKD",
-                appLanguageCode: AppLanguage.traditionalChinese.rawValue,
-                travelCurrencySource: TravelCurrencySource.automatic.rawValue,
+                appLanguage: .traditionalChinese,
+                travelCurrencySource: .automatic,
                 detectedTravelCurrencyCode: "JPY",
                 manualTravelCurrencyCode: nil,
-                reportsCategoryRowLimit: 5,
-                showUpcomingScheduledTransactions: true
+                reportsCategoryRowLimit: 5
             ),
             deviceLocal: BackupDeviceLocalPreferences(
                 defaultTransactionAccountId: nil,
@@ -169,8 +167,61 @@ final class BackupArchiveCodecTests: XCTestCase {
         let decoded = try Self.roundTrip(preferences)
 
         XCTAssertEqual(decoded, preferences)
-        XCTAssertEqual(decoded.crossDevice.appLanguageCode, AppLanguage.traditionalChinese.rawValue)
+        XCTAssertEqual(decoded.crossDevice.appLanguage, .traditionalChinese)
         XCTAssertNil(decoded.deviceLocal.defaultTransactionAccountId)
+    }
+
+    func testBackupArchiveJSONShapeUsesTypedPreferenceKeys() throws {
+        let archive = BackupArchive(
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            appVersion: "1.0.0",
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            exportSourceDevice: "iPhone 17 Pro",
+            financialData: BackupFinancialData(),
+            preferences: BackupPreferences(
+                crossDevice: BackupCrossDevicePreferences(
+                    preferredCurrencyCode: "USD",
+                    appLanguage: .english,
+                    travelCurrencySource: .manual,
+                    detectedTravelCurrencyCode: "HKD",
+                    manualTravelCurrencyCode: "JPY",
+                    reportsCategoryRowLimit: 8
+                ),
+                deviceLocal: BackupDeviceLocalPreferences(
+                    defaultTransactionAccountId: nil,
+                    rememberLastUsedTransactionAccount: true,
+                    lastUsedTransactionAccountId: nil,
+                    autoPresentAccountAfterCategorySelection: false
+                )
+            ),
+            integrityMetadata: BackupIntegrityMetadata(
+                archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+                contentHash: "sha256:abc123",
+                recordCounts: BackupRecordCounts(
+                    currencies: 0,
+                    exchangeRates: 0,
+                    categories: 0,
+                    accounts: 0,
+                    transactions: 0,
+                    scheduledOccurrenceExceptions: 0,
+                    budgets: 0
+                ),
+                createdByBuild: nil,
+                compressionFormat: nil
+            )
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(archive)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let preferences = try XCTUnwrap(json["preferences"] as? [String: Any])
+        let crossDevice = try XCTUnwrap(preferences["crossDevice"] as? [String: Any])
+
+        XCTAssertNotNil(json["schemaVersion"])
+        XCTAssertNotNil(json["financialData"])
+        XCTAssertEqual(crossDevice["appLanguage"] as? String, AppLanguage.english.rawValue)
+        XCTAssertEqual(crossDevice["travelCurrencySource"] as? String, TravelCurrencySource.manual.rawValue)
+        XCTAssertNil(crossDevice["showUpcomingScheduledTransactions"])
     }
 
     private static func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {

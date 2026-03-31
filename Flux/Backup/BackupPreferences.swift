@@ -7,12 +7,11 @@ struct BackupPreferences: Codable, Equatable {
 
 struct BackupCrossDevicePreferences: Codable, Equatable {
     var preferredCurrencyCode: String
-    var appLanguageCode: String
-    var travelCurrencySource: String
+    var appLanguage: AppLanguage
+    var travelCurrencySource: TravelCurrencySource
     var detectedTravelCurrencyCode: String?
     var manualTravelCurrencyCode: String?
     var reportsCategoryRowLimit: Int
-    var showUpcomingScheduledTransactions: Bool
 }
 
 struct BackupDeviceLocalPreferences: Codable, Equatable {

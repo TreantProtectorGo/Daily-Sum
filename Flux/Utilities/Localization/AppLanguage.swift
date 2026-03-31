@@ -2,7 +2,7 @@ import Foundation
 
 private let kAppLanguageCode = "flux.appLanguageCode"
 
-enum AppLanguage: String, CaseIterable, Identifiable {
+enum AppLanguage: String, CaseIterable, Identifiable, Codable {
     case system
     case english
     case simplifiedChinese

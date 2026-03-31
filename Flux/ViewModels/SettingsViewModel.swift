@@ -106,7 +106,7 @@ enum ExchangeRateSyncPreference {
     }
 }
 
-enum TravelCurrencySource: String, CaseIterable, Identifiable {
+enum TravelCurrencySource: String, CaseIterable, Identifiable, Codable {
     case automatic
     case manual
 
