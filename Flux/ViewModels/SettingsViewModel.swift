@@ -240,6 +240,7 @@ final class SettingsViewModel {
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
     private let backupExportService: any BackupExportServicing
+    private let backupImportService: any BackupImportServicing
 
     /// User's selected default currency - persisted to UserDefaults
     var defaultCurrencyCode: String {
@@ -306,6 +307,9 @@ final class SettingsViewModel {
     var isPreparingBackupExport = false
     var preparedBackupArchive: BackupArchive?
     var backupExportErrorMessage: String?
+    var isPreparingBackupRestorePreview = false
+    var preparedBackupRestorePreview: BackupImportPreflightSummary?
+    var backupRestorePreviewErrorMessage: String?
 
     var isLoading = false
     var errorMessage: String?
@@ -401,7 +405,8 @@ final class SettingsViewModel {
         modelContext: ModelContext,
         exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
         travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil,
-        backupExportService: (any BackupExportServicing)? = nil
+        backupExportService: (any BackupExportServicing)? = nil,
+        backupImportService: (any BackupImportServicing)? = nil
     ) {
         self.modelContext = modelContext
         self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
@@ -410,6 +415,8 @@ final class SettingsViewModel {
             ?? TravelCurrencyLocationService()
         self.backupExportService = backupExportService
             ?? BackupExportService(context: modelContext)
+        self.backupImportService = backupImportService
+            ?? BackupImportService(restoreSessionMarkerStore: RestoreSessionMarkerStore())
         // Load persisted currency preference on init
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
@@ -435,6 +442,30 @@ final class SettingsViewModel {
             preparedBackupArchive = try backupExportService.makeBackupArchive()
         } catch {
             backupExportErrorMessage = error.localizedDescription
+        }
+    }
+
+    func prepareBackupRestorePreview(
+        from data: Data,
+        mode: BackupRestoreMode,
+        scope: BackupRestoreScope
+    ) {
+        isPreparingBackupRestorePreview = true
+        backupRestorePreviewErrorMessage = nil
+        preparedBackupRestorePreview = nil
+
+        defer {
+            isPreparingBackupRestorePreview = false
+        }
+
+        do {
+            preparedBackupRestorePreview = try backupImportService.prepareImport(
+                data: data,
+                mode: mode,
+                scope: scope
+            )
+        } catch {
+            backupRestorePreviewErrorMessage = error.localizedDescription
         }
     }
 
