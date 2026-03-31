@@ -1,10 +1,217 @@
 import XCTest
 @testable import Flux
 
+@MainActor
 final class BackupArchiveCodecTests: XCTestCase {
+    func testBackupArchiveCodecEncodesAndDecodesValidArchive() throws {
+        let archive = Self.makeValidArchive()
+
+        let data = try BackupArchiveCodec.encode(archive)
+        let decoded = try BackupArchiveCodec.decode(data)
+
+        XCTAssertEqual(decoded.schemaVersion, BackupArchive.currentSchemaVersion)
+        XCTAssertEqual(decoded.appVersion, archive.appVersion)
+        XCTAssertEqual(decoded.financialData.accounts.count, 1)
+        XCTAssertEqual(decoded.financialData.transactions.count, 1)
+        XCTAssertEqual(decoded.preferences.crossDevice.appLanguage, archive.preferences.crossDevice.appLanguage)
+        XCTAssertTrue(decoded.integrityMetadata.contentHash.hasPrefix("sha256:"))
+    }
+
+    func testBackupArchiveCodecRejectsUnsupportedSchemaVersion() throws {
+        let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
+            json["schemaVersion"] = 99
+        }
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            guard let codecError = error as? BackupArchiveCodecError else {
+                return XCTFail("Expected BackupArchiveCodecError, got \(error)")
+            }
+            switch codecError {
+            case .unsupportedSchemaVersion(99):
+                break
+            default:
+                XCTFail("Expected unsupportedSchemaVersion(99), got \(codecError)")
+            }
+        }
+    }
+
+    func testBackupArchiveCodecRejectsChecksumMismatch() throws {
+        let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
+            json["appVersion"] = "2.0.0"
+        }
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            guard let codecError = error as? BackupArchiveCodecError else {
+                return XCTFail("Expected BackupArchiveCodecError, got \(error)")
+            }
+            switch codecError {
+            case .checksumMismatch:
+                break
+            default:
+                XCTFail("Expected checksumMismatch, got \(codecError)")
+            }
+        }
+    }
+
+    func testBackupArchiveCodecRejectsMissingRequiredSections() throws {
+        let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
+            json.removeValue(forKey: "financialData")
+            json.removeValue(forKey: "preferences")
+        }
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            guard let codecError = error as? BackupArchiveCodecError else {
+                return XCTFail("Expected BackupArchiveCodecError, got \(error)")
+            }
+            switch codecError {
+            case .missingRequiredSections(let sections):
+                XCTAssertEqual(sections.sorted(), ["financialData", "preferences"])
+            default:
+                XCTFail("Expected missingRequiredSections, got \(codecError)")
+            }
+        }
+    }
+
+    func testBackupArchiveCodecRejectsDuplicateRecordIDs() throws {
+        var archive = Self.makeValidArchive()
+        let duplicateID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        archive.financialData.accounts.append(
+            BackupAccountRecord(
+                id: duplicateID,
+                name: "Duplicate Wallet",
+                type: .cash,
+                currencyCode: "USD",
+                initialBalance: 0,
+                icon: "banknote",
+                colorHex: "#007AFF",
+                includeInTotal: true,
+                createdAt: Date(timeIntervalSince1970: 1_700_000_401)
+            )
+        )
+        archive.integrityMetadata.recordCounts = BackupRecordCounts(
+            currencies: 1,
+            exchangeRates: 1,
+            categories: 1,
+            accounts: 2,
+            transactions: 1,
+            scheduledOccurrenceExceptions: 1,
+            budgets: 1
+        )
+
+        XCTAssertThrowsError(try BackupArchiveCodec.encode(archive)) { error in
+            guard let codecError = error as? BackupArchiveCodecError else {
+                return XCTFail("Expected BackupArchiveCodecError, got \(error)")
+            }
+            switch codecError {
+            case .duplicateRecordID(entity: "accounts", id: duplicateID):
+                break
+            default:
+                XCTFail("Expected duplicateRecordID(accounts, \(duplicateID)), got \(codecError)")
+            }
+        }
+    }
+
+    func testBackupArchiveCodecRejectsMalformedInput() {
+        let data = Data("not-json".utf8)
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            guard let codecError = error as? BackupArchiveCodecError else {
+                return XCTFail("Expected BackupArchiveCodecError, got \(error)")
+            }
+            switch codecError {
+            case .invalidArchiveFormat:
+                break
+            default:
+                XCTFail("Expected invalidArchiveFormat, got \(codecError)")
+            }
+        }
+    }
+
     func testBackupArchiveRoundTripPreservesArchiveContract() throws {
+        let archive = Self.makeValidArchive()
+
+        let data = try BackupArchiveCodec.encode(archive)
+        let decoded = try BackupArchiveCodec.decode(data)
+
+        XCTAssertEqual(decoded.appVersion, archive.appVersion)
+        XCTAssertEqual(decoded.financialData.accounts.first?.name, "Cash Wallet")
+        XCTAssertEqual(decoded.preferences.crossDevice.reportsCategoryRowLimit, 5)
+        XCTAssertEqual(decoded.integrityMetadata.recordCounts.transactions, 1)
+    }
+
+    func testBackupPreferencesRoundTripPreservesTypedScopes() throws {
+        let preferences = Self.makeValidPreferences()
+
+        let decoded = try Self.roundTrip(preferences)
+
+        XCTAssertEqual(decoded, preferences)
+        XCTAssertEqual(decoded.crossDevice.appLanguage, .traditionalChinese)
+        XCTAssertNil(decoded.deviceLocal.defaultTransactionAccountId)
+    }
+
+    func testBackupArchiveJSONShapeUsesTypedPreferenceKeys() throws {
         let archive = BackupArchive(
-            schemaVersion: 1,
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            appVersion: "1.0.0",
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            exportSourceDevice: "iPhone 17 Pro",
+            financialData: BackupFinancialData(),
+            preferences: BackupPreferences(
+                crossDevice: BackupCrossDevicePreferences(
+                    preferredCurrencyCode: "USD",
+                    appLanguage: .english,
+                    travelCurrencySource: .manual,
+                    detectedTravelCurrencyCode: "HKD",
+                    manualTravelCurrencyCode: "JPY",
+                    reportsCategoryRowLimit: 8
+                ),
+                deviceLocal: BackupDeviceLocalPreferences(
+                    defaultTransactionAccountId: nil,
+                    rememberLastUsedTransactionAccount: true,
+                    lastUsedTransactionAccountId: nil,
+                    autoPresentAccountAfterCategorySelection: false
+                )
+            ),
+            integrityMetadata: BackupIntegrityMetadata(
+                archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+                contentHash: "sha256:abc123",
+                recordCounts: BackupRecordCounts(
+                    currencies: 0,
+                    exchangeRates: 0,
+                    categories: 0,
+                    accounts: 0,
+                    transactions: 0,
+                    scheduledOccurrenceExceptions: 0,
+                    budgets: 0
+                ),
+                createdByBuild: nil,
+                compressionFormat: nil
+            )
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(archive)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let preferences = try XCTUnwrap(json["preferences"] as? [String: Any])
+        let crossDevice = try XCTUnwrap(preferences["crossDevice"] as? [String: Any])
+
+        XCTAssertNotNil(json["schemaVersion"])
+        XCTAssertNotNil(json["financialData"])
+        XCTAssertEqual(crossDevice["appLanguage"] as? String, AppLanguage.english.rawValue)
+        XCTAssertEqual(crossDevice["travelCurrencySource"] as? String, TravelCurrencySource.manual.rawValue)
+        XCTAssertNil(crossDevice["showUpcomingScheduledTransactions"])
+    }
+
+    private static func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        let data = try encoder.encode(value)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private static func makeValidArchive() -> BackupArchive {
+        BackupArchive(
+            schemaVersion: BackupArchive.currentSchemaVersion,
             appVersion: "1.0.0",
             exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
             exportSourceDevice: "iPhone 17 Pro",
@@ -105,22 +312,7 @@ final class BackupArchiveCodecTests: XCTestCase {
                     )
                 ]
             ),
-            preferences: BackupPreferences(
-                crossDevice: BackupCrossDevicePreferences(
-                    preferredCurrencyCode: "USD",
-                    appLanguage: .english,
-                    travelCurrencySource: .manual,
-                    detectedTravelCurrencyCode: "HKD",
-                    manualTravelCurrencyCode: "JPY",
-                    reportsCategoryRowLimit: 8
-                ),
-                deviceLocal: BackupDeviceLocalPreferences(
-                    defaultTransactionAccountId: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
-                    rememberLastUsedTransactionAccount: true,
-                    lastUsedTransactionAccountId: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
-                    autoPresentAccountAfterCategorySelection: true
-                )
-            ),
+            preferences: makeValidPreferences(),
             integrityMetadata: BackupIntegrityMetadata(
                 archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
                 contentHash: "sha256:abc123",
@@ -137,17 +329,10 @@ final class BackupArchiveCodecTests: XCTestCase {
                 compressionFormat: "none"
             )
         )
-
-        let decoded = try Self.roundTrip(archive)
-
-        XCTAssertEqual(decoded, archive)
-        XCTAssertEqual(decoded.financialData.accounts.first?.name, "Cash Wallet")
-        XCTAssertEqual(decoded.preferences.crossDevice.reportsCategoryRowLimit, 8)
-        XCTAssertEqual(decoded.integrityMetadata.recordCounts.transactions, 1)
     }
 
-    func testBackupPreferencesRoundTripPreservesTypedScopes() throws {
-        let preferences = BackupPreferences(
+    private static func makeValidPreferences() -> BackupPreferences {
+        BackupPreferences(
             crossDevice: BackupCrossDevicePreferences(
                 preferredCurrencyCode: "HKD",
                 appLanguage: .traditionalChinese,
@@ -163,71 +348,15 @@ final class BackupArchiveCodecTests: XCTestCase {
                 autoPresentAccountAfterCategorySelection: false
             )
         )
-
-        let decoded = try Self.roundTrip(preferences)
-
-        XCTAssertEqual(decoded, preferences)
-        XCTAssertEqual(decoded.crossDevice.appLanguage, .traditionalChinese)
-        XCTAssertNil(decoded.deviceLocal.defaultTransactionAccountId)
     }
 
-    func testBackupArchiveJSONShapeUsesTypedPreferenceKeys() throws {
-        let archive = BackupArchive(
-            schemaVersion: BackupArchive.currentSchemaVersion,
-            appVersion: "1.0.0",
-            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            exportSourceDevice: "iPhone 17 Pro",
-            financialData: BackupFinancialData(),
-            preferences: BackupPreferences(
-                crossDevice: BackupCrossDevicePreferences(
-                    preferredCurrencyCode: "USD",
-                    appLanguage: .english,
-                    travelCurrencySource: .manual,
-                    detectedTravelCurrencyCode: "HKD",
-                    manualTravelCurrencyCode: "JPY",
-                    reportsCategoryRowLimit: 8
-                ),
-                deviceLocal: BackupDeviceLocalPreferences(
-                    defaultTransactionAccountId: nil,
-                    rememberLastUsedTransactionAccount: true,
-                    lastUsedTransactionAccountId: nil,
-                    autoPresentAccountAfterCategorySelection: false
-                )
-            ),
-            integrityMetadata: BackupIntegrityMetadata(
-                archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
-                contentHash: "sha256:abc123",
-                recordCounts: BackupRecordCounts(
-                    currencies: 0,
-                    exchangeRates: 0,
-                    categories: 0,
-                    accounts: 0,
-                    transactions: 0,
-                    scheduledOccurrenceExceptions: 0,
-                    budgets: 0
-                ),
-                createdByBuild: nil,
-                compressionFormat: nil
-            )
-        )
-
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(archive)
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        let preferences = try XCTUnwrap(json["preferences"] as? [String: Any])
-        let crossDevice = try XCTUnwrap(preferences["crossDevice"] as? [String: Any])
-
-        XCTAssertNotNil(json["schemaVersion"])
-        XCTAssertNotNil(json["financialData"])
-        XCTAssertEqual(crossDevice["appLanguage"] as? String, AppLanguage.english.rawValue)
-        XCTAssertEqual(crossDevice["travelCurrencySource"] as? String, TravelCurrencySource.manual.rawValue)
-        XCTAssertNil(crossDevice["showUpcomingScheduledTransactions"])
-    }
-
-    private static func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-        let data = try encoder.encode(value)
-        return try decoder.decode(T.self, from: data)
+    private static func encodedData(
+        from archive: BackupArchive,
+        mutate: (inout [String: Any]) -> Void
+    ) throws -> Data {
+        let encoded = try JSONEncoder().encode(archive)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        mutate(&json)
+        return try JSONSerialization.data(withJSONObject: json)
     }
 }
