@@ -361,12 +361,43 @@ final class LocalizationTests: XCTestCase {
 
         for (language, locale) in localesByLanguage {
             let value = localizedStringValue(key: "transaction.upcomingHint.subtitle", locale: locale)
+            let integerSpecifiers = value.matches(of: /%(?:\d+\$)?lld/).count
+            let objectSpecifiers = value.matches(of: /%(?:\d+\$)?@/).count
+
             XCTAssertEqual(
-                value.components(separatedBy: "%lld").count - 1,
+                integerSpecifiers,
                 2,
-                "Expected exactly two %lld placeholders for \(language)"
+                "Expected exactly two integer placeholders for \(language)"
             )
-            XCTAssertTrue(value.contains("%@"), "Expected %@ placeholder for \(language)")
+            XCTAssertEqual(
+                objectSpecifiers,
+                1,
+                "Expected exactly one object placeholder for \(language)"
+            )
+        }
+    }
+
+    func testBudgetAlertWarningBodyFormatsAcrossLanguages() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        let cases: [(AppLanguage, String)] = [
+            (.english, "Food has reached 80% of its budget."),
+            (.simplifiedChinese, "Food 已达到预算的 80%。"),
+            (.traditionalChinese, "Food 已用八成預算。")
+        ]
+
+        for (language, expectedValue) in cases {
+            AppLanguagePreference.language = language
+
+            XCTAssertEqual(
+                AppLocalization.formatted(
+                    "budget.alert.notification.warning.body",
+                    defaultValue: "%1$@ has reached 80%% of its budget.",
+                    "Food"
+                ),
+                expectedValue
+            )
         }
     }
 

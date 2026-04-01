@@ -127,6 +127,41 @@ final class BackupArchiveCodecTests: XCTestCase {
         }
     }
 
+    func testBackupArchiveCodecRejectsTruncatedInput() {
+        let data = Data("{\"schemaVersion\":1,\"appVersion\":\"1.0.0\"".utf8)
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            XCTAssertEqual(error as? BackupArchiveCodecError, .invalidArchiveFormat)
+        }
+    }
+
+    func testBackupArchiveCodecRejectsOlderSchemaVersion() throws {
+        let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
+            json["schemaVersion"] = BackupArchive.currentSchemaVersion - 1
+        }
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            XCTAssertEqual(
+                error as? BackupArchiveCodecError,
+                .unsupportedSchemaVersion(BackupArchive.currentSchemaVersion - 1)
+            )
+        }
+    }
+
+    func testBackupArchiveCodecRejectsUnknownTypedPreferenceEnumValue() throws {
+        let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
+            var preferences = json["preferences"] as? [String: Any] ?? [:]
+            var crossDevice = preferences["crossDevice"] as? [String: Any] ?? [:]
+            crossDevice["appLanguage"] = "pirate"
+            preferences["crossDevice"] = crossDevice
+            json["preferences"] = preferences
+        }
+
+        XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
+            XCTAssertEqual(error as? BackupArchiveCodecError, .invalidArchiveFormat)
+        }
+    }
+
     func testBackupArchiveRoundTripPreservesArchiveContract() throws {
         let archive = Self.makeValidArchive()
 

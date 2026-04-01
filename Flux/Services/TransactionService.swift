@@ -378,9 +378,11 @@ final class TransactionService {
             try context.save()
             syncBudgetAlerts()
 
-            Task { @MainActor in
-                let reminderScheduler = TransactionReminderScheduler(context: context)
-                await reminderScheduler.removeReminders(forTemplateId: templateId)
+            if !RuntimeEnvironment.isRunningTests {
+                Task { @MainActor in
+                    let reminderScheduler = TransactionReminderScheduler(context: context)
+                    await reminderScheduler.removeReminders(forTemplateId: templateId)
+                }
             }
             return
         }
@@ -406,7 +408,7 @@ final class TransactionService {
             .filter(\.isRecurringTemplate)
             .map(\.id)
 
-        if !templateIds.isEmpty {
+        if !templateIds.isEmpty && !RuntimeEnvironment.isRunningTests {
             Task { @MainActor in
                 let reminderScheduler = TransactionReminderScheduler(context: context)
                 for templateId in templateIds {
@@ -417,6 +419,10 @@ final class TransactionService {
     }
 
     private func syncBudgetAlerts() {
+        guard !RuntimeEnvironment.isRunningTests else {
+            return
+        }
+
         Task { @MainActor in
             let scheduler = BudgetAlertScheduler(context: context)
             try? await scheduler.syncAlerts()

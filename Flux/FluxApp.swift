@@ -13,11 +13,14 @@ import UserNotifications
 struct FluxApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var container: ModelContainer?
+    @State private var containerGeneration = 0
     @State private var isLoading = true
     @State private var loadError: Error?
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
+    private let cloudSyncSettingsStore: any CloudSyncSettingsStoring
 
     init() {
+        self.cloudSyncSettingsStore = CloudSyncSettingsStore()
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresentationDelegate.shared
     }
     
@@ -26,6 +29,7 @@ struct FluxApp: App {
             Group {
                 if let container {
                     ContentView()
+                        .id(containerGeneration)
                         .modelContainer(container)
                         .environment(\.regionalSettings, RegionalSettings.shared)
                         .environment(\.locale, appLocale)
@@ -37,6 +41,11 @@ struct FluxApp: App {
             }
             .task {
                 await initializeApp()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: CloudSyncSettingsStore.didChangeNotification)) { _ in
+                Task {
+                    await reloadModelContainerForCloudSyncChange()
+                }
             }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
@@ -70,11 +79,16 @@ struct FluxApp: App {
             return
         }
 
+        let previousContainer = container
+        isLoading = true
+        loadError = nil
+
         do {
             // Create and seed the model container
-            // TODO: Read CloudKit preference from UserDefaults
-            let enableCloudKit = false
-            container = try await ModelContainer.createAndSeed(enableCloudKit: enableCloudKit)
+            let enableCloudKit = cloudSyncSettingsStore.status == .enabled
+            let newContainer = try await ModelContainer.createAndSeed(enableCloudKit: enableCloudKit)
+            containerGeneration += 1
+            container = newContainer
             
             if let container {
                 await requestNotificationAuthorizationIfNeeded(in: container)
@@ -86,9 +100,14 @@ struct FluxApp: App {
             
             isLoading = false
         } catch {
-            loadError = error
+            container = previousContainer
+            loadError = previousContainer == nil ? error : nil
             isLoading = false
         }
+    }
+
+    private func reloadModelContainerForCloudSyncChange() async {
+        await initializeApp()
     }
 
     @MainActor

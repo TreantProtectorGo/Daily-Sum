@@ -646,7 +646,10 @@ final class ServiceTests: XCTestCase {
             context: context,
             notificationCenter: center
         )
-        try await scheduler.syncReminders(for: [generated])
+        let now = Calendar(identifier: .gregorian).date(
+            from: DateComponents(year: 2026, month: 2, day: 20)
+        )!
+        try await scheduler.syncReminders(for: [generated], now: now)
 
         let expectedIdentifier = TransactionReminderScheduler.identifier(
             templateId: template.id,
@@ -744,6 +747,7 @@ final class ServiceTests: XCTestCase {
         let trigger = try XCTUnwrap(center.addedRequests.first?.trigger as? UNTimeIntervalNotificationTrigger)
         XCTAssertEqual(trigger.timeInterval, 1, accuracy: 0.1)
         XCTAssertFalse(trigger.repeats)
+        XCTAssertEqual(center.addedRequests.first?.content.body, "Food has reached 80% of its budget.")
     }
 
     func testBudgetAlertSchedulerSchedulesExceededNotification() async throws {
@@ -799,6 +803,7 @@ final class ServiceTests: XCTestCase {
                 stage: .exceeded
             )
         )
+        XCTAssertEqual(center.addedRequests.first?.content.body, "Travel has exceeded its budget.")
     }
 
     func testForegroundNotificationPresentationDelegateUsesBannerListAndSound() {

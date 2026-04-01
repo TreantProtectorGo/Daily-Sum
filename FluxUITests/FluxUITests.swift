@@ -81,6 +81,24 @@ final class FluxUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsShowsCloudSyncAndBackupRestoreControls() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+
+        let settingsButton = app.navigationBars.buttons["Settings"].firstMatch
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
+        settingsButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 2))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Enable iCloud Sync"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["Back Up Now"], in: app))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Restore Mode"], in: app))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Restore Scope"], in: app))
+        XCTAssertTrue(scrollToElement(app.buttons["Restore from Backup"], in: app))
+    }
+
+    @MainActor
     func testTransactionAmountKeypadCommitsExpressionResult() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -163,6 +181,21 @@ final class FluxUITests: XCTestCase {
                 label
             )
         ).firstMatch
+    }
+
+    private func scrollToElement(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        if element.waitForExistence(timeout: 1) {
+            return true
+        }
+
+        for _ in 0..<6 {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 1) {
+                return true
+            }
+        }
+
+        return false
     }
 
     @MainActor

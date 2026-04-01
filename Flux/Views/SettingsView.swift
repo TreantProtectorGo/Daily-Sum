@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import UniformTypeIdentifiers
 
 // MARK: - Settings View
 
@@ -19,6 +20,10 @@ struct SettingsView: View {
     @State private var showTravelCurrencySettings = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showBackupExporter = false
+    @State private var backupArchiveDocument: BackupArchiveDocument?
+    @State private var showRestoreImporter = false
+    @State private var pendingBackupRestoreData: Data?
 
     init(autoPopWhenTabSwitch: Bool = false) {
         self.autoPopWhenTabSwitch = autoPopWhenTabSwitch
@@ -65,6 +70,9 @@ struct SettingsView: View {
             
             // Data Summary
             dataSummarySection(viewModel: viewModel)
+
+            // Sync, Backup, Restore
+            dataContinuitySection(viewModel: viewModel)
             
             // Data Management
             dataManagementSection(viewModel: viewModel)
@@ -103,6 +111,24 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showTravelCurrencySettings) {
             TravelCurrencySettingsSheet(viewModel: viewModel)
+        }
+        .fileExporter(
+            isPresented: $showBackupExporter,
+            document: backupArchiveDocument,
+            contentType: .json,
+            defaultFilename: backupExportFilename(for: viewModel)
+        ) { result in
+            if case let .failure(error) = result {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
+        .fileImporter(
+            isPresented: $showRestoreImporter,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleRestoreImport(result, viewModel: viewModel)
         }
         .onAppear {
             Task {
@@ -356,7 +382,131 @@ struct SettingsView: View {
     }
     
     // MARK: - Data Management Section
-    
+
+    @ViewBuilder
+    private func dataContinuitySection(viewModel: SettingsViewModel) -> some View {
+        Section(AppLocalization.string("settings.dataContinuity", defaultValue: "Sync & Backup")) {
+            LabeledContent(
+                AppLocalization.string("settings.cloudSync", defaultValue: "iCloud Sync")
+            ) {
+                Text(viewModel.cloudSyncStatusTitle)
+                    .foregroundStyle(viewModel.cloudSyncRequiresAttention ? .orange : .secondary)
+                    .accessibilityIdentifier("settings.cloudSync.status")
+            }
+
+            Toggle(
+                AppLocalization.string(
+                    "settings.cloudSync.enable",
+                    defaultValue: "Enable iCloud Sync"
+                ),
+                isOn: Binding(
+                    get: { viewModel.isCloudSyncEnabled },
+                    set: { viewModel.isCloudSyncEnabled = $0 }
+                )
+            )
+            .disabled(viewModel.cloudSyncRequiresAttention)
+            .accessibilityIdentifier("settings.cloudSync.toggle")
+
+            Text(viewModel.cloudSyncStatusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                prepareBackupExport(viewModel: viewModel)
+            } label: {
+                Text(AppLocalization.string("settings.backup.export", defaultValue: "Back Up Now"))
+            }
+            .accessibilityIdentifier("settings.backup.export.button")
+
+            if let summary = viewModel.backupExportSummaryText {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Menu {
+                ForEach(BackupRestoreMode.allCases, id: \.self) { mode in
+                    Button(backupRestoreModeTitle(mode)) {
+                        viewModel.setBackupRestoreMode(mode)
+                    }
+                }
+            } label: {
+                settingsSelectionRow(
+                    title: AppLocalization.string(
+                        "settings.backup.restore.mode",
+                        defaultValue: "Restore Mode"
+                    ),
+                    value: backupRestoreModeTitle(viewModel.selectedBackupRestoreMode)
+                )
+            }
+            .accessibilityIdentifier("settings.backup.restore.mode")
+
+            Menu {
+                ForEach(BackupRestoreScope.allCases, id: \.self) { scope in
+                    Button(backupRestoreScopeTitle(scope)) {
+                        viewModel.setBackupRestoreScope(scope)
+                    }
+                }
+            } label: {
+                settingsSelectionRow(
+                    title: AppLocalization.string(
+                        "settings.backup.restore.scope",
+                        defaultValue: "Restore Scope"
+                    ),
+                    value: backupRestoreScopeTitle(viewModel.selectedBackupRestoreScope)
+                )
+            }
+            .accessibilityIdentifier("settings.backup.restore.scope")
+
+            Button {
+                showRestoreImporter = true
+            } label: {
+                Text(
+                    AppLocalization.string(
+                        "settings.backup.restore.action",
+                        defaultValue: "Restore from Backup"
+                    )
+                )
+            }
+            .accessibilityIdentifier("settings.backup.restore.button")
+
+            if let summary = viewModel.backupRestorePreviewSummaryText,
+               pendingBackupRestoreData != nil {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(
+                        AppLocalization.string(
+                            "settings.backup.restore.preview",
+                            defaultValue: "Restore Preview"
+                        )
+                    )
+                    .font(.subheadline.weight(.semibold))
+
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.backup.preview.summary")
+
+                    Button(
+                        AppLocalization.string(
+                            "settings.backup.restore.confirm",
+                            defaultValue: "Confirm Restore"
+                        )
+                    ) {
+                        applyPreparedRestore(viewModel: viewModel)
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+
+            if let summary = viewModel.appliedBackupImportSummaryText {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.backup.import.summary")
+            }
+        }
+    }
+
     @ViewBuilder
     private func dataManagementSection(viewModel: SettingsViewModel) -> some View {
         Section(AppLocalization.string("settings.dataManagement", defaultValue: "Data Management")) {
@@ -386,7 +536,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(AppLocalization.string("settings.privacy.title", defaultValue: "Privacy First"))
                         .font(.subheadline)
-                    Text(AppLocalization.string("settings.privacy.message", defaultValue: "All data stored locally on device. iCloud Sync and premium features coming soon."))
+                    Text(AppLocalization.string("settings.privacy.message", defaultValue: "Data stays local-first, with optional iCloud sync and manual backup restore controls."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -397,6 +547,159 @@ struct SettingsView: View {
         }
     }
 
+    private func settingsSelectionRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.secondary)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func backupRestoreModeTitle(_ mode: BackupRestoreMode) -> String {
+        switch mode {
+        case .replace:
+            AppLocalization.string("settings.backup.restore.mode.replace", defaultValue: "Replace")
+        case .merge:
+            AppLocalization.string("settings.backup.restore.mode.merge", defaultValue: "Merge")
+        }
+    }
+
+    private func backupRestoreScopeTitle(_ scope: BackupRestoreScope) -> String {
+        switch scope {
+        case .financialDataOnly:
+            AppLocalization.string("settings.backup.restore.scope.financialOnly", defaultValue: "Financial Data Only")
+        case .financialDataAndCrossDevicePreferences:
+            AppLocalization.string(
+                "settings.backup.restore.scope.crossDevice",
+                defaultValue: "Financial Data + Cross-Device Preferences"
+            )
+        case .financialDataAndAllPreferences:
+            AppLocalization.string(
+                "settings.backup.restore.scope.allPreferences",
+                defaultValue: "Financial Data + All Preferences"
+            )
+        }
+    }
+
+    private func prepareBackupExport(viewModel: SettingsViewModel) {
+        viewModel.prepareBackupExport()
+
+        if let error = viewModel.backupExportErrorMessage {
+            errorMessage = error
+            showError = true
+            return
+        }
+
+        guard let archive = viewModel.preparedBackupArchive else {
+            return
+        }
+
+        do {
+            backupArchiveDocument = try BackupArchiveDocument(archive: archive)
+            showBackupExporter = true
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    private func handleRestoreImport(
+        _ result: Result<[URL], Error>,
+        viewModel: SettingsViewModel
+    ) {
+        switch result {
+        case let .success(urls):
+            guard let url = urls.first else { return }
+            let didAccessResource = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccessResource {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            do {
+                let data = try Data(contentsOf: url)
+                pendingBackupRestoreData = data
+                viewModel.prepareBackupRestorePreview(
+                    from: data,
+                    mode: viewModel.selectedBackupRestoreMode,
+                    scope: viewModel.selectedBackupRestoreScope
+                )
+
+                if let error = viewModel.backupRestorePreviewErrorMessage {
+                    pendingBackupRestoreData = nil
+                    errorMessage = error
+                    showError = true
+                }
+            } catch {
+                pendingBackupRestoreData = nil
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        case let .failure(error):
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    private func applyPreparedRestore(viewModel: SettingsViewModel) {
+        guard let pendingBackupRestoreData else { return }
+
+        viewModel.applyBackupRestore(
+            from: pendingBackupRestoreData,
+            mode: viewModel.selectedBackupRestoreMode,
+            scope: viewModel.selectedBackupRestoreScope
+        )
+
+        if let error = viewModel.backupRestoreApplyErrorMessage {
+            errorMessage = error
+            showError = true
+            return
+        }
+
+        self.pendingBackupRestoreData = nil
+    }
+
+    private func backupExportFilename(for viewModel: SettingsViewModel) -> String {
+        guard let archive = viewModel.preparedBackupArchive else {
+            return "Flux-Backup"
+        }
+
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "Flux-Backup-\(formatter.string(from: archive.exportedAt))"
+    }
+
+}
+
+private struct BackupArchiveDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+
+    var data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(archive: BackupArchive) throws {
+        self.data = try BackupArchiveCodec.encode(archive)
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        self.data = data
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
 }
 
 private struct TravelCurrencySettingsSheet: View {

@@ -929,13 +929,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ has reached 80% of its budget."
+            "value" : "%1$@ has reached 80%% of its budget."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ 已达到预算的 80%。"
+            "value" : "%1$@ 已达到预算的 80%%。"
           }
         },
         "zh-Hant" : {

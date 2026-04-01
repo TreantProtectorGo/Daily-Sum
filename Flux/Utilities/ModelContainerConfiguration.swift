@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 
 enum ModelContainerConfiguration {
+    static let cloudKitContainerIdentifier = "iCloud.com.aegis.flux"
+
     static let modelTypes: [any PersistentModel.Type] = [
         Currency.self,
         ExchangeRate.self,
@@ -23,7 +25,7 @@ enum ModelContainerConfiguration {
             configuration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: false,
-                cloudKitDatabase: .private("iCloud.com.aegis.flux")
+                cloudKitDatabase: .private(cloudKitContainerIdentifier)
             )
         } else {
             configuration = ModelConfiguration(

@@ -241,6 +241,8 @@ final class SettingsViewModel {
     private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
     private let backupExportService: any BackupExportServicing
     private let backupImportService: any BackupImportServicing
+    private var cloudSyncSettingsStore: any CloudSyncSettingsStoring
+    private var isSynchronizingCloudSyncState = false
 
     /// User's selected default currency - persisted to UserDefaults
     var defaultCurrencyCode: String {
@@ -310,6 +312,21 @@ final class SettingsViewModel {
     var isPreparingBackupRestorePreview = false
     var preparedBackupRestorePreview: BackupImportPreflightSummary?
     var backupRestorePreviewErrorMessage: String?
+    var isApplyingBackupRestore = false
+    var appliedBackupImportReport: ImportReport?
+    var backupRestoreApplyErrorMessage: String?
+    private(set) var selectedBackupRestoreMode: BackupRestoreMode = .replace
+    private(set) var selectedBackupRestoreScope: BackupRestoreScope = .financialDataOnly
+    var isCloudSyncEnabled = false {
+        didSet {
+            guard !isSynchronizingCloudSyncState else { return }
+            guard oldValue != isCloudSyncEnabled else { return }
+
+            cloudSyncSettingsStore.isCloudSyncEnabled = isCloudSyncEnabled
+            syncCloudSyncStateFromStore()
+        }
+    }
+    private(set) var cloudSyncStatus: CloudSyncStatus = .disabled
 
     var isLoading = false
     var errorMessage: String?
@@ -396,6 +413,68 @@ final class SettingsViewModel {
         }
     }
 
+    var cloudSyncStatusTitle: String {
+        switch cloudSyncStatus {
+        case .enabled:
+            AppLocalization.string("settings.cloudSync.status.on", defaultValue: "On")
+        case .disabled:
+            AppLocalization.string("settings.cloudSync.status.off", defaultValue: "Off")
+        case .unavailable:
+            AppLocalization.string(
+                "settings.cloudSync.status.needsAttention",
+                defaultValue: "Needs Attention"
+            )
+        }
+    }
+
+    var cloudSyncStatusMessage: String {
+        switch cloudSyncStatus {
+        case .enabled:
+            AppLocalization.string(
+                "settings.cloudSync.message.on",
+                defaultValue: "Changes sync through iCloud."
+            )
+        case .disabled:
+            AppLocalization.string(
+                "settings.cloudSync.message.off",
+                defaultValue: "Sync is currently off."
+            )
+        case .unavailable(.iCloudAccountRequired):
+            AppLocalization.string(
+                "settings.cloudSync.message.signInRequired",
+                defaultValue: "Sign in to iCloud to enable sync."
+            )
+        }
+    }
+
+    var cloudSyncRequiresAttention: Bool {
+        if case .unavailable = cloudSyncStatus {
+            return true
+        }
+        return false
+    }
+
+    var backupExportSummaryText: String? {
+        guard let preparedBackupArchive else { return nil }
+        return "\(preparedBackupArchive.exportSourceDevice), " +
+            "\(preparedBackupArchive.integrityMetadata.recordCounts.accounts) accounts, " +
+            "\(preparedBackupArchive.integrityMetadata.recordCounts.transactions) transactions"
+    }
+
+    var backupRestorePreviewSummaryText: String? {
+        guard let preparedBackupRestorePreview else { return nil }
+        return "\(preparedBackupRestorePreview.exportSourceDevice), " +
+            "\(preparedBackupRestorePreview.recordCounts.accounts) accounts, " +
+            "\(preparedBackupRestorePreview.recordCounts.transactions) transactions"
+    }
+
+    var appliedBackupImportSummaryText: String? {
+        guard let appliedBackupImportReport else { return nil }
+        let summary = appliedBackupImportReport.summary
+        return "Imported \(summary.importedCount), updated \(summary.updatedCount), " +
+            "skipped \(summary.skippedCount), failed \(summary.failedCount)"
+    }
+
     enum NotificationSettingsAction: Equatable {
         case none
         case openSystemSettings
@@ -406,7 +485,8 @@ final class SettingsViewModel {
         exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
         travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil,
         backupExportService: (any BackupExportServicing)? = nil,
-        backupImportService: (any BackupImportServicing)? = nil
+        backupImportService: (any BackupImportServicing)? = nil,
+        cloudSyncSettingsStore: (any CloudSyncSettingsStoring)? = nil
     ) {
         self.modelContext = modelContext
         self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
@@ -417,6 +497,8 @@ final class SettingsViewModel {
             ?? BackupExportService(context: modelContext)
         self.backupImportService = backupImportService
             ?? BackupImportService(restoreSessionMarkerStore: RestoreSessionMarkerStore())
+        self.cloudSyncSettingsStore = cloudSyncSettingsStore
+            ?? CloudSyncSettingsStore()
         // Load persisted currency preference on init
         self.defaultCurrencyCode = UserCurrencyPreference.currencyCode
         self.defaultAccountId = TransactionAccountPreference.defaultAccountId
@@ -427,6 +509,19 @@ final class SettingsViewModel {
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         self.reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
+        syncCloudSyncStateFromStore()
+    }
+
+    func setBackupRestoreMode(_ mode: BackupRestoreMode) {
+        guard selectedBackupRestoreMode != mode else { return }
+        selectedBackupRestoreMode = mode
+        invalidatePreparedBackupRestorePreview()
+    }
+
+    func setBackupRestoreScope(_ scope: BackupRestoreScope) {
+        guard selectedBackupRestoreScope != scope else { return }
+        selectedBackupRestoreScope = scope
+        invalidatePreparedBackupRestorePreview()
     }
 
     func prepareBackupExport() {
@@ -469,18 +564,39 @@ final class SettingsViewModel {
         }
     }
 
+    func applyBackupRestore(
+        from data: Data,
+        mode: BackupRestoreMode,
+        scope: BackupRestoreScope
+    ) {
+        isApplyingBackupRestore = true
+        backupRestoreApplyErrorMessage = nil
+        appliedBackupImportReport = nil
+
+        defer {
+            isApplyingBackupRestore = false
+        }
+
+        do {
+            appliedBackupImportReport = try backupImportService.applyImport(
+                data: data,
+                mode: mode,
+                scope: scope,
+                context: modelContext
+            )
+            invalidatePreparedBackupRestorePreview()
+            reloadPreferenceStateFromStorage()
+            try refreshDataCounts()
+        } catch {
+            backupRestoreApplyErrorMessage = error.localizedDescription
+        }
+    }
+
     func loadSettings() async {
         isLoading = true
         
         do {
-            accountCount = try modelContext.fetchCount(FetchDescriptor<Account>())
-            transactionCount = try modelContext.fetchCount(
-                FetchDescriptor<Transaction>(
-                    predicate: #Predicate<Transaction> { !$0.isRecurringTemplate }
-                )
-            )
-            categoryCount = try modelContext.fetchCount(FetchDescriptor<Category>())
-            budgetCount = try modelContext.fetchCount(FetchDescriptor<Budget>())
+            try refreshDataCounts()
             await refreshReminderAuthorizationStatus()
             await refreshTravelCurrencyState()
             
@@ -489,6 +605,42 @@ final class SettingsViewModel {
         }
         
         isLoading = false
+    }
+
+    private func reloadPreferenceStateFromStorage() {
+        defaultCurrencyCode = UserCurrencyPreference.currencyCode
+        defaultAccountId = TransactionAccountPreference.defaultAccountId
+        rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
+        autoPresentAccountAfterCategorySelection =
+            TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
+        appLanguage = AppLanguagePreference.language
+        travelCurrencySource = TravelCurrencyPreference.source
+        detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
+        manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
+        reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
+    }
+
+    private func invalidatePreparedBackupRestorePreview() {
+        preparedBackupRestorePreview = nil
+        backupRestorePreviewErrorMessage = nil
+    }
+
+    private func syncCloudSyncStateFromStore() {
+        isSynchronizingCloudSyncState = true
+        isCloudSyncEnabled = cloudSyncSettingsStore.isCloudSyncEnabled
+        cloudSyncStatus = cloudSyncSettingsStore.status
+        isSynchronizingCloudSyncState = false
+    }
+
+    private func refreshDataCounts() throws {
+        accountCount = try modelContext.fetchCount(FetchDescriptor<Account>())
+        transactionCount = try modelContext.fetchCount(
+            FetchDescriptor<Transaction>(
+                predicate: #Predicate<Transaction> { !$0.isRecurringTemplate }
+            )
+        )
+        categoryCount = try modelContext.fetchCount(FetchDescriptor<Category>())
+        budgetCount = try modelContext.fetchCount(FetchDescriptor<Budget>())
     }
 
     func refreshExchangeRates(force: Bool = true) async {

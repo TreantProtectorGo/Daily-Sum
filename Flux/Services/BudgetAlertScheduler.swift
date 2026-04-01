@@ -82,19 +82,15 @@ struct BudgetAlertScheduler {
 
         switch alert.stage {
         case .warning:
-            return String.localizedStringWithFormat(
-                AppLocalization.string(
-                    "budget.alert.notification.warning.body",
-                    defaultValue: "%@ has reached 80% of its budget."
-                ),
+            return AppLocalization.formatted(
+                "budget.alert.notification.warning.body",
+                defaultValue: "%1$@ has reached 80%% of its budget.",
                 budgetName
             )
         case .exceeded:
-            return String.localizedStringWithFormat(
-                AppLocalization.string(
-                    "budget.alert.notification.exceeded.body",
-                    defaultValue: "%@ has exceeded its budget."
-                ),
+            return AppLocalization.formatted(
+                "budget.alert.notification.exceeded.body",
+                defaultValue: "%1$@ has exceeded its budget.",
                 budgetName
             )
         }
