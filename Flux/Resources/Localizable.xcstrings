@@ -5170,19 +5170,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All data is stored locally on your device. iCloud Sync and premium features are coming soon."
+            "value" : "Data stays local-first, with optional iCloud sync and manual backup restore controls."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "所有数据都存储在设备本地。 iCloud 同步和高级功能即将推出。"
+            "value" : "数据默认以本地存储为主，并可选择启用 iCloud 同步和手动备份还原功能。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "所有資料都儲存在設備本地。 iCloud 同步和進階功能即將推出。"
+            "value" : "資料預設以本地儲存為主，並可選擇啟用 iCloud 同步和手動備份還原功能。"
           }
         }
       }

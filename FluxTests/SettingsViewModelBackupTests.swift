@@ -258,12 +258,12 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertEqual(viewModel.cloudSyncStatusMessage, "Changes sync through iCloud.")
     }
 
-    func testBackupRestoreSelectionDefaultsToReplaceAndFinancialDataOnly() async throws {
+    func testBackupRestoreSelectionDefaultsToReplaceAndAllPreferences() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let viewModel = SettingsViewModel(modelContext: container.mainContext)
 
         XCTAssertEqual(viewModel.selectedBackupRestoreMode, .replace)
-        XCTAssertEqual(viewModel.selectedBackupRestoreScope, .financialDataOnly)
+        XCTAssertEqual(viewModel.selectedBackupRestoreScope, .financialDataAndAllPreferences)
     }
 
     func testPrepareBackupRestorePreviewPublishesSummaryText() async throws {
@@ -303,47 +303,6 @@ final class SettingsViewModelBackupTests: XCTestCase {
             viewModel.backupRestorePreviewSummaryText,
             "Wing's iPhone, 4 accounts, 5 transactions"
         )
-    }
-
-    func testChangingRestoreSelectionInvalidatesPreparedPreview() async throws {
-        let container = try ModelContainerConfiguration.createTestContainer()
-        let preview = BackupImportPreflightSummary(
-            archiveId: UUID(uuidString: "99999999-9999-9999-9999-999999999999")!,
-            schemaVersion: BackupArchive.currentSchemaVersion,
-            appVersion: "1.2.3",
-            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
-            exportSourceDevice: "Wing's iPhone",
-            selectedMode: .replace,
-            selectedScope: .financialDataOnly,
-            recordCounts: BackupRecordCounts(
-                currencies: 1,
-                exchangeRates: 2,
-                categories: 3,
-                accounts: 4,
-                transactions: 5,
-                scheduledOccurrenceExceptions: 6,
-                budgets: 7
-            ),
-            warnings: []
-        )
-        let importService = MockBackupImportService(previewResult: .success(preview))
-        let viewModel = SettingsViewModel(
-            modelContext: container.mainContext,
-            backupImportService: importService
-        )
-
-        viewModel.prepareBackupRestorePreview(
-            from: Data("{}".utf8),
-            mode: .replace,
-            scope: .financialDataOnly
-        )
-        XCTAssertNotNil(viewModel.preparedBackupRestorePreview)
-
-        viewModel.setBackupRestoreMode(.merge)
-
-        XCTAssertEqual(viewModel.selectedBackupRestoreMode, .merge)
-        XCTAssertNil(viewModel.preparedBackupRestorePreview)
-        XCTAssertNil(viewModel.backupRestorePreviewSummaryText)
     }
 
     func testApplyBackupRestorePublishesSummaryText() async throws {
@@ -421,6 +380,44 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertFalse(viewModel.isApplyingBackupRestore)
         XCTAssertEqual(viewModel.appliedBackupImportReport, report)
         XCTAssertNil(viewModel.backupRestoreApplyErrorMessage)
+    }
+
+    func testApplyBackupRestoreReplaceRequestsAppReload() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let report = ImportReport(
+            archiveId: UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!,
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            summary: ImportReportSummary(
+                importedCount: 2,
+                updatedCount: 0,
+                skippedCount: 0,
+                failedCount: 0,
+                warningCount: 0
+            ),
+            entries: [],
+            conflictReasons: [],
+            createdAt: Date(timeIntervalSince1970: 1_700_000_100)
+        )
+        let importService = MockBackupImportService(
+            previewResult: .failure(
+                NSError(domain: "BackupImport", code: 1, userInfo: nil)
+            ),
+            applyResult: .success(report)
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupImportService: importService
+        )
+
+        let expectation = expectation(forNotification: AppModelReload.requestedNotification, object: nil)
+
+        viewModel.applyBackupRestore(
+            from: Data("{}".utf8),
+            mode: .replace,
+            scope: .financialDataOnly
+        )
+
+        await fulfillment(of: [expectation], timeout: 1.0)
     }
 
     func testApplyBackupRestorePublishesErrorState() async throws {

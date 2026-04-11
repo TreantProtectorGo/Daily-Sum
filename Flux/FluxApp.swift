@@ -47,6 +47,11 @@ struct FluxApp: App {
                     await reloadModelContainerForCloudSyncChange()
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: AppModelReload.requestedNotification)) { _ in
+                Task {
+                    await initializeApp()
+                }
+            }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
                 Task { @MainActor in

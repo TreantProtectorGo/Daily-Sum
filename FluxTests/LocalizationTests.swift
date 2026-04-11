@@ -167,7 +167,7 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             localizedStringValue(key: "settings.privacy.message", locale: "en"),
-            "All data is stored locally on your device. iCloud Sync and premium features are coming soon."
+            "Data stays local-first, with optional iCloud sync and manual backup restore controls."
         )
     }
 

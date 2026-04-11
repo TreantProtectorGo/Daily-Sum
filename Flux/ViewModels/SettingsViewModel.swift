@@ -316,7 +316,7 @@ final class SettingsViewModel {
     var appliedBackupImportReport: ImportReport?
     var backupRestoreApplyErrorMessage: String?
     private(set) var selectedBackupRestoreMode: BackupRestoreMode = .replace
-    private(set) var selectedBackupRestoreScope: BackupRestoreScope = .financialDataOnly
+    private(set) var selectedBackupRestoreScope: BackupRestoreScope = .financialDataAndAllPreferences
     var isCloudSyncEnabled = false {
         didSet {
             guard !isSynchronizingCloudSyncState else { return }
@@ -512,18 +512,6 @@ final class SettingsViewModel {
         syncCloudSyncStateFromStore()
     }
 
-    func setBackupRestoreMode(_ mode: BackupRestoreMode) {
-        guard selectedBackupRestoreMode != mode else { return }
-        selectedBackupRestoreMode = mode
-        invalidatePreparedBackupRestorePreview()
-    }
-
-    func setBackupRestoreScope(_ scope: BackupRestoreScope) {
-        guard selectedBackupRestoreScope != scope else { return }
-        selectedBackupRestoreScope = scope
-        invalidatePreparedBackupRestorePreview()
-    }
-
     func prepareBackupExport() {
         isPreparingBackupExport = true
         backupExportErrorMessage = nil
@@ -587,6 +575,9 @@ final class SettingsViewModel {
             invalidatePreparedBackupRestorePreview()
             reloadPreferenceStateFromStorage()
             try refreshDataCounts()
+            if mode == .replace {
+                AppModelReload.request()
+            }
         } catch {
             backupRestoreApplyErrorMessage = error.localizedDescription
         }

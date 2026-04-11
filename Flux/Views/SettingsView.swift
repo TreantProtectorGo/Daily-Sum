@@ -424,40 +424,6 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Menu {
-                ForEach(BackupRestoreMode.allCases, id: \.self) { mode in
-                    Button(backupRestoreModeTitle(mode)) {
-                        viewModel.setBackupRestoreMode(mode)
-                    }
-                }
-            } label: {
-                settingsSelectionRow(
-                    title: AppLocalization.string(
-                        "settings.backup.restore.mode",
-                        defaultValue: "Restore Mode"
-                    ),
-                    value: backupRestoreModeTitle(viewModel.selectedBackupRestoreMode)
-                )
-            }
-            .accessibilityIdentifier("settings.backup.restore.mode")
-
-            Menu {
-                ForEach(BackupRestoreScope.allCases, id: \.self) { scope in
-                    Button(backupRestoreScopeTitle(scope)) {
-                        viewModel.setBackupRestoreScope(scope)
-                    }
-                }
-            } label: {
-                settingsSelectionRow(
-                    title: AppLocalization.string(
-                        "settings.backup.restore.scope",
-                        defaultValue: "Restore Scope"
-                    ),
-                    value: backupRestoreScopeTitle(viewModel.selectedBackupRestoreScope)
-                )
-            }
-            .accessibilityIdentifier("settings.backup.restore.scope")
-
             Button {
                 showRestoreImporter = true
             } label: {
@@ -469,6 +435,15 @@ struct SettingsView: View {
                 )
             }
             .accessibilityIdentifier("settings.backup.restore.button")
+
+            Text(
+                AppLocalization.string(
+                    "settings.backup.restore.behavior",
+                    defaultValue: "Restore replaces current financial data and restores all included preferences."
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             if let summary = viewModel.backupRestorePreviewSummaryText,
                pendingBackupRestoreData != nil {
@@ -544,44 +519,6 @@ struct SettingsView: View {
                 Image(systemName: "lock.shield.fill")
                     .foregroundStyle(.green)
             }
-        }
-    }
-
-    private func settingsSelectionRow(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(value)
-                .foregroundStyle(.secondary)
-            Image(systemName: "chevron.up.chevron.down")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private func backupRestoreModeTitle(_ mode: BackupRestoreMode) -> String {
-        switch mode {
-        case .replace:
-            AppLocalization.string("settings.backup.restore.mode.replace", defaultValue: "Replace")
-        case .merge:
-            AppLocalization.string("settings.backup.restore.mode.merge", defaultValue: "Merge")
-        }
-    }
-
-    private func backupRestoreScopeTitle(_ scope: BackupRestoreScope) -> String {
-        switch scope {
-        case .financialDataOnly:
-            AppLocalization.string("settings.backup.restore.scope.financialOnly", defaultValue: "Financial Data Only")
-        case .financialDataAndCrossDevicePreferences:
-            AppLocalization.string(
-                "settings.backup.restore.scope.crossDevice",
-                defaultValue: "Financial Data + Cross-Device Preferences"
-            )
-        case .financialDataAndAllPreferences:
-            AppLocalization.string(
-                "settings.backup.restore.scope.allPreferences",
-                defaultValue: "Financial Data + All Preferences"
-            )
         }
     }
 
