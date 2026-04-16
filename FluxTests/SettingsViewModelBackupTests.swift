@@ -450,6 +450,10 @@ final class SettingsViewModelBackupTests: XCTestCase {
     }
 
     func testCloudSyncStatusPublishesEnabledState() async throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
         let container = try ModelContainerConfiguration.createTestContainer()
         let cloudSyncStore = MockCloudSyncSettingsStore(
             isCloudSyncEnabled: true,
@@ -466,6 +470,10 @@ final class SettingsViewModelBackupTests: XCTestCase {
     }
 
     func testCloudSyncStatusPublishesAttentionState() async throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
         let container = try ModelContainerConfiguration.createTestContainer()
         let cloudSyncStore = MockCloudSyncSettingsStore(
             isCloudSyncEnabled: true,
@@ -483,6 +491,10 @@ final class SettingsViewModelBackupTests: XCTestCase {
     }
 
     func testCloudSyncToggleInvalidatesObservedStatusCopy() async throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
         let container = try ModelContainerConfiguration.createTestContainer()
         let cloudSyncStore = MockCloudSyncSettingsStore(
             isCloudSyncEnabled: false,
@@ -518,6 +530,10 @@ final class SettingsViewModelBackupTests: XCTestCase {
     }
 
     func testPrepareBackupRestorePreviewPublishesSummaryText() async throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
         let container = try ModelContainerConfiguration.createTestContainer()
         let preview = BackupImportPreflightSummary(
             archiveId: UUID(uuidString: "99999999-9999-9999-9999-999999999999")!,
@@ -554,9 +570,19 @@ final class SettingsViewModelBackupTests: XCTestCase {
             viewModel.backupRestorePreviewSummaryText,
             "Wing's iPhone, 4 accounts, 5 transactions"
         )
+
+        AppLanguagePreference.language = .traditionalChinese
+        XCTAssertEqual(
+            viewModel.backupRestorePreviewSummaryText,
+            "Wing's iPhone，4 個帳戶，5 筆交易"
+        )
     }
 
     func testApplyBackupRestorePublishesSummaryText() async throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
         let container = try ModelContainerConfiguration.createTestContainer()
         let report = ImportReport(
             archiveId: UUID(uuidString: "12121212-1212-1212-1212-121212121212")!,
@@ -592,6 +618,12 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertEqual(
             viewModel.appliedBackupImportSummaryText,
             "Imported 5, updated 2, skipped 1, failed 0"
+        )
+
+        AppLanguagePreference.language = .traditionalChinese
+        XCTAssertEqual(
+            viewModel.appliedBackupImportSummaryText,
+            "已匯入 5，已更新 2，已略過 1，失敗 0"
         )
     }
 

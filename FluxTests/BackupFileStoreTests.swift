@@ -91,6 +91,10 @@ final class BackupFileStoreTests: XCTestCase {
     }
 
     func testBackupFileDisplayFormatterUsesReadableDateInsteadOfTechnicalFilename() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
         let exportedAt = try XCTUnwrap(
             ISO8601DateFormatter().date(from: "2026-04-16T15:21:51Z")
         )
@@ -128,6 +132,77 @@ final class BackupFileStoreTests: XCTestCase {
         XCTAssertTrue(subtitle.contains("5 transactions"))
         XCTAssertTrue(subtitle.contains("MB"))
         XCTAssertFalse(subtitle.contains(summary.filename))
+    }
+
+    func testBackupFileDisplayFormatterLocalizesRecordText() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .traditionalChinese
+
+        let exportedAt = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2026-04-16T08:47:00Z")
+        )
+        let summary = BackupFileSummary(
+            url: temporaryDirectory.appendingPathComponent("Flux_20260416_084700.json"),
+            filename: "Flux_20260416_084700.json",
+            exportedAt: exportedAt,
+            fileSize: 16_384,
+            exportSourceDevice: "Unit Test iPhone",
+            recordCounts: BackupRecordCounts(
+                currencies: 0,
+                exchangeRates: 0,
+                categories: 0,
+                accounts: 3,
+                transactions: 2,
+                scheduledOccurrenceExceptions: 0,
+                budgets: 0
+            ),
+            archiveId: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!
+        )
+        let formatter = BackupFileDisplayFormatter(
+            locale: Locale(identifier: "zh-Hant"),
+            timeZone: TimeZone(secondsFromGMT: 0)!
+        )
+
+        let title = formatter.title(for: summary)
+        let subtitle = formatter.subtitle(for: summary)
+
+        XCTAssertFalse(title.localizedStandardContains("Apr"))
+        XCTAssertTrue(title.localizedStandardContains("2026"))
+        XCTAssertEqual(subtitle, "3 個帳戶，2 筆交易，16 KB")
+    }
+
+    func testBackupFileDisplayFormatterKeepsEnglishSingularRecordText() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
+        let exportedAt = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2026-04-16T08:47:00Z")
+        )
+        let summary = BackupFileSummary(
+            url: temporaryDirectory.appendingPathComponent("Flux_20260416_084700.json"),
+            filename: "Flux_20260416_084700.json",
+            exportedAt: exportedAt,
+            fileSize: 1_024,
+            exportSourceDevice: "Unit Test iPhone",
+            recordCounts: BackupRecordCounts(
+                currencies: 0,
+                exchangeRates: 0,
+                categories: 0,
+                accounts: 1,
+                transactions: 1,
+                scheduledOccurrenceExceptions: 0,
+                budgets: 0
+            ),
+            archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+        )
+        let formatter = BackupFileDisplayFormatter(
+            locale: Locale(identifier: "en_US_POSIX"),
+            timeZone: TimeZone(secondsFromGMT: 0)!
+        )
+
+        XCTAssertEqual(formatter.subtitle(for: summary), "1 account, 1 transaction, 1 KB")
     }
 
     private static func makeArchive(

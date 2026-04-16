@@ -596,14 +596,15 @@ private struct ManagedBackupSheet: View {
             .task {
                 viewModel.loadBackupFiles()
             }
-            .confirmationDialog(
+            .alert(
                 AppLocalization.string(
                     "settings.backup.restore.confirm.title",
                     defaultValue: "Restore Backup?"
                 ),
                 isPresented: $showRestoreConfirmation,
-                titleVisibility: .visible
             ) {
+                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+
                 Button(
                     AppLocalization.string(
                         "settings.backup.restore.confirm",
@@ -614,8 +615,13 @@ private struct ManagedBackupSheet: View {
                     applyPreparedRestore()
                 }
                 .accessibilityIdentifier("settings.backup.restore.confirm.button")
-
-                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+            } message: {
+                Text(
+                    AppLocalization.string(
+                        "settings.backup.restore.confirm.message",
+                        defaultValue: "Restore replaces current financial data and restores the preferences included in this backup."
+                    )
+                )
             }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),

@@ -465,23 +465,44 @@ final class SettingsViewModel {
 
     var backupExportSummaryText: String? {
         guard let preparedBackupArchive else { return nil }
-        return "\(preparedBackupArchive.exportSourceDevice), " +
-            "\(preparedBackupArchive.integrityMetadata.recordCounts.accounts) accounts, " +
-            "\(preparedBackupArchive.integrityMetadata.recordCounts.transactions) transactions"
+        return backupSummaryText(
+            sourceDevice: preparedBackupArchive.exportSourceDevice,
+            recordCounts: preparedBackupArchive.integrityMetadata.recordCounts
+        )
     }
 
     var backupRestorePreviewSummaryText: String? {
         guard let preparedBackupRestorePreview else { return nil }
-        return "\(preparedBackupRestorePreview.exportSourceDevice), " +
-            "\(preparedBackupRestorePreview.recordCounts.accounts) accounts, " +
-            "\(preparedBackupRestorePreview.recordCounts.transactions) transactions"
+        return backupSummaryText(
+            sourceDevice: preparedBackupRestorePreview.exportSourceDevice,
+            recordCounts: preparedBackupRestorePreview.recordCounts
+        )
     }
 
     var appliedBackupImportSummaryText: String? {
         guard let appliedBackupImportReport else { return nil }
         let summary = appliedBackupImportReport.summary
-        return "Imported \(summary.importedCount), updated \(summary.updatedCount), " +
-            "skipped \(summary.skippedCount), failed \(summary.failedCount)"
+        return AppLocalization.formatted(
+            "settings.backup.import.summary",
+            defaultValue: "Imported %1$lld, updated %2$lld, skipped %3$lld, failed %4$lld",
+            Int64(summary.importedCount),
+            Int64(summary.updatedCount),
+            Int64(summary.skippedCount),
+            Int64(summary.failedCount)
+        )
+    }
+
+    private func backupSummaryText(
+        sourceDevice: String,
+        recordCounts: BackupRecordCounts
+    ) -> String {
+        AppLocalization.formatted(
+            "settings.backup.summary",
+            defaultValue: "%1$@, %2$lld accounts, %3$lld transactions",
+            sourceDevice,
+            Int64(recordCounts.accounts),
+            Int64(recordCounts.transactions)
+        )
     }
 
     enum NotificationSettingsAction: Equatable {

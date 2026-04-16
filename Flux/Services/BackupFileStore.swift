@@ -17,7 +17,7 @@ struct BackupFileDisplayFormatter {
     var timeZone: TimeZone
 
     init(
-        locale: Locale = .autoupdatingCurrent,
+        locale: Locale = AppLocalization.locale,
         timeZone: TimeZone = .autoupdatingCurrent
     ) {
         self.locale = locale
@@ -34,22 +34,43 @@ struct BackupFileDisplayFormatter {
     }
 
     func subtitle(for backup: BackupFileSummary) -> String {
-        "\(recordCountSummary(for: backup)), \(formattedSize(for: backup))"
-    }
-
-    private func recordCountSummary(for backup: BackupFileSummary) -> String {
-        [
-            countText(backup.recordCounts.accounts, singular: "account", plural: "accounts"),
-            countText(backup.recordCounts.transactions, singular: "transaction", plural: "transactions")
-        ].joined(separator: ", ")
+        AppLocalization.formatted(
+            "settings.backup.record.summary",
+            defaultValue: "%1$@, %2$@, %3$@",
+            localizedCount(
+                backup.recordCounts.accounts,
+                singularKey: "settings.backup.record.accounts.one",
+                singularDefault: "%lld account",
+                pluralKey: "settings.backup.record.accounts.other",
+                pluralDefault: "%lld accounts"
+            ),
+            localizedCount(
+                backup.recordCounts.transactions,
+                singularKey: "settings.backup.record.transactions.one",
+                singularDefault: "%lld transaction",
+                pluralKey: "settings.backup.record.transactions.other",
+                pluralDefault: "%lld transactions"
+            ),
+            formattedSize(for: backup)
+        )
     }
 
     private func formattedSize(for backup: BackupFileSummary) -> String {
         ByteCountFormatter.string(fromByteCount: backup.fileSize, countStyle: .file)
     }
 
-    private func countText(_ count: Int, singular: String, plural: String) -> String {
-        "\(count) \(count == 1 ? singular : plural)"
+    private func localizedCount(
+        _ count: Int,
+        singularKey: String,
+        singularDefault: String,
+        pluralKey: String,
+        pluralDefault: String
+    ) -> String {
+        AppLocalization.formatted(
+            count == 1 ? singularKey : pluralKey,
+            defaultValue: count == 1 ? singularDefault : pluralDefault,
+            Int64(count)
+        )
     }
 }
 

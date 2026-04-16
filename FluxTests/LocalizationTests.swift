@@ -296,6 +296,111 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testSyncAndBackupCopyMatchesCurrentWordingAcrossLanguages() {
+        let expectedValues: [String: [String: String]] = [
+            "en": [
+                "action.close": "Close",
+                "settings.dataContinuity": "Sync & Backup",
+                "settings.cloudSync": "iCloud Sync",
+                "settings.cloudSync.enable": "Enable iCloud Sync",
+                "settings.cloudSync.status.on": "On",
+                "settings.cloudSync.status.off": "Off",
+                "settings.cloudSync.status.needsAttention": "Needs Attention",
+                "settings.cloudSync.message.on": "Changes sync through iCloud.",
+                "settings.cloudSync.message.off": "Sync is currently off.",
+                "settings.cloudSync.message.signInRequired": "Sign in to iCloud to enable sync.",
+                "settings.backup.action": "Backup",
+                "settings.backup.restore.behavior": "Create iCloud Drive backups or restore from an existing backup. Restore replaces current financial data and restores all included preferences.",
+                "settings.backup.title": "Backup",
+                "settings.backup.export": "Back Up Now",
+                "settings.backup.footer": "Backups are saved to iCloud Drive when available, otherwise to this device.",
+                "settings.backup.list.title": "Backups",
+                "settings.backup.list.empty.message": "Tap Back Up Now to create your first backup.",
+                "settings.backup.restore.result": "Restore Result",
+                "settings.backup.restore.confirm.title": "Restore Backup?",
+                "settings.backup.restore.confirm": "Confirm Restore",
+                "settings.backup.restore.confirm.message": "Restore replaces current financial data and restores the preferences included in this backup.",
+                "settings.backup.summary": "%1$@, %2$lld accounts, %3$lld transactions",
+                "settings.backup.record.accounts.one": "%lld account",
+                "settings.backup.record.accounts.other": "%lld accounts",
+                "settings.backup.record.summary": "%1$@, %2$@, %3$@",
+                "settings.backup.record.transactions.one": "%lld transaction",
+                "settings.backup.record.transactions.other": "%lld transactions",
+                "settings.backup.import.summary": "Imported %1$lld, updated %2$lld, skipped %3$lld, failed %4$lld"
+            ],
+            "zh-Hans": [
+                "action.close": "关闭",
+                "settings.dataContinuity": "同步与备份",
+                "settings.cloudSync": "iCloud 同步",
+                "settings.cloudSync.enable": "启用 iCloud 同步",
+                "settings.cloudSync.status.on": "开启",
+                "settings.cloudSync.status.off": "关闭",
+                "settings.cloudSync.status.needsAttention": "需要处理",
+                "settings.cloudSync.message.on": "更改会透过 iCloud 同步。",
+                "settings.cloudSync.message.off": "同步目前已关闭。",
+                "settings.cloudSync.message.signInRequired": "请登入 iCloud 以启用同步。",
+                "settings.backup.action": "备份",
+                "settings.backup.restore.behavior": "建立 iCloud Drive 备份，或从现有备份还原。还原会取代目前的财务数据，并还原备份内包含的所有偏好设定。",
+                "settings.backup.title": "备份",
+                "settings.backup.export": "立即备份",
+                "settings.backup.footer": "可用时备份会储存到 iCloud Drive，否则会储存在此装置。",
+                "settings.backup.list.title": "备份",
+                "settings.backup.list.empty.message": "点一下「立即备份」建立第一个备份。",
+                "settings.backup.restore.result": "还原结果",
+                "settings.backup.restore.confirm.title": "要还原备份吗？",
+                "settings.backup.restore.confirm": "确认还原",
+                "settings.backup.restore.confirm.message": "还原会取代目前的财务数据，并还原此备份内包含的偏好设定。",
+                "settings.backup.summary": "%1$@，%2$lld 个账户，%3$lld 笔交易",
+                "settings.backup.record.accounts.one": "%lld 个账户",
+                "settings.backup.record.accounts.other": "%lld 个账户",
+                "settings.backup.record.summary": "%1$@，%2$@，%3$@",
+                "settings.backup.record.transactions.one": "%lld 笔交易",
+                "settings.backup.record.transactions.other": "%lld 笔交易",
+                "settings.backup.import.summary": "已汇入 %1$lld，已更新 %2$lld，已略过 %3$lld，失败 %4$lld"
+            ],
+            "zh-Hant": [
+                "action.close": "關閉",
+                "settings.dataContinuity": "同步與備份",
+                "settings.cloudSync": "iCloud 同步",
+                "settings.cloudSync.enable": "啟用 iCloud 同步",
+                "settings.cloudSync.status.on": "開啟",
+                "settings.cloudSync.status.off": "關閉",
+                "settings.cloudSync.status.needsAttention": "需要處理",
+                "settings.cloudSync.message.on": "更改會透過 iCloud 同步。",
+                "settings.cloudSync.message.off": "同步目前已關閉。",
+                "settings.cloudSync.message.signInRequired": "請登入 iCloud 以啟用同步。",
+                "settings.backup.action": "備份",
+                "settings.backup.restore.behavior": "建立 iCloud Drive 備份，或從現有備份還原。還原會取代目前的財務資料，並還原備份內包含的所有偏好設定。",
+                "settings.backup.title": "備份",
+                "settings.backup.export": "立即備份",
+                "settings.backup.footer": "可用時備份會儲存到 iCloud Drive，否則會儲存在此裝置。",
+                "settings.backup.list.title": "備份",
+                "settings.backup.list.empty.message": "點一下「立即備份」建立第一個備份。",
+                "settings.backup.restore.result": "還原結果",
+                "settings.backup.restore.confirm.title": "要還原備份嗎？",
+                "settings.backup.restore.confirm": "確認還原",
+                "settings.backup.restore.confirm.message": "還原會取代目前的財務資料，並還原此備份內包含的偏好設定。",
+                "settings.backup.summary": "%1$@，%2$lld 個帳戶，%3$lld 筆交易",
+                "settings.backup.record.accounts.one": "%lld 個帳戶",
+                "settings.backup.record.accounts.other": "%lld 個帳戶",
+                "settings.backup.record.summary": "%1$@，%2$@，%3$@",
+                "settings.backup.record.transactions.one": "%lld 筆交易",
+                "settings.backup.record.transactions.other": "%lld 筆交易",
+                "settings.backup.import.summary": "已匯入 %1$lld，已更新 %2$lld，已略過 %3$lld，失敗 %4$lld"
+            ]
+        ]
+
+        for (locale, keyValues) in expectedValues {
+            for (key, expectedValue) in keyValues {
+                XCTAssertEqual(
+                    localizedStringValue(key: key, locale: locale),
+                    expectedValue,
+                    "Unexpected value for \(key) in \(locale)"
+                )
+            }
+        }
+    }
+
     func testTransactionFilterCopyUsesShorterChineseDateLabelsAndAllAccountsOption() {
         let expectedValues: [String: [String: String]] = [
             "en": [
