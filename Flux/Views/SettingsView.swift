@@ -464,35 +464,32 @@ private struct ManagedBackupSheet: View {
     @State private var showRestoreConfirmation = false
     @State private var restoreErrorMessage: String?
     @State private var showRestoreError = false
+    @State private var isBackupButtonCoolingDown = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     Button {
-                        viewModel.createManagedBackup()
+                        createManagedBackup()
                     } label: {
-                        Label(
+                        Text(
                             AppLocalization.string(
                                 "settings.backup.export",
                                 defaultValue: "Back Up Now"
-                            ),
-                            systemImage: "icloud.and.arrow.up"
+                            )
                         )
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.isPreparingBackupExport)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(isBackupButtonDisabled ? Color.secondary : Color.accentColor)
+                    .disabled(isBackupButtonDisabled)
                     .accessibilityIdentifier("settings.backup.export.button")
 
                     if viewModel.isPreparingBackupExport {
                         ProgressView()
-                    }
-
-                    if let summary = viewModel.backupExportSummaryText {
-                        Text(summary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("settings.backup.export.summary")
                     }
 
                     if let error = viewModel.backupExportErrorMessage {
@@ -542,6 +539,18 @@ private struct ManagedBackupSheet: View {
                             .buttonStyle(.plain)
                             .disabled(viewModel.isPreparingBackupRestorePreview || viewModel.isApplyingBackupRestore)
                             .accessibilityIdentifier("settings.backup.list.row")
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    viewModel.deleteManagedBackup(backup)
+                                } label: {
+                                    Label(
+                                        AppLocalization.string("action.delete", defaultValue: "Delete"),
+                                        systemImage: "trash"
+                                    )
+                                }
+                                .accessibilityIdentifier("settings.backup.delete.button")
+                                .tint(.red)
+                            }
                         }
                     }
                 }
@@ -575,9 +584,13 @@ private struct ManagedBackupSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(AppLocalization.string("action.close", defaultValue: "Close")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
+                    .accessibilityLabel(AppLocalization.string("action.close", defaultValue: "Close"))
+                    .accessibilityIdentifier("settings.backup.close.button")
                 }
             }
             .task {
@@ -613,6 +626,24 @@ private struct ManagedBackupSheet: View {
                 Text(restoreErrorMessage ?? "")
             }
         }
+    }
+
+    private func createManagedBackup() {
+        guard !isBackupButtonCoolingDown else { return }
+
+        isBackupButtonCoolingDown = true
+        viewModel.createManagedBackup()
+
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run {
+                isBackupButtonCoolingDown = false
+            }
+        }
+    }
+
+    private var isBackupButtonDisabled: Bool {
+        viewModel.isPreparingBackupExport || isBackupButtonCoolingDown
     }
 
     private func prepareRestoreConfirmation(for backup: BackupFileSummary) {

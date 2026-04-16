@@ -70,8 +70,11 @@ final class SettingsViewModelBackupTests: XCTestCase {
         var backups: [BackupFileSummary]
         var writeResult: Result<BackupFileSummary, Error>
         var readDataResult: Result<Data, Error>
+        var deleteResult: Result<Void, Error>
         private(set) var writtenArchive: BackupArchive?
+        private(set) var writeCount = 0
         private(set) var readBackup: BackupFileSummary?
+        private(set) var deletedBackup: BackupFileSummary?
 
         init(
             backups: [BackupFileSummary] = [],
@@ -80,11 +83,13 @@ final class SettingsViewModelBackupTests: XCTestCase {
                 NSError(domain: "BackupFileStore", code: 2, userInfo: [
                     NSLocalizedDescriptionKey: "Read not configured"
                 ])
-            )
+            ),
+            deleteResult: Result<Void, Error> = .success(())
         ) {
             self.backups = backups
             self.writeResult = writeResult
             self.readDataResult = readDataResult
+            self.deleteResult = deleteResult
         }
 
         func listBackups() throws -> [BackupFileSummary] {
@@ -93,12 +98,19 @@ final class SettingsViewModelBackupTests: XCTestCase {
 
         func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary {
             writtenArchive = archive
+            writeCount += 1
             return try writeResult.get()
         }
 
         func readBackupData(for backup: BackupFileSummary) throws -> Data {
             readBackup = backup
             return try readDataResult.get()
+        }
+
+        func deleteBackup(_ backup: BackupFileSummary) throws {
+            deletedBackup = backup
+            try deleteResult.get()
+            backups.removeAll { $0.id == backup.id }
         }
     }
 
@@ -195,6 +207,53 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertEqual(viewModel.lastCreatedBackupFile, fileSummary)
         XCTAssertEqual(viewModel.backupFiles, [fileSummary])
         XCTAssertNil(viewModel.backupExportErrorMessage)
+    }
+
+    func testCreateManagedBackupIgnoresDuplicateRequestsWithinDebounceWindow() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let archive = Self.makeArchive()
+        let fileSummary = Self.makeBackupFileSummary(filename: "Flux_20231114_221320.json")
+        var now = Date(timeIntervalSince1970: 1_700_000_000)
+        let backupFileStore = MockBackupFileStore(
+            backups: [fileSummary],
+            writeResult: .success(fileSummary)
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupExportService: MockBackupExportService(result: .success(archive)),
+            backupFileStore: backupFileStore,
+            backupCreationDebounceInterval: 60,
+            now: { now }
+        )
+
+        viewModel.createManagedBackup()
+        viewModel.createManagedBackup()
+        now = now.addingTimeInterval(61)
+        viewModel.createManagedBackup()
+
+        XCTAssertEqual(backupFileStore.writeCount, 2)
+        XCTAssertEqual(viewModel.lastCreatedBackupFile, fileSummary)
+        XCTAssertNil(viewModel.backupExportErrorMessage)
+    }
+
+    func testDeleteManagedBackupDeletesFileAndRefreshesBackupList() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let fileSummary = Self.makeBackupFileSummary(filename: "Flux_20231114_221320.json")
+        let backupFileStore = MockBackupFileStore(
+            backups: [fileSummary],
+            writeResult: .failure(NSError(domain: "BackupFileStore", code: 1, userInfo: nil))
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupFileStore: backupFileStore
+        )
+
+        viewModel.loadBackupFiles()
+        viewModel.deleteManagedBackup(fileSummary)
+
+        XCTAssertEqual(backupFileStore.deletedBackup, fileSummary)
+        XCTAssertEqual(viewModel.backupFiles, [])
+        XCTAssertNil(viewModel.backupFileListErrorMessage)
     }
 
     func testPrepareManagedBackupRestorePreviewUsesSelectedBackupWithFixedPolicy() async throws {

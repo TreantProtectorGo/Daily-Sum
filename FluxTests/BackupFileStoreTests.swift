@@ -74,6 +74,22 @@ final class BackupFileStoreTests: XCTestCase {
         XCTAssertEqual(listedBackups.first?.archiveId, validArchive.integrityMetadata.archiveId)
     }
 
+    func testDeleteBackupRemovesBackupFile() throws {
+        let archive = Self.makeArchive(
+            archiveId: UUID(uuidString: "55555555-5555-5555-5555-555555555555")!,
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            accounts: 1,
+            transactions: 1
+        )
+        let store = BackupFileStore(directory: temporaryDirectory)
+        let summary = try store.writeBackupArchive(archive)
+
+        try store.deleteBackup(summary)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: summary.url.path))
+        XCTAssertEqual(try store.listBackups(), [])
+    }
+
     func testBackupFileDisplayFormatterUsesReadableDateInsteadOfTechnicalFilename() throws {
         let exportedAt = try XCTUnwrap(
             ISO8601DateFormatter().date(from: "2026-04-16T15:21:51Z")

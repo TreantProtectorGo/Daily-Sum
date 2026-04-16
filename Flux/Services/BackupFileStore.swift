@@ -58,6 +58,7 @@ protocol BackupFileStoring {
     func listBackups() throws -> [BackupFileSummary]
     func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary
     func readBackupData(for backup: BackupFileSummary) throws -> Data
+    func deleteBackup(_ backup: BackupFileSummary) throws
 }
 
 @MainActor
@@ -121,6 +122,14 @@ final class BackupFileStore: BackupFileStoring {
 
     func readBackupData(for backup: BackupFileSummary) throws -> Data {
         try Data(contentsOf: backup.url)
+    }
+
+    func deleteBackup(_ backup: BackupFileSummary) throws {
+        guard fileManager.fileExists(atPath: backup.url.path) else {
+            return
+        }
+
+        try fileManager.removeItem(at: backup.url)
     }
 
     private func backupDirectory() throws -> URL {

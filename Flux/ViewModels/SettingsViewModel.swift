@@ -242,9 +242,12 @@ final class SettingsViewModel {
     private let backupExportService: any BackupExportServicing
     private let backupImportService: any BackupImportServicing
     private let backupFileStore: any BackupFileStoring
+    private let backupCreationDebounceInterval: TimeInterval
+    private let now: () -> Date
     private var cloudSyncSettingsStore: any CloudSyncSettingsStoring
     private var isSynchronizingCloudSyncState = false
     private var pendingManagedBackupRestoreData: Data?
+    private var lastManagedBackupCreatedAt: Date?
 
     /// User's selected default currency - persisted to UserDefaults
     var defaultCurrencyCode: String {
@@ -493,7 +496,9 @@ final class SettingsViewModel {
         backupExportService: (any BackupExportServicing)? = nil,
         backupImportService: (any BackupImportServicing)? = nil,
         backupFileStore: (any BackupFileStoring)? = nil,
-        cloudSyncSettingsStore: (any CloudSyncSettingsStoring)? = nil
+        cloudSyncSettingsStore: (any CloudSyncSettingsStoring)? = nil,
+        backupCreationDebounceInterval: TimeInterval = 2,
+        now: @escaping () -> Date = Date.init
     ) {
         self.modelContext = modelContext
         self.exchangeRateRefreshScheduler = exchangeRateRefreshScheduler
@@ -506,6 +511,8 @@ final class SettingsViewModel {
             ?? BackupImportService(restoreSessionMarkerStore: RestoreSessionMarkerStore())
         self.backupFileStore = backupFileStore
             ?? BackupFileStore()
+        self.backupCreationDebounceInterval = backupCreationDebounceInterval
+        self.now = now
         self.cloudSyncSettingsStore = cloudSyncSettingsStore
             ?? CloudSyncSettingsStore()
         // Load persisted currency preference on init
@@ -554,6 +561,14 @@ final class SettingsViewModel {
     }
 
     func createManagedBackup() {
+        let requestedAt = now()
+        guard !isPreparingBackupExport else {
+            return
+        }
+        guard !isDuplicateManagedBackupRequest(at: requestedAt) else {
+            return
+        }
+
         isPreparingBackupExport = true
         backupExportErrorMessage = nil
         preparedBackupArchive = nil
@@ -569,8 +584,26 @@ final class SettingsViewModel {
             preparedBackupArchive = archive
             lastCreatedBackupFile = backupFile
             backupFiles = try backupFileStore.listBackups()
+            lastManagedBackupCreatedAt = now()
         } catch {
             backupExportErrorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteManagedBackup(_ backup: BackupFileSummary) {
+        backupFileListErrorMessage = nil
+
+        do {
+            try backupFileStore.deleteBackup(backup)
+            backupFiles = try backupFileStore.listBackups()
+            clearRestoreStateIfNeeded(deletedBackup: backup)
+
+            if lastCreatedBackupFile == backup {
+                lastCreatedBackupFile = nil
+                preparedBackupArchive = nil
+            }
+        } catch {
+            backupFileListErrorMessage = error.localizedDescription
         }
     }
 
@@ -700,6 +733,23 @@ final class SettingsViewModel {
     private func invalidatePreparedBackupRestorePreview() {
         preparedBackupRestorePreview = nil
         backupRestorePreviewErrorMessage = nil
+    }
+
+    private func clearRestoreStateIfNeeded(deletedBackup backup: BackupFileSummary) {
+        guard preparedBackupRestorePreview?.archiveId == backup.archiveId else {
+            return
+        }
+
+        pendingManagedBackupRestoreData = nil
+        invalidatePreparedBackupRestorePreview()
+    }
+
+    private func isDuplicateManagedBackupRequest(at requestedAt: Date) -> Bool {
+        guard let lastManagedBackupCreatedAt else {
+            return false
+        }
+
+        return requestedAt.timeIntervalSince(lastManagedBackupCreatedAt) < backupCreationDebounceInterval
     }
 
     private func syncCloudSyncStateFromStore() {
