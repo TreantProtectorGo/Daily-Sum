@@ -97,7 +97,7 @@ final class AccountService {
 
         if let currencyCode,
            currencyCode != previousCurrencyCode,
-           account.transactions.contains(where: { $0.resolvedTravelSnapshot != nil }) {
+           (account.transactions ?? []).contains(where: { $0.resolvedTravelSnapshot != nil }) {
             throw AccountServiceError.cannotChangeCurrencyWithTravelTransactions
         }
         
@@ -110,7 +110,7 @@ final class AccountService {
         if let includeInTotal { account.includeInTotal = includeInTotal }
         
         if account.currencyCode != previousCurrencyCode {
-            for transaction in account.transactions {
+            for transaction in account.transactions ?? [] {
                 transaction.currencyCode = account.currencyCode
             }
         }

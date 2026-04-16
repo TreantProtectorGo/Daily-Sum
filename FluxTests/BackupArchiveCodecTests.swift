@@ -162,6 +162,17 @@ final class BackupArchiveCodecTests: XCTestCase {
         }
     }
 
+    func testBackupArchiveCodecErrorsExposeUserReadableDescriptions() {
+        XCTAssertEqual(
+            BackupArchiveCodecError.invalidArchiveFormat.localizedDescription,
+            "This backup file is invalid or corrupted."
+        )
+        XCTAssertEqual(
+            BackupArchiveCodecError.recordCountMismatch(expected: [:], actual: [:]).localizedDescription,
+            "This backup record count does not match its integrity metadata."
+        )
+    }
+
     func testBackupArchiveRoundTripPreservesArchiveContract() throws {
         let archive = Self.makeValidArchive()
 

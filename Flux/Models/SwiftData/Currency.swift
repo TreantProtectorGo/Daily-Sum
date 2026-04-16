@@ -4,19 +4,17 @@ import SwiftData
 /// Represents a currency with exchange rate information
 @Model
 final class Currency {
-    #Unique<Currency>([\.code])
-    
     /// ISO 4217 currency code (e.g., "USD", "TWD")
-    var code: String
+    var code: String = SupportedCurrency.USD.rawValue
     
     /// Exchange rate to base currency (base currency has rate 1.0)
-    var exchangeRateToBase: Decimal
+    var exchangeRateToBase: Decimal = 1.0
     
     /// Timestamp of last exchange rate update
-    var lastUpdated: Date
+    var lastUpdated: Date = Date()
     
     /// Whether this is the user's base currency
-    var isBaseCurrency: Bool
+    var isBaseCurrency: Bool = false
     
     init(
         code: String,

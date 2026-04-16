@@ -5,37 +5,35 @@ import SwiftUI
 /// A financial account (e.g., checking account, credit card, cash wallet)
 @Model
 final class Account {
-    #Unique<Account>([\.id])
-    
-    var id: UUID
+    var id: UUID = UUID()
     
     /// User-provided account name
-    var name: String
+    var name: String = ""
     
     /// Type of account (cash, bank, credit card, investment)
-    var type: AccountType
+    var type: AccountType = AccountType.cash
     
     /// ISO 4217 currency code for this account
-    var currencyCode: String
+    var currencyCode: String = SupportedCurrency.USD.rawValue
     
     /// Initial balance when the account was created (in smallest currency unit)
-    var initialBalance: Decimal
+    var initialBalance: Decimal = 0
     
     /// SF Symbol name for the account icon
-    var icon: String
+    var icon: String = AccountType.cash.defaultIcon
     
     /// Hex color string for the account
-    var colorHex: String
+    var colorHex: String = "#007AFF"
     
     /// Whether this account is included in totals
-    var includeInTotal: Bool
+    var includeInTotal: Bool = true
     
     /// Date the account was created
-    var createdAt: Date
+    var createdAt: Date = Date()
     
     /// All transactions for this account
     @Relationship(deleteRule: .cascade, inverse: \Transaction.account)
-    var transactions: [Transaction]
+    var transactions: [Transaction]? = []
     
     init(
         id: UUID = UUID(),
@@ -70,7 +68,7 @@ final class Account {
     /// Calculates the current balance based on initial balance and transactions
     var currentBalance: Decimal {
         let now = Date.now
-        let transactionSum = transactions.reduce(Decimal.zero) { sum, transaction in
+        let transactionSum = (transactions ?? []).reduce(Decimal.zero) { sum, transaction in
             guard !transaction.isRecurringTemplate, transaction.date <= now else {
                 return sum
             }
@@ -96,11 +94,11 @@ final class Account {
     
     /// Number of transactions in this account
     var transactionCount: Int {
-        transactions.count
+        transactions?.count ?? 0
     }
     
     /// Most recent transaction date
     var lastTransactionDate: Date? {
-        transactions.max(by: { $0.date < $1.date })?.date
+        transactions?.max(by: { $0.date < $1.date })?.date
     }
 }

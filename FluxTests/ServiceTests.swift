@@ -74,6 +74,7 @@ final class ServiceTests: XCTestCase {
     var context: ModelContext!
     var originalLastSuccessfulRateSyncDate: Date?
     var originalInstallmentPurgeFlag: Any?
+    var originalAppLanguage: AppLanguage?
     
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
@@ -81,6 +82,8 @@ final class ServiceTests: XCTestCase {
         originalLastSuccessfulRateSyncDate = ExchangeRateSyncPreference.lastSuccessfulSyncDate
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
         originalInstallmentPurgeFlag = UserDefaults.standard.object(forKey: "flux.installment.purge.v1.done")
+        originalAppLanguage = AppLanguagePreference.language
+        AppLanguagePreference.language = .english
     }
     
     override func tearDown() async throws {
@@ -92,6 +95,10 @@ final class ServiceTests: XCTestCase {
             UserDefaults.standard.removeObject(forKey: "flux.installment.purge.v1.done")
         }
         originalInstallmentPurgeFlag = nil
+        if let originalAppLanguage {
+            AppLanguagePreference.language = originalAppLanguage
+        }
+        originalAppLanguage = nil
         container = nil
         context = nil
     }

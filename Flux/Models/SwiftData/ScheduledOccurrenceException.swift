@@ -4,13 +4,11 @@ import SwiftData
 /// Stores skipped scheduled occurrences so generator won't recreate them.
 @Model
 final class ScheduledOccurrenceException {
-    #Unique<ScheduledOccurrenceException>([\.id])
-
-    var id: UUID
-    var templateId: UUID
+    var id: UUID = UUID()
+    var templateId: UUID = UUID()
     /// Stored as start-of-day in current calendar.
-    var occurrenceDate: Date
-    var createdAt: Date
+    var occurrenceDate: Date = Date()
+    var createdAt: Date = Date()
 
     init(
         id: UUID = UUID(),

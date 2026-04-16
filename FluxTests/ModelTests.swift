@@ -57,8 +57,8 @@ final class ModelTests: XCTestCase {
         try context.save()
         
         XCTAssertTrue(child.isSubcategory)
-        XCTAssertEqual(parent.subcategories.count, 1)
-        XCTAssertEqual(parent.subcategories.first?.nameKey, "Restaurants")
+        XCTAssertEqual(parent.subcategories?.count, 1)
+        XCTAssertEqual(parent.subcategories?.first?.nameKey, "Restaurants")
     }
     
     // MARK: - Account Tests

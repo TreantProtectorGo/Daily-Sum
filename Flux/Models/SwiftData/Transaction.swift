@@ -4,22 +4,20 @@ import SwiftData
 /// A financial transaction (income or expense)
 @Model
 final class Transaction {
-    #Unique<Transaction>([\.id])
-    
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Transaction amount (always positive, type determines direction)
     /// Stored as Decimal with up to 4 decimal places for precision
-    var amount: Decimal
+    var amount: Decimal = 0
     
     /// ISO 4217 currency code (denormalized from account for query performance)
-    var currencyCode: String
+    var currencyCode: String = SupportedCurrency.USD.rawValue
     
     /// Whether this is income or expense
-    var type: TransactionType
+    var type: TransactionType = TransactionType.expense
     
     /// Transaction date/time in UTC
-    var date: Date
+    var date: Date = Date()
     
     /// Optional user notes
     var notes: String?
@@ -47,7 +45,7 @@ final class Transaction {
     var receiptImageData: Data?
     
     /// Whether this is a scheduled transaction template
-    var isRecurringTemplate: Bool
+    var isRecurringTemplate: Bool = false
     
     /// Recurrence rule if this is a scheduled transaction template
     var recurrenceRule: RecurrenceRule?

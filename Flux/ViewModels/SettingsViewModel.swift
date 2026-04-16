@@ -241,8 +241,10 @@ final class SettingsViewModel {
     private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
     private let backupExportService: any BackupExportServicing
     private let backupImportService: any BackupImportServicing
+    private let backupFileStore: any BackupFileStoring
     private var cloudSyncSettingsStore: any CloudSyncSettingsStoring
     private var isSynchronizingCloudSyncState = false
+    private var pendingManagedBackupRestoreData: Data?
 
     /// User's selected default currency - persisted to UserDefaults
     var defaultCurrencyCode: String {
@@ -309,6 +311,10 @@ final class SettingsViewModel {
     var isPreparingBackupExport = false
     var preparedBackupArchive: BackupArchive?
     var backupExportErrorMessage: String?
+    var backupFiles: [BackupFileSummary] = []
+    var isLoadingBackupFiles = false
+    var backupFileListErrorMessage: String?
+    var lastCreatedBackupFile: BackupFileSummary?
     var isPreparingBackupRestorePreview = false
     var preparedBackupRestorePreview: BackupImportPreflightSummary?
     var backupRestorePreviewErrorMessage: String?
@@ -486,6 +492,7 @@ final class SettingsViewModel {
         travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil,
         backupExportService: (any BackupExportServicing)? = nil,
         backupImportService: (any BackupImportServicing)? = nil,
+        backupFileStore: (any BackupFileStoring)? = nil,
         cloudSyncSettingsStore: (any CloudSyncSettingsStoring)? = nil
     ) {
         self.modelContext = modelContext
@@ -497,6 +504,8 @@ final class SettingsViewModel {
             ?? BackupExportService(context: modelContext)
         self.backupImportService = backupImportService
             ?? BackupImportService(restoreSessionMarkerStore: RestoreSessionMarkerStore())
+        self.backupFileStore = backupFileStore
+            ?? BackupFileStore()
         self.cloudSyncSettingsStore = cloudSyncSettingsStore
             ?? CloudSyncSettingsStore()
         // Load persisted currency preference on init
@@ -528,6 +537,43 @@ final class SettingsViewModel {
         }
     }
 
+    func loadBackupFiles() {
+        isLoadingBackupFiles = true
+        backupFileListErrorMessage = nil
+
+        defer {
+            isLoadingBackupFiles = false
+        }
+
+        do {
+            backupFiles = try backupFileStore.listBackups()
+        } catch {
+            backupFiles = []
+            backupFileListErrorMessage = error.localizedDescription
+        }
+    }
+
+    func createManagedBackup() {
+        isPreparingBackupExport = true
+        backupExportErrorMessage = nil
+        preparedBackupArchive = nil
+        lastCreatedBackupFile = nil
+
+        defer {
+            isPreparingBackupExport = false
+        }
+
+        do {
+            let archive = try backupExportService.makeBackupArchive()
+            let backupFile = try backupFileStore.writeBackupArchive(archive)
+            preparedBackupArchive = archive
+            lastCreatedBackupFile = backupFile
+            backupFiles = try backupFileStore.listBackups()
+        } catch {
+            backupExportErrorMessage = error.localizedDescription
+        }
+    }
+
     func prepareBackupRestorePreview(
         from data: Data,
         mode: BackupRestoreMode,
@@ -550,6 +596,32 @@ final class SettingsViewModel {
         } catch {
             backupRestorePreviewErrorMessage = error.localizedDescription
         }
+    }
+
+    func prepareManagedBackupRestorePreview(from backup: BackupFileSummary) {
+        do {
+            let data = try backupFileStore.readBackupData(for: backup)
+            pendingManagedBackupRestoreData = data
+            prepareBackupRestorePreview(
+                from: data,
+                mode: selectedBackupRestoreMode,
+                scope: selectedBackupRestoreScope
+            )
+
+            if backupRestorePreviewErrorMessage != nil {
+                pendingManagedBackupRestoreData = nil
+            }
+        } catch {
+            pendingManagedBackupRestoreData = nil
+            preparedBackupRestorePreview = nil
+            backupRestorePreviewErrorMessage = error.localizedDescription
+        }
+    }
+
+    @discardableResult
+    func prepareManagedBackupRestoreConfirmation(from backup: BackupFileSummary) -> Bool {
+        prepareManagedBackupRestorePreview(from: backup)
+        return backupRestorePreviewErrorMessage == nil
     }
 
     func applyBackupRestore(
@@ -580,6 +652,20 @@ final class SettingsViewModel {
             }
         } catch {
             backupRestoreApplyErrorMessage = error.localizedDescription
+        }
+    }
+
+    func applyPreparedManagedBackupRestore() {
+        guard let pendingManagedBackupRestoreData else { return }
+
+        applyBackupRestore(
+            from: pendingManagedBackupRestoreData,
+            mode: selectedBackupRestoreMode,
+            scope: selectedBackupRestoreScope
+        )
+
+        if backupRestoreApplyErrorMessage == nil {
+            self.pendingManagedBackupRestoreData = nil
         }
     }
 

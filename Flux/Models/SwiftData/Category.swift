@@ -5,25 +5,23 @@ import SwiftUI
 /// A transaction category (e.g., "Food", "Transport", "Salary")
 @Model
 final class Category {
-    #Unique<Category>([\.id])
-    
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Localization key for the category name (e.g., "category.food")
     /// For user-created categories, this stores the raw name
-    var nameKey: String
+    var nameKey: String = ""
     
     /// SF Symbol name for the category icon
-    var icon: String
+    var icon: String = "tag"
     
     /// Hex color string (e.g., "#FF5733")
-    var colorHex: String
+    var colorHex: String = "#808080"
     
     /// Whether this is an income or expense category
-    var type: TransactionType
+    var type: TransactionType = TransactionType.expense
     
     /// Whether this is a system-provided default category
-    var isSystemDefault: Bool
+    var isSystemDefault: Bool = false
     
     /// Parent category for subcategories (nil for top-level categories)
     @Relationship(deleteRule: .nullify)
@@ -31,15 +29,15 @@ final class Category {
     
     /// Child subcategories
     @Relationship(deleteRule: .cascade, inverse: \Category.parentCategory)
-    var subcategories: [Category]
+    var subcategories: [Category]? = []
     
     /// Transactions in this category
     @Relationship(deleteRule: .nullify, inverse: \Transaction.category)
-    var transactions: [Transaction]
+    var transactions: [Transaction]? = []
     
     /// Budgets associated with this category
     @Relationship(deleteRule: .nullify, inverse: \Budget.category)
-    var budgets: [Budget]
+    var budgets: [Budget]? = []
     
     init(
         id: UUID = UUID(),
@@ -86,12 +84,12 @@ final class Category {
     
     /// Whether this category has any transactions
     var hasTransactions: Bool {
-        !transactions.isEmpty || subcategories.contains { $0.hasTransactions }
+        !(transactions ?? []).isEmpty || (subcategories ?? []).contains { $0.hasTransactions }
     }
     
     /// Total transaction count including subcategories
     var totalTransactionCount: Int {
-        transactions.count + subcategories.reduce(0) { $0 + $1.totalTransactionCount }
+        (transactions?.count ?? 0) + (subcategories ?? []).reduce(0) { $0 + $1.totalTransactionCount }
     }
     
     /// Whether this is a subcategory

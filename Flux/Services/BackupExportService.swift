@@ -96,6 +96,7 @@ final class BackupExportService: BackupExportServicing {
                 ]
             )
         )
+        let deduplicatedExchangeRates = deduplicateExchangeRates(exchangeRates)
 
         return BackupFinancialData(
             currencies: currencies.map { currency in
@@ -106,7 +107,7 @@ final class BackupExportService: BackupExportServicing {
                     isBaseCurrency: currency.isBaseCurrency
                 )
             },
-            exchangeRates: exchangeRates.map { exchangeRate in
+            exchangeRates: deduplicatedExchangeRates.map { exchangeRate in
                 BackupExchangeRateRecord(
                     id: exchangeRate.id,
                     baseCurrencyCode: exchangeRate.baseCurrencyCode,
@@ -216,6 +217,47 @@ final class BackupExportService: BackupExportServicing {
         )
     }
 
+    private func deduplicateExchangeRates(_ exchangeRates: [ExchangeRate]) -> [ExchangeRate] {
+        var latestByNaturalKey: [ExchangeRateNaturalKey: ExchangeRate] = [:]
+
+        for exchangeRate in exchangeRates {
+            let key = ExchangeRateNaturalKey(
+                baseCurrencyCode: exchangeRate.baseCurrencyCode,
+                quoteCurrencyCode: exchangeRate.quoteCurrencyCode,
+                effectiveDate: exchangeRate.effectiveDate
+            )
+
+            guard let existing = latestByNaturalKey[key] else {
+                latestByNaturalKey[key] = exchangeRate
+                continue
+            }
+
+            if shouldPrefer(exchangeRate, over: existing) {
+                latestByNaturalKey[key] = exchangeRate
+            }
+        }
+
+        return latestByNaturalKey.values.sorted { lhs, rhs in
+            if lhs.baseCurrencyCode != rhs.baseCurrencyCode {
+                return lhs.baseCurrencyCode < rhs.baseCurrencyCode
+            }
+            if lhs.quoteCurrencyCode != rhs.quoteCurrencyCode {
+                return lhs.quoteCurrencyCode < rhs.quoteCurrencyCode
+            }
+            if lhs.effectiveDate != rhs.effectiveDate {
+                return lhs.effectiveDate < rhs.effectiveDate
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+    }
+
+    private func shouldPrefer(_ candidate: ExchangeRate, over existing: ExchangeRate) -> Bool {
+        if candidate.fetchedAt != existing.fetchedAt {
+            return candidate.fetchedAt > existing.fetchedAt
+        }
+        return candidate.id.uuidString > existing.id.uuidString
+    }
+
     private func recordCounts(for financialData: BackupFinancialData) -> BackupRecordCounts {
         BackupRecordCounts(
             currencies: financialData.currencies.count,
@@ -235,4 +277,10 @@ final class BackupExportService: BackupExportServicing {
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
     }
+}
+
+private struct ExchangeRateNaturalKey: Hashable {
+    let baseCurrencyCode: String
+    let quoteCurrencyCode: String
+    let effectiveDate: Date
 }

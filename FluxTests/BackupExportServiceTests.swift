@@ -93,6 +93,39 @@ final class BackupExportServiceTests: XCTestCase {
         )
     }
 
+    func testBackupExportServiceDeduplicatesExchangeRatesByNaturalKey() throws {
+        let effectiveDate = Date(timeIntervalSince1970: 1_700_000_200)
+        let olderExchangeRate = ExchangeRate(
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            baseCurrencyCode: "USD",
+            quoteCurrencyCode: "HKD",
+            rate: 7.8,
+            effectiveDate: effectiveDate,
+            fetchedAt: Date(timeIntervalSince1970: 1_700_000_300),
+            provider: "older"
+        )
+        let newerExchangeRate = ExchangeRate(
+            id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+            baseCurrencyCode: "USD",
+            quoteCurrencyCode: "HKD",
+            rate: 7.81,
+            effectiveDate: effectiveDate,
+            fetchedAt: Date(timeIntervalSince1970: 1_700_000_400),
+            provider: "newer"
+        )
+        context.insert(olderExchangeRate)
+        context.insert(newerExchangeRate)
+        try context.save()
+
+        let service = BackupExportService(context: context)
+        let archive = try service.makeBackupArchive()
+
+        XCTAssertEqual(archive.financialData.exchangeRates.count, 1)
+        XCTAssertEqual(archive.financialData.exchangeRates.first?.provider, "newer")
+        XCTAssertEqual(archive.financialData.exchangeRates.first?.rate, 7.81)
+        XCTAssertEqual(archive.integrityMetadata.recordCounts.exchangeRates, 1)
+    }
+
     private var seedAccountID: UUID {
         UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
     }

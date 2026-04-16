@@ -76,7 +76,7 @@ final class CategoryService {
     
     /// Fetches subcategories of a parent
     func fetchSubcategories(of parent: Category) throws -> [Category] {
-        parent.subcategories.sorted { $0.displayName < $1.displayName }
+        (parent.subcategories ?? []).sorted { $0.displayName < $1.displayName }
     }
     
     // MARK: - Update

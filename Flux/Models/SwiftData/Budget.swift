@@ -4,40 +4,38 @@ import SwiftData
 /// A spending budget for a specific category
 @Model
 final class Budget {
-    #Unique<Budget>([\.id])
-    
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Budget limit amount
-    var limitAmount: Decimal
+    var limitAmount: Decimal = 0
     
     /// Currency code for this budget
-    var currencyCode: String
+    var currencyCode: String = SupportedCurrency.USD.rawValue
     
     /// Budget period (weekly or monthly)
-    var period: BudgetPeriod
+    var period: BudgetPeriod = BudgetPeriod.monthly
     
     /// Alert threshold as percentage (0.0 to 1.0)
     /// e.g., 0.8 = alert at 80% spent
-    var alertThreshold: Decimal
+    var alertThreshold: Decimal = 0.8
     
     /// Whether alerts are enabled for this budget
-    var alertsEnabled: Bool
+    var alertsEnabled: Bool = true
 
     /// Start date of the budget period whose progressive alerts are currently tracked.
     var alertTrackingPeriodStart: Date?
 
     /// Whether the 80% warning has been sent in the tracked period.
-    var hasSentWarningAlertInTrackedPeriod: Bool
+    var hasSentWarningAlertInTrackedPeriod: Bool = false
 
     /// Whether the 100% exceeded alert has been sent in the tracked period.
-    var hasSentExceededAlertInTrackedPeriod: Bool
+    var hasSentExceededAlertInTrackedPeriod: Bool = false
     
     /// Date the budget was created
-    var createdAt: Date
+    var createdAt: Date = Date()
     
     /// Whether this budget is active
-    var isActive: Bool
+    var isActive: Bool = true
     
     /// The category this budget applies to
     @Relationship(deleteRule: .nullify)

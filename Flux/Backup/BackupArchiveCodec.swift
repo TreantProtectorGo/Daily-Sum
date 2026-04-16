@@ -10,6 +10,25 @@ enum BackupArchiveCodecError: Error, Equatable {
     case recordCountMismatch(expected: [String: Int], actual: [String: Int])
 }
 
+extension BackupArchiveCodecError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedSchemaVersion(let schemaVersion):
+            return "This backup uses unsupported schema version \(schemaVersion)."
+        case .missingRequiredSections(let sections):
+            return "This backup is missing required sections: \(sections.sorted().joined(separator: ", "))."
+        case .checksumMismatch:
+            return "This backup failed integrity verification."
+        case .duplicateRecordID(let entity, let id):
+            return "This backup contains duplicate \(entity) record ID \(id.uuidString)."
+        case .invalidArchiveFormat:
+            return "This backup file is invalid or corrupted."
+        case .recordCountMismatch:
+            return "This backup record count does not match its integrity metadata."
+        }
+    }
+}
+
 enum BackupArchiveCodec {
     private static let requiredTopLevelSections = [
         "schemaVersion",

@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import UIKit
-import UniformTypeIdentifiers
 
 // MARK: - Settings View
 
@@ -20,10 +19,7 @@ struct SettingsView: View {
     @State private var showTravelCurrencySettings = false
     @State private var showError = false
     @State private var errorMessage = ""
-    @State private var showBackupExporter = false
-    @State private var backupArchiveDocument: BackupArchiveDocument?
-    @State private var showRestoreImporter = false
-    @State private var pendingBackupRestoreData: Data?
+    @State private var showBackupSheet = false
 
     init(autoPopWhenTabSwitch: Bool = false) {
         self.autoPopWhenTabSwitch = autoPopWhenTabSwitch
@@ -112,23 +108,8 @@ struct SettingsView: View {
         .sheet(isPresented: $showTravelCurrencySettings) {
             TravelCurrencySettingsSheet(viewModel: viewModel)
         }
-        .fileExporter(
-            isPresented: $showBackupExporter,
-            document: backupArchiveDocument,
-            contentType: .json,
-            defaultFilename: backupExportFilename(for: viewModel)
-        ) { result in
-            if case let .failure(error) = result {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-        }
-        .fileImporter(
-            isPresented: $showRestoreImporter,
-            allowedContentTypes: [.json],
-            allowsMultipleSelection: false
-        ) { result in
-            handleRestoreImport(result, viewModel: viewModel)
+        .sheet(isPresented: $showBackupSheet) {
+            ManagedBackupSheet(viewModel: viewModel)
         }
         .onAppear {
             Task {
@@ -412,73 +393,26 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
 
             Button {
-                prepareBackupExport(viewModel: viewModel)
+                showBackupSheet = true
             } label: {
-                Text(AppLocalization.string("settings.backup.export", defaultValue: "Back Up Now"))
-            }
-            .accessibilityIdentifier("settings.backup.export.button")
-
-            if let summary = viewModel.backupExportSummaryText {
-                Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Button {
-                showRestoreImporter = true
-            } label: {
-                Text(
+                Label(
                     AppLocalization.string(
-                        "settings.backup.restore.action",
-                        defaultValue: "Restore from Backup"
-                    )
+                        "settings.backup.action",
+                        defaultValue: "Backup"
+                    ),
+                    systemImage: "icloud.and.arrow.up"
                 )
             }
-            .accessibilityIdentifier("settings.backup.restore.button")
+            .accessibilityIdentifier("settings.backup.sheet.button")
 
             Text(
                 AppLocalization.string(
                     "settings.backup.restore.behavior",
-                    defaultValue: "Restore replaces current financial data and restores all included preferences."
+                    defaultValue: "Create iCloud Drive backups or restore from an existing backup. Restore replaces current financial data and restores all included preferences."
                 )
             )
             .font(.caption)
             .foregroundStyle(.secondary)
-
-            if let summary = viewModel.backupRestorePreviewSummaryText,
-               pendingBackupRestoreData != nil {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(
-                        AppLocalization.string(
-                            "settings.backup.restore.preview",
-                            defaultValue: "Restore Preview"
-                        )
-                    )
-                    .font(.subheadline.weight(.semibold))
-
-                    Text(summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("settings.backup.preview.summary")
-
-                    Button(
-                        AppLocalization.string(
-                            "settings.backup.restore.confirm",
-                            defaultValue: "Confirm Restore"
-                        )
-                    ) {
-                        applyPreparedRestore(viewModel: viewModel)
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-
-            if let summary = viewModel.appliedBackupImportSummaryText {
-                Text(summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("settings.backup.import.summary")
-            }
         }
     }
 
@@ -522,120 +456,211 @@ struct SettingsView: View {
         }
     }
 
-    private func prepareBackupExport(viewModel: SettingsViewModel) {
-        viewModel.prepareBackupExport()
-
-        if let error = viewModel.backupExportErrorMessage {
-            errorMessage = error
-            showError = true
-            return
-        }
-
-        guard let archive = viewModel.preparedBackupArchive else {
-            return
-        }
-
-        do {
-            backupArchiveDocument = try BackupArchiveDocument(archive: archive)
-            showBackupExporter = true
-        } catch {
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    private func handleRestoreImport(
-        _ result: Result<[URL], Error>,
-        viewModel: SettingsViewModel
-    ) {
-        switch result {
-        case let .success(urls):
-            guard let url = urls.first else { return }
-            let didAccessResource = url.startAccessingSecurityScopedResource()
-            defer {
-                if didAccessResource {
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-
-            do {
-                let data = try Data(contentsOf: url)
-                pendingBackupRestoreData = data
-                viewModel.prepareBackupRestorePreview(
-                    from: data,
-                    mode: viewModel.selectedBackupRestoreMode,
-                    scope: viewModel.selectedBackupRestoreScope
-                )
-
-                if let error = viewModel.backupRestorePreviewErrorMessage {
-                    pendingBackupRestoreData = nil
-                    errorMessage = error
-                    showError = true
-                }
-            } catch {
-                pendingBackupRestoreData = nil
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-        case let .failure(error):
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-
-    private func applyPreparedRestore(viewModel: SettingsViewModel) {
-        guard let pendingBackupRestoreData else { return }
-
-        viewModel.applyBackupRestore(
-            from: pendingBackupRestoreData,
-            mode: viewModel.selectedBackupRestoreMode,
-            scope: viewModel.selectedBackupRestoreScope
-        )
-
-        if let error = viewModel.backupRestoreApplyErrorMessage {
-            errorMessage = error
-            showError = true
-            return
-        }
-
-        self.pendingBackupRestoreData = nil
-    }
-
-    private func backupExportFilename(for viewModel: SettingsViewModel) -> String {
-        guard let archive = viewModel.preparedBackupArchive else {
-            return "Flux-Backup"
-        }
-
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return "Flux-Backup-\(formatter.string(from: archive.exportedAt))"
-    }
-
 }
 
-private struct BackupArchiveDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
+private struct ManagedBackupSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var viewModel: SettingsViewModel
+    @State private var showRestoreConfirmation = false
+    @State private var restoreErrorMessage: String?
+    @State private var showRestoreError = false
 
-    var data: Data
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Button {
+                        viewModel.createManagedBackup()
+                    } label: {
+                        Label(
+                            AppLocalization.string(
+                                "settings.backup.export",
+                                defaultValue: "Back Up Now"
+                            ),
+                            systemImage: "icloud.and.arrow.up"
+                        )
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isPreparingBackupExport)
+                    .accessibilityIdentifier("settings.backup.export.button")
 
-    init(data: Data) {
-        self.data = data
-    }
+                    if viewModel.isPreparingBackupExport {
+                        ProgressView()
+                    }
 
-    init(archive: BackupArchive) throws {
-        self.data = try BackupArchiveCodec.encode(archive)
-    }
+                    if let summary = viewModel.backupExportSummaryText {
+                        Text(summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("settings.backup.export.summary")
+                    }
 
-    init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
+                    if let error = viewModel.backupExportErrorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("settings.backup.export.error")
+                    }
+                } footer: {
+                    Text(
+                        AppLocalization.string(
+                            "settings.backup.footer",
+                            defaultValue: "Backups are saved to iCloud Drive when available, otherwise to this device."
+                        )
+                    )
+                }
+
+                Section(
+                    AppLocalization.string(
+                        "settings.backup.list.title",
+                        defaultValue: "Backups"
+                    )
+                ) {
+                    if viewModel.isLoadingBackupFiles {
+                        ProgressView()
+                    } else if let error = viewModel.backupFileListErrorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("settings.backup.list.error")
+                    } else if viewModel.backupFiles.isEmpty {
+                        Text(
+                            AppLocalization.string(
+                                "settings.backup.list.empty.message",
+                                defaultValue: "Tap Back Up Now to create your first backup."
+                            )
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(viewModel.backupFiles) { backup in
+                            Button {
+                                prepareRestoreConfirmation(for: backup)
+                            } label: {
+                                BackupFileRow(backup: backup)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(viewModel.isPreparingBackupRestorePreview || viewModel.isApplyingBackupRestore)
+                            .accessibilityIdentifier("settings.backup.list.row")
+                        }
+                    }
+                }
+
+                if viewModel.isPreparingBackupRestorePreview {
+                    Section {
+                        ProgressView()
+                    }
+                }
+
+                if let summary = viewModel.appliedBackupImportSummaryText {
+                    Section(
+                        AppLocalization.string(
+                            "settings.backup.restore.result",
+                            defaultValue: "Restore Result"
+                        )
+                    ) {
+                        Text(summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("settings.backup.import.summary")
+                    }
+                }
+            }
+            .navigationTitle(
+                AppLocalization.string(
+                    "settings.backup.title",
+                    defaultValue: "Backup"
+                )
+            )
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(AppLocalization.string("action.close", defaultValue: "Close")) {
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                viewModel.loadBackupFiles()
+            }
+            .confirmationDialog(
+                AppLocalization.string(
+                    "settings.backup.restore.confirm.title",
+                    defaultValue: "Restore Backup?"
+                ),
+                isPresented: $showRestoreConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(
+                    AppLocalization.string(
+                        "settings.backup.restore.confirm",
+                        defaultValue: "Confirm Restore"
+                    ),
+                    role: .destructive
+                ) {
+                    applyPreparedRestore()
+                }
+                .accessibilityIdentifier("settings.backup.restore.confirm.button")
+
+                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+            }
+            .alert(
+                AppLocalization.string("error.title", defaultValue: "Error"),
+                isPresented: $showRestoreError
+            ) {
+                Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
+            } message: {
+                Text(restoreErrorMessage ?? "")
+            }
         }
-        self.data = data
     }
 
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: data)
+    private func prepareRestoreConfirmation(for backup: BackupFileSummary) {
+        guard viewModel.prepareManagedBackupRestoreConfirmation(from: backup) else {
+            restoreErrorMessage = viewModel.backupRestorePreviewErrorMessage
+            showRestoreError = restoreErrorMessage != nil
+            return
+        }
+
+        showRestoreConfirmation = true
+    }
+
+    private func applyPreparedRestore() {
+        viewModel.applyPreparedManagedBackupRestore()
+
+        guard let error = viewModel.backupRestoreApplyErrorMessage else { return }
+        restoreErrorMessage = error
+        showRestoreError = true
+    }
+}
+
+private struct BackupFileRow: View {
+    let backup: BackupFileSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(displayTitle)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+
+            Text(displaySubtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var displayTitle: String {
+        displayFormatter.title(for: backup)
+    }
+
+    private var displaySubtitle: String {
+        displayFormatter.subtitle(for: backup)
+    }
+
+    private var displayFormatter: BackupFileDisplayFormatter {
+        BackupFileDisplayFormatter()
     }
 }
 

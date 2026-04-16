@@ -22,6 +22,8 @@ final class SettingsViewModelBackupTests: XCTestCase {
     private final class MockBackupImportService: BackupImportServicing {
         var previewResult: Result<BackupImportPreflightSummary, Error>
         var applyResult: Result<ImportReport, Error>
+        private(set) var lastPreparedData: Data?
+        private(set) var lastAppliedData: Data?
         private(set) var lastPreparedMode: BackupRestoreMode?
         private(set) var lastPreparedScope: BackupRestoreScope?
         private(set) var lastAppliedMode: BackupRestoreMode?
@@ -44,6 +46,7 @@ final class SettingsViewModelBackupTests: XCTestCase {
             mode: BackupRestoreMode,
             scope: BackupRestoreScope
         ) throws -> BackupImportPreflightSummary {
+            lastPreparedData = data
             lastPreparedMode = mode
             lastPreparedScope = scope
             return try previewResult.get()
@@ -55,9 +58,47 @@ final class SettingsViewModelBackupTests: XCTestCase {
             scope: BackupRestoreScope,
             context: ModelContext
         ) throws -> ImportReport {
+            lastAppliedData = data
             lastAppliedMode = mode
             lastAppliedScope = scope
             return try applyResult.get()
+        }
+    }
+
+    @MainActor
+    private final class MockBackupFileStore: BackupFileStoring {
+        var backups: [BackupFileSummary]
+        var writeResult: Result<BackupFileSummary, Error>
+        var readDataResult: Result<Data, Error>
+        private(set) var writtenArchive: BackupArchive?
+        private(set) var readBackup: BackupFileSummary?
+
+        init(
+            backups: [BackupFileSummary] = [],
+            writeResult: Result<BackupFileSummary, Error>,
+            readDataResult: Result<Data, Error> = .failure(
+                NSError(domain: "BackupFileStore", code: 2, userInfo: [
+                    NSLocalizedDescriptionKey: "Read not configured"
+                ])
+            )
+        ) {
+            self.backups = backups
+            self.writeResult = writeResult
+            self.readDataResult = readDataResult
+        }
+
+        func listBackups() throws -> [BackupFileSummary] {
+            backups
+        }
+
+        func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary {
+            writtenArchive = archive
+            return try writeResult.get()
+        }
+
+        func readBackupData(for backup: BackupFileSummary) throws -> Data {
+            readBackup = backup
+            return try readDataResult.get()
         }
     }
 
@@ -130,6 +171,157 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertFalse(viewModel.isPreparingBackupExport)
         XCTAssertNil(viewModel.preparedBackupArchive)
         XCTAssertEqual(viewModel.backupExportErrorMessage, "Export failed")
+    }
+
+    func testCreateManagedBackupWritesArchiveAndRefreshesBackupList() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let archive = Self.makeArchive()
+        let fileSummary = Self.makeBackupFileSummary(filename: "Flux_20231114_221320.json")
+        let backupFileStore = MockBackupFileStore(
+            backups: [fileSummary],
+            writeResult: .success(fileSummary)
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupExportService: MockBackupExportService(result: .success(archive)),
+            backupFileStore: backupFileStore
+        )
+
+        viewModel.createManagedBackup()
+
+        XCTAssertFalse(viewModel.isPreparingBackupExport)
+        XCTAssertEqual(backupFileStore.writtenArchive, archive)
+        XCTAssertEqual(viewModel.preparedBackupArchive, archive)
+        XCTAssertEqual(viewModel.lastCreatedBackupFile, fileSummary)
+        XCTAssertEqual(viewModel.backupFiles, [fileSummary])
+        XCTAssertNil(viewModel.backupExportErrorMessage)
+    }
+
+    func testPrepareManagedBackupRestorePreviewUsesSelectedBackupWithFixedPolicy() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let backupData = Data("{\"backup\":true}".utf8)
+        let fileSummary = Self.makeBackupFileSummary(filename: "Flux_20231114_221320.json")
+        let preview = BackupImportPreflightSummary(
+            archiveId: fileSummary.archiveId,
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            appVersion: "1.0.0",
+            exportedAt: fileSummary.exportedAt,
+            exportSourceDevice: fileSummary.exportSourceDevice,
+            selectedMode: .replace,
+            selectedScope: .financialDataAndAllPreferences,
+            recordCounts: fileSummary.recordCounts,
+            warnings: []
+        )
+        let importService = MockBackupImportService(previewResult: .success(preview))
+        let backupFileStore = MockBackupFileStore(
+            backups: [fileSummary],
+            writeResult: .failure(NSError(domain: "BackupFileStore", code: 1, userInfo: nil)),
+            readDataResult: .success(backupData)
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupImportService: importService,
+            backupFileStore: backupFileStore
+        )
+
+        viewModel.prepareManagedBackupRestorePreview(from: fileSummary)
+
+        XCTAssertEqual(backupFileStore.readBackup, fileSummary)
+        XCTAssertEqual(importService.lastPreparedData, backupData)
+        XCTAssertEqual(importService.lastPreparedMode, .replace)
+        XCTAssertEqual(importService.lastPreparedScope, .financialDataAndAllPreferences)
+        XCTAssertEqual(viewModel.preparedBackupRestorePreview, preview)
+        XCTAssertNil(viewModel.backupRestorePreviewErrorMessage)
+    }
+
+    func testPrepareManagedBackupRestoreConfirmationReturnsPreflightOutcome() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let backupData = Data("{\"backup\":true}".utf8)
+        let fileSummary = Self.makeBackupFileSummary(filename: "Flux_20231114_221320.json")
+        let preview = BackupImportPreflightSummary(
+            archiveId: fileSummary.archiveId,
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            appVersion: "1.0.0",
+            exportedAt: fileSummary.exportedAt,
+            exportSourceDevice: fileSummary.exportSourceDevice,
+            selectedMode: .replace,
+            selectedScope: .financialDataAndAllPreferences,
+            recordCounts: fileSummary.recordCounts,
+            warnings: []
+        )
+        let importService = MockBackupImportService(previewResult: .success(preview))
+        let backupFileStore = MockBackupFileStore(
+            backups: [fileSummary],
+            writeResult: .failure(NSError(domain: "BackupFileStore", code: 1, userInfo: nil)),
+            readDataResult: .success(backupData)
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupImportService: importService,
+            backupFileStore: backupFileStore
+        )
+
+        let shouldConfirm = viewModel.prepareManagedBackupRestoreConfirmation(from: fileSummary)
+
+        XCTAssertTrue(shouldConfirm)
+        XCTAssertEqual(backupFileStore.readBackup, fileSummary)
+        XCTAssertEqual(importService.lastPreparedMode, .replace)
+        XCTAssertEqual(importService.lastPreparedScope, .financialDataAndAllPreferences)
+        XCTAssertEqual(viewModel.preparedBackupRestorePreview, preview)
+        XCTAssertNil(viewModel.backupRestorePreviewErrorMessage)
+    }
+
+    func testApplyPreparedManagedBackupRestoreUsesPreviouslySelectedBackupData() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let backupData = Data("{\"backup\":true}".utf8)
+        let fileSummary = Self.makeBackupFileSummary(filename: "Flux_20231114_221320.json")
+        let preview = BackupImportPreflightSummary(
+            archiveId: fileSummary.archiveId,
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            appVersion: "1.0.0",
+            exportedAt: fileSummary.exportedAt,
+            exportSourceDevice: fileSummary.exportSourceDevice,
+            selectedMode: .replace,
+            selectedScope: .financialDataAndAllPreferences,
+            recordCounts: fileSummary.recordCounts,
+            warnings: []
+        )
+        let report = ImportReport(
+            archiveId: fileSummary.archiveId,
+            schemaVersion: BackupArchive.currentSchemaVersion,
+            summary: ImportReportSummary(
+                importedCount: 1,
+                updatedCount: 0,
+                skippedCount: 0,
+                failedCount: 0,
+                warningCount: 0
+            ),
+            entries: [],
+            conflictReasons: [],
+            createdAt: Date(timeIntervalSince1970: 1_700_000_100)
+        )
+        let importService = MockBackupImportService(
+            previewResult: .success(preview),
+            applyResult: .success(report)
+        )
+        let backupFileStore = MockBackupFileStore(
+            backups: [fileSummary],
+            writeResult: .failure(NSError(domain: "BackupFileStore", code: 1, userInfo: nil)),
+            readDataResult: .success(backupData)
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            backupImportService: importService,
+            backupFileStore: backupFileStore
+        )
+
+        viewModel.prepareManagedBackupRestorePreview(from: fileSummary)
+        viewModel.applyPreparedManagedBackupRestore()
+
+        XCTAssertEqual(importService.lastAppliedData, backupData)
+        XCTAssertEqual(importService.lastAppliedMode, .replace)
+        XCTAssertEqual(importService.lastAppliedScope, .financialDataAndAllPreferences)
+        XCTAssertEqual(viewModel.appliedBackupImportReport, report)
     }
 
     func testPrepareBackupRestorePreviewPublishesSuccessState() async throws {
@@ -486,6 +678,26 @@ final class SettingsViewModelBackupTests: XCTestCase {
                 createdByBuild: nil,
                 compressionFormat: nil
             )
+        )
+    }
+
+    private static func makeBackupFileSummary(filename: String) -> BackupFileSummary {
+        BackupFileSummary(
+            url: URL(fileURLWithPath: "/tmp/\(filename)"),
+            filename: filename,
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            fileSize: 1024,
+            exportSourceDevice: "iPhone 17 Pro",
+            recordCounts: BackupRecordCounts(
+                currencies: 0,
+                exchangeRates: 0,
+                categories: 0,
+                accounts: 1,
+                transactions: 1,
+                scheduledOccurrenceExceptions: 0,
+                budgets: 0
+            ),
+            archiveId: UUID(uuidString: "99999999-9999-9999-9999-999999999999")!
         )
     }
 }
