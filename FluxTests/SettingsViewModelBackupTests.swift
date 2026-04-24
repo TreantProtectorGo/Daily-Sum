@@ -487,7 +487,10 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertEqual(viewModel.cloudSyncStatus, .unavailable(.iCloudAccountRequired))
         XCTAssertTrue(viewModel.cloudSyncRequiresAttention)
         XCTAssertEqual(viewModel.cloudSyncStatusTitle, "Needs Attention")
-        XCTAssertEqual(viewModel.cloudSyncStatusMessage, "Sign in to iCloud to enable sync.")
+        XCTAssertEqual(
+            viewModel.cloudSyncStatusMessage,
+            "Sign in to iCloud in Settings, then return here to enable sync."
+        )
     }
 
     func testCloudSyncToggleInvalidatesObservedStatusCopy() async throws {

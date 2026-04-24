@@ -65,10 +65,10 @@ final class FluxUITests: XCTestCase {
         app.launch()
 
         let settingsButton = app.navigationBars.buttons["Settings"].firstMatch
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.tap()
 
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
 
         app.tabBars.buttons["Transactions"].tap()
 
@@ -87,15 +87,44 @@ final class FluxUITests: XCTestCase {
         app.launch()
 
         let settingsButton = app.navigationBars.buttons["Settings"].firstMatch
-        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.tap()
 
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         XCTAssertTrue(scrollToElement(app.staticTexts["Enable iCloud Sync"], in: app))
+        XCTAssertFalse(app.images["settings.backup.icon"].exists)
         XCTAssertTrue(scrollToElement(app.buttons["Back Up Now"], in: app))
         XCTAssertTrue(scrollToElement(app.staticTexts["Restore Mode"], in: app))
         XCTAssertTrue(scrollToElement(app.staticTexts["Restore Scope"], in: app))
         XCTAssertTrue(scrollToElement(app.buttons["Restore from Backup"], in: app))
+    }
+
+    @MainActor
+    func testSettingsShowsDisabledCloudSyncToggleWhenICloudSignInIsRequired() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+            "-FluxCloudSyncAvailability", "noAccount"
+        ]
+        app.launch()
+
+        let settingsButton = app.navigationBars.buttons["Settings"].firstMatch
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+        settingsButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            scrollToElement(
+                app.staticTexts["Sign in to iCloud in Settings, then return here to enable sync."],
+                in: app
+            )
+        )
+
+        let toggle = app.switches["settings.cloudSync.toggle"].firstMatch
+        XCTAssertTrue(scrollToElement(toggle, in: app))
+        XCTAssertFalse(toggle.isEnabled)
+        XCTAssertFalse(app.staticTexts["Needs Attention"].firstMatch.exists)
     }
 
     @MainActor

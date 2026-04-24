@@ -35,9 +35,12 @@ final class CloudSyncSettingsStore: CloudSyncSettingsStoring {
     init(
         userDefaults: UserDefaults = .standard,
         availabilityProvider: @escaping () -> CloudSyncAvailability = {
-            FileManager.default.ubiquityIdentityToken == nil
-                ? .unavailable(.iCloudAccountRequired)
-                : .available
+            if let override = RuntimeEnvironment.cloudSyncAvailabilityOverride {
+                return override
+            }
+            return FileManager.default.ubiquityIdentityToken == nil
+                ? CloudSyncAvailability.unavailable(.iCloudAccountRequired)
+                : CloudSyncAvailability.available
         }
     ) {
         self.userDefaults = userDefaults

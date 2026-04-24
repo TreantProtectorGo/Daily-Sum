@@ -451,7 +451,7 @@ final class SettingsViewModel {
         case .unavailable(.iCloudAccountRequired):
             AppLocalization.string(
                 "settings.cloudSync.message.signInRequired",
-                defaultValue: "Sign in to iCloud to enable sync."
+                defaultValue: "Sign in to iCloud in Settings, then return here to enable sync."
             )
         }
     }

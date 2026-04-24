@@ -17,7 +17,7 @@ final class DashboardViewModel {
     var totalBalance: Decimal = 0
     var monthlyIncome: Decimal = 0
     var monthlyExpenses: Decimal = 0
-    var recentTransactions: [Transaction] = []
+    var recentTransactionRows: [TransactionRowSnapshot] = []
     var topBudgets: [Budget] = []
     var accounts: [Account] = []
     
@@ -35,7 +35,7 @@ final class DashboardViewModel {
     }
     
     var hasTransactions: Bool {
-        !recentTransactions.isEmpty
+        !recentTransactionRows.isEmpty
     }
     
     var hasBudgets: Bool {
@@ -86,7 +86,8 @@ final class DashboardViewModel {
                 sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
             )
             transactionDescriptor.fetchLimit = 10
-            recentTransactions = try modelContext.fetch(transactionDescriptor)
+            let recentTransactions = try modelContext.fetch(transactionDescriptor)
+            recentTransactionRows = recentTransactions.map(TransactionRowSnapshot.init(transaction:))
             
             // Calculate monthly totals
             let calendar = Calendar.current

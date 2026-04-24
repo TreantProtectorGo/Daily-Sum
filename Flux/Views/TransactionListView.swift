@@ -9,7 +9,7 @@ struct TransactionListView: View {
     private let externalSearchText: Binding<String>?
     
     @State private var showAddTransaction = false
-    @State private var selectedTransaction: Transaction?
+    @State private var selectedTransaction: TransactionEditorSelection?
     @State private var showFilters = false
     @State private var pendingScheduledDeleteTransactionID: UUID?
     @State private var showScheduledDeleteDialog = false
@@ -80,8 +80,8 @@ struct TransactionListView: View {
                 Task { await viewModel?.loadTransactions() }
             })
         }
-        .sheet(item: $selectedTransaction) { transaction in
-            TransactionEntrySheet(transaction: transaction, onSave: {
+        .sheet(item: $selectedTransaction) { selection in
+            TransactionEntrySheet(transactionId: selection.id, onSave: {
                 Task { await viewModel?.loadTransactions() }
             })
         }
@@ -377,10 +377,10 @@ struct TransactionListView: View {
     }
 
     private func openTransactionEditor(for transactionId: UUID, viewModel: TransactionListViewModel) {
-        guard let transaction = try? viewModel.transaction(byId: transactionId) else {
+        guard (try? viewModel.transaction(byId: transactionId)) != nil else {
             return
         }
-        selectedTransaction = transaction
+        selectedTransaction = TransactionEditorSelection(id: transactionId)
     }
     
     @ViewBuilder
@@ -430,6 +430,10 @@ struct TransactionListView: View {
             return date.formatted(.dateTime.month().day().year())
         }
     }
+}
+
+struct TransactionEditorSelection: Identifiable, Equatable {
+    let id: UUID
 }
 
 // MARK: - Transaction Filters Sheet

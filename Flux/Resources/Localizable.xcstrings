@@ -4532,13 +4532,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "建立 iCloud Drive 备份，或从现有备份还原。还原会取代目前的财务数据，并还原备份内包含的所有偏好设定。"
+            "value" : "可建立 iCloud Drive 备份，也可从现有备份还原。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "建立 iCloud Drive 備份，或從現有備份還原。還原會取代目前的財務資料，並還原備份內包含的所有偏好設定。"
+            "value" : "可建立 iCloud Drive 備份，亦可由現有備份還原。"
           }
         }
       }
@@ -4762,13 +4762,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "更改会透过 iCloud 同步。"
+            "value" : "所作更改，均会透过 iCloud 同步。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "更改會透過 iCloud 同步。"
+            "value" : "所作更改，均會透過 iCloud 同步。"
           }
         }
       }
@@ -4779,19 +4779,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign in to iCloud to enable sync."
+            "value" : "Sign in to iCloud in Settings, then return here to enable sync."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请登入 iCloud 以启用同步。"
+            "value" : "请先在“设置”中登入 iCloud，然后返回这里启用同步。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "請登入 iCloud 以啟用同步。"
+            "value" : "請先在「設定」中登入 iCloud，然後返回這裡啟用同步。"
           }
         }
       }

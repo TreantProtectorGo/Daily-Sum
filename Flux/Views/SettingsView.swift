@@ -366,15 +366,9 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func dataContinuitySection(viewModel: SettingsViewModel) -> some View {
-        Section(AppLocalization.string("settings.dataContinuity", defaultValue: "Sync & Backup")) {
-            LabeledContent(
-                AppLocalization.string("settings.cloudSync", defaultValue: "iCloud Sync")
-            ) {
-                Text(viewModel.cloudSyncStatusTitle)
-                    .foregroundStyle(viewModel.cloudSyncRequiresAttention ? .orange : .secondary)
-                    .accessibilityIdentifier("settings.cloudSync.status")
-            }
+        let cloudSyncRequiresAttention = viewModel.cloudSyncRequiresAttention
 
+        Section(AppLocalization.string("settings.dataContinuity", defaultValue: "Sync & Backup")) {
             Toggle(
                 AppLocalization.string(
                     "settings.cloudSync.enable",
@@ -385,7 +379,9 @@ struct SettingsView: View {
                     set: { viewModel.isCloudSyncEnabled = $0 }
                 )
             )
-            .disabled(viewModel.cloudSyncRequiresAttention)
+            .disabled(cloudSyncRequiresAttention)
+            .opacity(cloudSyncRequiresAttention ? 0.5 : 1)
+            .saturation(cloudSyncRequiresAttention ? 0 : 1)
             .accessibilityIdentifier("settings.cloudSync.toggle")
 
             Text(viewModel.cloudSyncStatusMessage)
@@ -395,12 +391,11 @@ struct SettingsView: View {
             Button {
                 showBackupSheet = true
             } label: {
-                Label(
+                Text(
                     AppLocalization.string(
                         "settings.backup.action",
                         defaultValue: "Backup"
-                    ),
-                    systemImage: "icloud.and.arrow.up"
+                    )
                 )
             }
             .accessibilityIdentifier("settings.backup.sheet.button")

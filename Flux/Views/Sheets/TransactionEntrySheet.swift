@@ -101,8 +101,9 @@ struct TransactionEntrySheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    private let existingTransaction: Transaction?
+    private let existingTransactionID: UUID?
     private let onSave: () -> Void
+    @State private var existingTransaction: Transaction?
     
     // Form state
     @State private var transactionType: TransactionType = .expense
@@ -130,7 +131,12 @@ struct TransactionEntrySheet: View {
     @Query private var accounts: [Account]
     
     init(transaction: Transaction? = nil, onSave: @escaping () -> Void) {
-        self.existingTransaction = transaction
+        self.existingTransactionID = transaction?.id
+        self.onSave = onSave
+    }
+
+    init(transactionId: UUID, onSave: @escaping () -> Void) {
+        self.existingTransactionID = transactionId
         self.onSave = onSave
     }
     
@@ -187,13 +193,13 @@ struct TransactionEntrySheet: View {
                 }
             }
             .onAppear {
-                let mode = existingTransaction == nil ? "create" : "edit"
+                let mode = existingTransactionID == nil ? "create" : "edit"
                 sheetOpenedAt = PerformanceLogger.start(
                     "TransactionEntrySheet.Open",
                     metadata: "mode=\(mode)"
                 )
     
-                if existingTransaction != nil {
+                if existingTransactionID != nil {
                     loadExistingTransaction()
                 } else {
                     resetFormForNewTransaction()
@@ -512,7 +518,8 @@ struct TransactionEntrySheet: View {
     }
     
     private func loadExistingTransaction() {
-        guard let transaction = existingTransaction else { return }
+        guard let transaction = fetchExistingTransaction() else { return }
+        existingTransaction = transaction
         
         transactionType = transaction.type
         amount = transaction.amount
@@ -534,6 +541,14 @@ struct TransactionEntrySheet: View {
         } else {
             scheduleMode = .oneTime
         }
+    }
+
+    private func fetchExistingTransaction() -> Transaction? {
+        guard let transactionID = existingTransactionID else { return nil }
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.id == transactionID }
+        )
+        return try? modelContext.fetch(descriptor).first
     }
 
     private func handleTransactionTypeSelection(_ nextType: TransactionType) {

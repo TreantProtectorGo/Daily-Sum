@@ -629,26 +629,26 @@ struct ReportCategoryDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
 
-    @State private var transactions: [Transaction] = []
+    @State private var transactionRows: [TransactionRowSnapshot] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
 
     private struct DailyTransactionGroup: Identifiable {
         let date: Date
-        let transactions: [Transaction]
+        let rows: [TransactionRowSnapshot]
 
         var id: Date { date }
     }
 
     private var groupedTransactions: [DailyTransactionGroup] {
         let calendar = Calendar.current
-        let grouped = Dictionary(grouping: transactions) { transaction in
-            calendar.startOfDay(for: transaction.date)
+        let grouped = Dictionary(grouping: transactionRows) { row in
+            calendar.startOfDay(for: row.date)
         }
         return grouped.keys.sorted(by: >).map { date in
             DailyTransactionGroup(
                 date: date,
-                transactions: grouped[date, default: []].sorted { $0.date > $1.date }
+                rows: grouped[date, default: []].sorted { $0.date > $1.date }
             )
         }
     }
@@ -676,7 +676,7 @@ struct ReportCategoryDetailView: View {
                 } description: {
                     Text(errorMessage)
                 }
-            } else if transactions.isEmpty {
+            } else if transactionRows.isEmpty {
                 ContentUnavailableView {
                     Label(title, systemImage: "tray")
                 } description: {
@@ -691,8 +691,8 @@ struct ReportCategoryDetailView: View {
                 List {
                     ForEach(groupedTransactions) { group in
                         Section {
-                            ForEach(group.transactions) { transaction in
-                                TransactionRowView(transaction: transaction)
+                            ForEach(group.rows) { row in
+                                TransactionRowView(snapshot: row)
                             }
                         } header: {
                             Text(sectionTitle(for: group.date))
@@ -741,18 +741,20 @@ struct ReportCategoryDetailView: View {
 
             let fetched = try modelContext.fetch(descriptor)
             let transactionType: TransactionType = breakdownType == .expense ? .expense : .income
-            transactions = fetched.filter { transaction in
+            transactionRows = fetched.compactMap { transaction in
                 guard transaction.type == transactionType else {
-                    return false
+                    return nil
                 }
                 if let categoryID {
-                    return transaction.category?.id == categoryID
+                    guard transaction.category?.id == categoryID else { return nil }
+                    return TransactionRowSnapshot(transaction: transaction)
                 }
-                return transaction.category == nil
+                guard transaction.category == nil else { return nil }
+                return TransactionRowSnapshot(transaction: transaction)
             }
         } catch {
             errorMessage = error.localizedDescription
-            transactions = []
+            transactionRows = []
         }
     }
 }

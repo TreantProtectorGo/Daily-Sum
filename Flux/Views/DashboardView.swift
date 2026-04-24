@@ -10,7 +10,7 @@ struct DashboardView: View {
     @State private var showAddAccount = false
     @State private var showAddBudget = false
     @State private var selectedAccount: Account?
-    @State private var selectedTransaction: Transaction?
+    @State private var selectedTransaction: TransactionEditorSelection?
     @State private var selectedBudget: Budget?
 
     private var displayCurrencyCode: String {
@@ -81,8 +81,8 @@ struct DashboardView: View {
                     Task { await viewModel?.refresh() }
                 })
             }
-            .sheet(item: $selectedTransaction) { transaction in
-                TransactionEntrySheet(transaction: transaction, onSave: {
+            .sheet(item: $selectedTransaction) { selection in
+                TransactionEntrySheet(transactionId: selection.id, onSave: {
                     Task { await viewModel?.refresh() }
                 })
             }
@@ -251,13 +251,13 @@ struct DashboardView: View {
             
             if viewModel.hasTransactions {
                 VStack(spacing: 8) {
-                    ForEach(viewModel.recentTransactions.prefix(5)) { transaction in
-                        GlassTransactionRow(transaction: transaction) {
-                            selectedTransaction = transaction
+                    ForEach(viewModel.recentTransactionRows.prefix(5)) { row in
+                        GlassTransactionRow(snapshot: row) {
+                            selectedTransaction = TransactionEditorSelection(id: row.id)
                         }
                     }
                     
-                    if viewModel.recentTransactions.count > 5 {
+                    if viewModel.recentTransactionRows.count > 5 {
                         NavigationLink {
                             TransactionListView()
                         } label: {

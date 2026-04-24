@@ -831,9 +831,9 @@ final class FluxTests: XCTestCase {
         await viewModel.loadTransactions()
 
         XCTAssertEqual(viewModel.hiddenUpcomingScheduledCount, 1)
-        XCTAssertEqual(viewModel.hiddenUpcomingScheduledTransactions.first?.id, withinWindowGenerated.id)
-        XCTAssertEqual(viewModel.upcomingScheduledTransactionsInWindow.count, 1)
-        XCTAssertEqual(viewModel.upcomingScheduledTransactionsInWindow.first?.id, withinWindowGenerated.id)
+        XCTAssertEqual(viewModel.hiddenUpcomingScheduledRows.first?.id, withinWindowGenerated.id)
+        XCTAssertEqual(viewModel.upcomingScheduledRowsInWindow.count, 1)
+        XCTAssertEqual(viewModel.upcomingScheduledRowsInWindow.first?.id, withinWindowGenerated.id)
     }
 
     @MainActor

@@ -87,10 +87,6 @@ struct TransactionRowSnapshot: Identifiable {
 struct TransactionRowView: View {
     let snapshot: TransactionRowSnapshot
 
-    init(transaction: Transaction) {
-        self.snapshot = TransactionRowSnapshot(transaction: transaction)
-    }
-
     init(snapshot: TransactionRowSnapshot) {
         self.snapshot = snapshot
     }
@@ -199,11 +195,11 @@ private struct TravelTransactionBadge: View {
 
 /// A glass-styled transaction row for use outside of Lists
 struct GlassTransactionRow: View {
-    let transaction: Transaction
+    let snapshot: TransactionRowSnapshot
     let onTap: (() -> Void)?
-    
-    init(transaction: Transaction, onTap: (() -> Void)? = nil) {
-        self.transaction = transaction
+
+    init(snapshot: TransactionRowSnapshot, onTap: (() -> Void)? = nil) {
+        self.snapshot = snapshot
         self.onTap = onTap
     }
     
@@ -211,7 +207,7 @@ struct GlassTransactionRow: View {
         Button {
             onTap?()
         } label: {
-            TransactionRowView(transaction: transaction)
+            TransactionRowView(snapshot: snapshot)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -42,7 +42,9 @@ final class TransactionListViewModel {
     private let transactionService: TransactionService
     
     var transactions: [Transaction] = []
+    var transactionRows: [TransactionRowSnapshot] = []
     var filteredTransactions: [Transaction] = []
+    var filteredTransactionRows: [TransactionRowSnapshot] = []
     
     var searchText = ""
     var selectedType: TransactionType?
@@ -73,7 +75,7 @@ final class TransactionListViewModel {
         !showUpcomingScheduled
     }
 
-    var upcomingScheduledTransactionsInWindow: [Transaction] {
+    var upcomingScheduledRowsInWindow: [TransactionRowSnapshot] {
         let now = Date.now
         guard let cutoff = Calendar.current.date(
             byAdding: .day,
@@ -83,25 +85,25 @@ final class TransactionListViewModel {
             return []
         }
 
-        return transactions
-            .filter { transaction in
-                transaction.isGeneratedFromRecurring &&
-                transaction.date > now &&
-                transaction.date <= cutoff
+        return transactionRows
+            .filter { row in
+                row.isGeneratedFromRecurring &&
+                row.date > now &&
+                row.date <= cutoff
             }
             .sorted { $0.date < $1.date }
     }
 
-    var hiddenUpcomingScheduledTransactions: [Transaction] {
-        upcomingScheduledTransactionsInWindow
+    var hiddenUpcomingScheduledRows: [TransactionRowSnapshot] {
+        upcomingScheduledRowsInWindow
     }
 
     var hiddenUpcomingScheduledCount: Int {
-        hiddenUpcomingScheduledTransactions.count
+        hiddenUpcomingScheduledRows.count
     }
 
     var nextUpcomingScheduledDate: Date? {
-        hiddenUpcomingScheduledTransactions.first?.date
+        hiddenUpcomingScheduledRows.first?.date
     }
 
     var shouldShowUpcomingHintBar: Bool {
@@ -116,8 +118,7 @@ final class TransactionListViewModel {
     
     var groupedTransactionRows: [(date: Date, rows: [TransactionRowSnapshot])] {
         let calendar = Calendar.current
-        let snapshots = timelineTransactions.map(TransactionRowSnapshot.init(transaction:))
-        let grouped = Dictionary(grouping: snapshots) { row in
+        let grouped = Dictionary(grouping: timelineTransactionRows) { row in
             calendar.startOfDay(for: row.date)
         }
         return grouped.sorted { $0.key > $1.key }
@@ -127,12 +128,11 @@ final class TransactionListViewModel {
     var visibleUpcomingScheduledRows: [TransactionRowSnapshot] {
         guard showUpcomingScheduled else { return [] }
         let now = Date.now
-        return filteredTransactions
-            .filter { transaction in
-                transaction.isGeneratedFromRecurring && transaction.date > now
+        return filteredTransactionRows
+            .filter { row in
+                row.isGeneratedFromRecurring && row.date > now
             }
             .sorted { $0.date < $1.date }
-            .map(TransactionRowSnapshot.init(transaction:))
     }
 
     var hasVisibleTransactions: Bool {
@@ -159,6 +159,7 @@ final class TransactionListViewModel {
                 sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
             )
             transactions = try modelContext.fetch(descriptor)
+            transactionRows = transactions.map(TransactionRowSnapshot.init(transaction:))
             applyFilters()
         } catch {
             errorMessage = error.localizedDescription
@@ -215,6 +216,7 @@ final class TransactionListViewModel {
         }
         
         filteredTransactions = result
+        filteredTransactionRows = result.map(TransactionRowSnapshot.init(transaction:))
     }
     
     func clearFilters() {
@@ -347,14 +349,14 @@ final class TransactionListViewModel {
         !searchText.isEmpty
     }
 
-    private var timelineTransactions: [Transaction] {
+    private var timelineTransactionRows: [TransactionRowSnapshot] {
         guard showUpcomingScheduled else {
-            return filteredTransactions
+            return filteredTransactionRows
         }
 
         let now = Date.now
-        return filteredTransactions.filter { transaction in
-            !(transaction.isGeneratedFromRecurring && transaction.date > now)
+        return filteredTransactionRows.filter { row in
+            !(row.isGeneratedFromRecurring && row.date > now)
         }
     }
 
@@ -374,6 +376,8 @@ final class TransactionListViewModel {
         }
 
         transactions.removeAll { idsToRemove.contains($0.id) }
+        transactionRows.removeAll { idsToRemove.contains($0.id) }
         filteredTransactions.removeAll { idsToRemove.contains($0.id) }
+        filteredTransactionRows.removeAll { idsToRemove.contains($0.id) }
     }
 }
