@@ -387,6 +387,7 @@ struct SettingsView: View {
             Text(viewModel.cloudSyncStatusMessage)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("settings.cloudSync.message")
 
             Button {
                 showBackupSheet = true
@@ -408,6 +409,7 @@ struct SettingsView: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+            .accessibilityIdentifier("settings.backup.restore.behavior")
         }
     }
 
@@ -524,6 +526,7 @@ private struct ManagedBackupSheet: View {
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.backup.list.empty.message")
                     } else {
                         ForEach(viewModel.backupFiles) { backup in
                             Button {
