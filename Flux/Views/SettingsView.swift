@@ -707,15 +707,24 @@ private struct BackupFileRow: View {
     let backup: BackupFileSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(displayTitle)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayTitle)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
 
-            Text(displaySubtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text(displaySubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityIdentifier("settings.backup.list.row.disclosure")
         }
         .padding(.vertical, 4)
     }

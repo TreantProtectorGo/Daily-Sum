@@ -105,6 +105,17 @@ final class FluxUITests: XCTestCase {
         XCTAssertTrue(
             emptyBackupMessage.waitForExistence(timeout: 5) || backupRow.waitForExistence(timeout: 5)
         )
+        if !backupRow.exists {
+            tapElement(app.buttons["settings.backup.export.button"])
+            XCTAssertTrue(backupRow.waitForExistence(timeout: 10))
+        }
+        XCTAssertTrue(app.images["settings.backup.list.row.disclosure"].waitForExistence(timeout: 5))
+
+        tapElement(backupRow)
+        XCTAssertTrue(app.alerts["Restore Backup?"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.alerts.buttons["Confirm Restore"].exists)
+        app.alerts.buttons["Cancel"].tap()
+
         XCTAssertTrue(app.buttons["settings.backup.close.button"].waitForExistence(timeout: 10))
     }
 
