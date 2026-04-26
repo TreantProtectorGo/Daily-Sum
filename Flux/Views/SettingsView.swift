@@ -389,6 +389,40 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("settings.cloudSync.message")
 
+            Picker(
+                AppLocalization.string(
+                    "settings.backup.automatic",
+                    defaultValue: "Automatic Backup"
+                ),
+                selection: Binding(
+                    get: { viewModel.automaticBackupFrequency },
+                    set: { viewModel.automaticBackupFrequency = $0 }
+                )
+            ) {
+                ForEach(AutomaticBackupFrequency.allCases) { frequency in
+                    Text(frequency.localizedTitle)
+                        .tag(frequency)
+                }
+            }
+            .accessibilityIdentifier("settings.backup.automatic.picker")
+
+            Picker(
+                AppLocalization.string(
+                    "settings.backup.retention",
+                    defaultValue: "Keep Backups"
+                ),
+                selection: Binding(
+                    get: { viewModel.backupRetentionLimit },
+                    set: { viewModel.backupRetentionLimit = $0 }
+                )
+            ) {
+                ForEach(BackupRetentionLimit.allCases) { limit in
+                    Text(limit.localizedTitle)
+                        .tag(limit)
+                }
+            }
+            .accessibilityIdentifier("settings.backup.retention.picker")
+
             Button {
                 showBackupSheet = true
             } label: {

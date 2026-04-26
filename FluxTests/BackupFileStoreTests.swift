@@ -90,6 +90,32 @@ final class BackupFileStoreTests: XCTestCase {
         XCTAssertEqual(try store.listBackups(), [])
     }
 
+    func testWriteAutomaticBackupUsesAutomaticFilenameAndSummaryKind() throws {
+        let manualArchive = Self.makeArchive(
+            archiveId: UUID(uuidString: "88888888-8888-8888-8888-888888888888")!,
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            accounts: 1,
+            transactions: 1
+        )
+        let automaticArchive = Self.makeArchive(
+            archiveId: UUID(uuidString: "99999999-9999-9999-9999-999999999999")!,
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            accounts: 1,
+            transactions: 1
+        )
+        let store = BackupFileStore(directory: temporaryDirectory)
+
+        let manualSummary = try store.writeBackupArchive(manualArchive, kind: .manual)
+        let automaticSummary = try store.writeBackupArchive(automaticArchive, kind: .automatic)
+        let listedBackups = try store.listBackups()
+
+        XCTAssertFalse(manualSummary.isAutomatic)
+        XCTAssertTrue(automaticSummary.isAutomatic)
+        XCTAssertTrue(automaticSummary.filename.hasPrefix("Flux_Auto_"))
+        XCTAssertEqual(listedBackups.first?.backupKind, .automatic)
+        XCTAssertEqual(listedBackups.last?.backupKind, .manual)
+    }
+
     func testBackupFileDisplayFormatterUsesReadableDateInsteadOfTechnicalFilename() throws {
         let originalLanguage = AppLanguagePreference.language
         defer { AppLanguagePreference.language = originalLanguage }
@@ -169,7 +195,7 @@ final class BackupFileStoreTests: XCTestCase {
 
         XCTAssertFalse(title.localizedStandardContains("Apr"))
         XCTAssertTrue(title.localizedStandardContains("2026"))
-        XCTAssertEqual(subtitle, "3 個帳戶，2 筆交易，16 KB")
+        XCTAssertEqual(subtitle, "3 個帳戶，2 筆交易，16 KB，此裝置")
     }
 
     func testBackupFileDisplayFormatterKeepsEnglishSingularRecordText() throws {
@@ -195,14 +221,49 @@ final class BackupFileStoreTests: XCTestCase {
                 scheduledOccurrenceExceptions: 0,
                 budgets: 0
             ),
-            archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+            archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+            storageLocation: .iCloudDrive
         )
         let formatter = BackupFileDisplayFormatter(
             locale: Locale(identifier: "en_US_POSIX"),
             timeZone: TimeZone(secondsFromGMT: 0)!
         )
 
-        XCTAssertEqual(formatter.subtitle(for: summary), "1 account, 1 transaction, 1 KB")
+        XCTAssertEqual(formatter.subtitle(for: summary), "1 account, 1 transaction, 1 KB, iCloud Drive")
+    }
+
+    func testBackupFileDisplayFormatterShowsLocalStorageLocation() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .traditionalChinese
+
+        let exportedAt = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2026-04-16T08:47:00Z")
+        )
+        let summary = BackupFileSummary(
+            url: temporaryDirectory.appendingPathComponent("Flux_20260416_084700.json"),
+            filename: "Flux_20260416_084700.json",
+            exportedAt: exportedAt,
+            fileSize: 1_024,
+            exportSourceDevice: "Unit Test iPhone",
+            recordCounts: BackupRecordCounts(
+                currencies: 0,
+                exchangeRates: 0,
+                categories: 0,
+                accounts: 1,
+                transactions: 1,
+                scheduledOccurrenceExceptions: 0,
+                budgets: 0
+            ),
+            archiveId: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+            storageLocation: .thisDevice
+        )
+        let formatter = BackupFileDisplayFormatter(
+            locale: Locale(identifier: "zh-Hant"),
+            timeZone: TimeZone(secondsFromGMT: 0)!
+        )
+
+        XCTAssertEqual(formatter.subtitle(for: summary), "1 個帳戶，1 筆交易，1 KB，此裝置")
     }
 
     private static func makeArchive(

@@ -96,7 +96,10 @@ final class SettingsViewModelBackupTests: XCTestCase {
             backups
         }
 
-        func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary {
+        func writeBackupArchive(
+            _ archive: BackupArchive,
+            kind: BackupFileKind
+        ) throws -> BackupFileSummary {
             writtenArchive = archive
             writeCount += 1
             return try writeResult.get()
@@ -254,6 +257,29 @@ final class SettingsViewModelBackupTests: XCTestCase {
         XCTAssertEqual(backupFileStore.deletedBackup, fileSummary)
         XCTAssertEqual(viewModel.backupFiles, [])
         XCTAssertNil(viewModel.backupFileListErrorMessage)
+    }
+
+    func testAutomaticBackupSettingsPersistChanges() async throws {
+        let originalFrequency = AutomaticBackupPreference.frequency
+        let originalRetentionLimit = AutomaticBackupPreference.retentionLimit
+        defer {
+            AutomaticBackupPreference.frequency = originalFrequency
+            AutomaticBackupPreference.retentionLimit = originalRetentionLimit
+        }
+
+        AutomaticBackupPreference.frequency = .weekly
+        AutomaticBackupPreference.retentionLimit = .count50
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let viewModel = SettingsViewModel(modelContext: container.mainContext)
+
+        XCTAssertEqual(viewModel.automaticBackupFrequency, .weekly)
+        XCTAssertEqual(viewModel.backupRetentionLimit, .count50)
+
+        viewModel.automaticBackupFrequency = .daily
+        viewModel.backupRetentionLimit = .count100
+
+        XCTAssertEqual(AutomaticBackupPreference.frequency, .daily)
+        XCTAssertEqual(AutomaticBackupPreference.retentionLimit, .count100)
     }
 
     func testPrepareManagedBackupRestorePreviewUsesSelectedBackupWithFixedPolicy() async throws {

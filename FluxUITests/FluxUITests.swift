@@ -90,6 +90,8 @@ final class FluxUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         XCTAssertTrue(scrollToElement(app.staticTexts["Enable iCloud Sync"], in: app))
         XCTAssertFalse(app.images["settings.backup.icon"].exists)
+        XCTAssertTrue(scrollToElement(app.staticTexts["Automatic Backup"], in: app))
+        XCTAssertTrue(scrollToElement(app.staticTexts["Keep Backups"], in: app))
         XCTAssertTrue(scrollToElement(app.staticTexts["settings.backup.restore.behavior"], in: app))
 
         let backupButton = app.buttons["settings.backup.sheet.button"]
@@ -98,7 +100,11 @@ final class FluxUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Backup"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["settings.backup.export.button"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["settings.backup.list.empty.message"].waitForExistence(timeout: 10))
+        let emptyBackupMessage = app.staticTexts["settings.backup.list.empty.message"]
+        let backupRow = app.buttons["settings.backup.list.row"].firstMatch
+        XCTAssertTrue(
+            emptyBackupMessage.waitForExistence(timeout: 5) || backupRow.waitForExistence(timeout: 5)
+        )
         XCTAssertTrue(app.buttons["settings.backup.close.button"].waitForExistence(timeout: 10))
     }
 

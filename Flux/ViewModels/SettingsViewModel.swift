@@ -304,6 +304,19 @@ final class SettingsViewModel {
         }
     }
 
+    var automaticBackupFrequency: AutomaticBackupFrequency {
+        didSet {
+            AutomaticBackupPreference.frequency = automaticBackupFrequency
+        }
+    }
+
+    var backupRetentionLimit: BackupRetentionLimit {
+        didSet {
+            AutomaticBackupPreference.retentionLimit = backupRetentionLimit
+            pruneAutomaticBackupsToRetentionLimit()
+        }
+    }
+
     var notificationAuthorizationStatus: UNAuthorizationStatus = .notDetermined
 
     var accountCount: Int = 0
@@ -546,6 +559,8 @@ final class SettingsViewModel {
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         self.reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
+        self.automaticBackupFrequency = AutomaticBackupPreference.frequency
+        self.backupRetentionLimit = AutomaticBackupPreference.retentionLimit
         syncCloudSyncStateFromStore()
     }
 
@@ -749,6 +764,24 @@ final class SettingsViewModel {
         detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
         reportsCategoryRowLimit = ReportsCategoryRowLimitPreference.rowLimit
+        automaticBackupFrequency = AutomaticBackupPreference.frequency
+        backupRetentionLimit = AutomaticBackupPreference.retentionLimit
+    }
+
+    private func pruneAutomaticBackupsToRetentionLimit() {
+        backupFileListErrorMessage = nil
+
+        do {
+            let scheduler = AutomaticBackupScheduler(
+                backupExportService: backupExportService,
+                backupFileStore: backupFileStore,
+                now: now
+            )
+            try scheduler.pruneAutomaticBackups(limit: backupRetentionLimit)
+            backupFiles = try backupFileStore.listBackups()
+        } catch {
+            backupFileListErrorMessage = error.localizedDescription
+        }
     }
 
     private func invalidatePreparedBackupRestorePreview() {

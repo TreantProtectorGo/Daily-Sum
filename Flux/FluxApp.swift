@@ -56,6 +56,7 @@ struct FluxApp: App {
                 guard newPhase == .active, let container else { return }
                 Task { @MainActor in
                     await refreshScheduledTransactionsAndReminders(in: container)
+                    runAutomaticBackupIfNeeded(in: container)
                 }
             }
         }
@@ -100,6 +101,7 @@ struct FluxApp: App {
                 Task { @MainActor in
                     await refreshScheduledTransactionsAndReminders(in: container)
                     await refreshExchangeRatesIfNeeded(in: container)
+                    runAutomaticBackupIfNeeded(in: container)
                 }
             }
             
@@ -127,6 +129,12 @@ struct FluxApp: App {
             // Keep startup resilient even when rate refresh fails (e.g. offline).
             print("Exchange rate refresh failed: \(error.localizedDescription)")
         }
+    }
+
+    @MainActor
+    private func runAutomaticBackupIfNeeded(in container: ModelContainer) {
+        let scheduler = AutomaticBackupScheduler(context: container.mainContext)
+        scheduler.runIfNeeded()
     }
 
     @MainActor

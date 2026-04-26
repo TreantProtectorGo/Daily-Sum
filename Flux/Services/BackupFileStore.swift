@@ -1,5 +1,30 @@
 import Foundation
 
+enum BackupFileKind: String, Equatable {
+    case manual
+    case automatic
+}
+
+enum BackupStorageLocation: Equatable {
+    case iCloudDrive
+    case thisDevice
+
+    var localizedTitle: String {
+        switch self {
+        case .iCloudDrive:
+            AppLocalization.string(
+                "settings.backup.location.iCloudDrive",
+                defaultValue: "iCloud Drive"
+            )
+        case .thisDevice:
+            AppLocalization.string(
+                "settings.backup.location.thisDevice",
+                defaultValue: "This Device"
+            )
+        }
+    }
+}
+
 struct BackupFileSummary: Identifiable, Equatable {
     var id: URL { url }
 
@@ -10,6 +35,12 @@ struct BackupFileSummary: Identifiable, Equatable {
     var exportSourceDevice: String
     var recordCounts: BackupRecordCounts
     var archiveId: UUID
+    var backupKind: BackupFileKind = .manual
+    var storageLocation: BackupStorageLocation = .thisDevice
+
+    var isAutomatic: Bool {
+        backupKind == .automatic
+    }
 }
 
 struct BackupFileDisplayFormatter {
@@ -36,7 +67,7 @@ struct BackupFileDisplayFormatter {
     func subtitle(for backup: BackupFileSummary) -> String {
         AppLocalization.formatted(
             "settings.backup.record.summary",
-            defaultValue: "%1$@, %2$@, %3$@",
+            defaultValue: "%1$@, %2$@, %3$@, %4$@",
             localizedCount(
                 backup.recordCounts.accounts,
                 singularKey: "settings.backup.record.accounts.one",
@@ -51,7 +82,8 @@ struct BackupFileDisplayFormatter {
                 pluralKey: "settings.backup.record.transactions.other",
                 pluralDefault: "%lld transactions"
             ),
-            formattedSize(for: backup)
+            formattedSize(for: backup),
+            backup.storageLocation.localizedTitle
         )
     }
 
@@ -77,13 +109,24 @@ struct BackupFileDisplayFormatter {
 @MainActor
 protocol BackupFileStoring {
     func listBackups() throws -> [BackupFileSummary]
-    func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary
+    func writeBackupArchive(_ archive: BackupArchive, kind: BackupFileKind) throws -> BackupFileSummary
     func readBackupData(for backup: BackupFileSummary) throws -> Data
     func deleteBackup(_ backup: BackupFileSummary) throws
 }
 
+extension BackupFileStoring {
+    func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary {
+        try writeBackupArchive(archive, kind: .manual)
+    }
+}
+
 @MainActor
 final class BackupFileStore: BackupFileStoring {
+    private struct ResolvedBackupDirectory {
+        var url: URL
+        var storageLocation: BackupStorageLocation
+    }
+
     private let fileManager: FileManager
     private let explicitDirectory: URL?
     private let iCloudContainerIdentifier: String?
@@ -111,17 +154,19 @@ final class BackupFileStore: BackupFileStoring {
 
     func listBackups() throws -> [BackupFileSummary] {
         let directory = try backupDirectory()
-        try ensureDirectoryExists(directory)
+        try ensureDirectoryExists(directory.url)
 
         let fileURLs = try fileManager.contentsOfDirectory(
-            at: directory,
+            at: directory.url,
             includingPropertiesForKeys: [.fileSizeKey],
             options: [.skipsHiddenFiles]
         )
 
         return fileURLs
             .filter { $0.pathExtension == "json" }
-            .compactMap { try? makeSummary(for: $0) }
+            .compactMap {
+                try? makeSummary(for: $0, storageLocation: directory.storageLocation)
+            }
             .sorted { lhs, rhs in
                 if lhs.exportedAt == rhs.exportedAt {
                     return lhs.filename > rhs.filename
@@ -130,15 +175,18 @@ final class BackupFileStore: BackupFileStoring {
             }
     }
 
-    func writeBackupArchive(_ archive: BackupArchive) throws -> BackupFileSummary {
+    func writeBackupArchive(
+        _ archive: BackupArchive,
+        kind: BackupFileKind
+    ) throws -> BackupFileSummary {
         let directory = try backupDirectory()
-        try ensureDirectoryExists(directory)
+        try ensureDirectoryExists(directory.url)
 
-        let filename = makeFilename(exportedAt: archive.exportedAt)
-        let fileURL = uniqueFileURL(in: directory, filename: filename)
+        let filename = makeFilename(exportedAt: archive.exportedAt, kind: kind)
+        let fileURL = uniqueFileURL(in: directory.url, filename: filename)
         let data = try BackupArchiveCodec.encode(archive)
         try data.write(to: fileURL, options: [.atomic])
-        return try makeSummary(for: fileURL)
+        return try makeSummary(for: fileURL, storageLocation: directory.storageLocation)
     }
 
     func readBackupData(for backup: BackupFileSummary) throws -> Data {
@@ -153,16 +201,17 @@ final class BackupFileStore: BackupFileStoring {
         try fileManager.removeItem(at: backup.url)
     }
 
-    private func backupDirectory() throws -> URL {
+    private func backupDirectory() throws -> ResolvedBackupDirectory {
         if let explicitDirectory {
-            return explicitDirectory
+            return ResolvedBackupDirectory(url: explicitDirectory, storageLocation: .thisDevice)
         }
 
         if let iCloudContainerIdentifier,
            let ubiquityURL = fileManager.url(forUbiquityContainerIdentifier: iCloudContainerIdentifier) {
-            return ubiquityURL
+            let url = ubiquityURL
                 .appendingPathComponent("Documents", isDirectory: true)
                 .appendingPathComponent("Backups", isDirectory: true)
+            return ResolvedBackupDirectory(url: url, storageLocation: .iCloudDrive)
         }
 
         let documentsURL = try fileManager.url(
@@ -171,7 +220,10 @@ final class BackupFileStore: BackupFileStoring {
             appropriateFor: nil,
             create: true
         )
-        return documentsURL.appendingPathComponent("Backups", isDirectory: true)
+        return ResolvedBackupDirectory(
+            url: documentsURL.appendingPathComponent("Backups", isDirectory: true),
+            storageLocation: .thisDevice
+        )
     }
 
     private func ensureDirectoryExists(_ directory: URL) throws {
@@ -181,7 +233,10 @@ final class BackupFileStore: BackupFileStoring {
         )
     }
 
-    private func makeSummary(for fileURL: URL) throws -> BackupFileSummary {
+    private func makeSummary(
+        for fileURL: URL,
+        storageLocation: BackupStorageLocation
+    ) throws -> BackupFileSummary {
         let data = try Data(contentsOf: fileURL)
         let archive = try BackupArchiveCodec.decode(data)
         let resourceValues = try fileURL.resourceValues(forKeys: [.fileSizeKey])
@@ -193,12 +248,19 @@ final class BackupFileStore: BackupFileStoring {
             fileSize: Int64(resourceValues.fileSize ?? data.count),
             exportSourceDevice: archive.exportSourceDevice,
             recordCounts: archive.integrityMetadata.recordCounts,
-            archiveId: archive.integrityMetadata.archiveId
+            archiveId: archive.integrityMetadata.archiveId,
+            backupKind: backupKind(for: fileURL),
+            storageLocation: storageLocation
         )
     }
 
-    private func makeFilename(exportedAt: Date) -> String {
-        "Flux_\(Self.filenameDateFormatter.string(from: exportedAt)).json"
+    private func makeFilename(exportedAt: Date, kind: BackupFileKind) -> String {
+        let prefix = kind == .automatic ? "Flux_Auto" : "Flux"
+        return "\(prefix)_\(Self.filenameDateFormatter.string(from: exportedAt)).json"
+    }
+
+    private func backupKind(for fileURL: URL) -> BackupFileKind {
+        fileURL.lastPathComponent.hasPrefix("Flux_Auto_") ? .automatic : .manual
     }
 
     private func uniqueFileURL(in directory: URL, filename: String) -> URL {
