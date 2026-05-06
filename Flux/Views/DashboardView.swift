@@ -198,10 +198,7 @@ struct DashboardView: View {
     @ViewBuilder
     private func accountsSection(viewModel: DashboardViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            GlassSectionHeader(
-                AppLocalization.string("dashboard.accounts", defaultValue: "Accounts"),
-                systemImage: "building.columns"
-            )
+            accountsSectionHeader(viewModel: viewModel)
             
             if viewModel.hasAccounts {
                 VStack(spacing: 8) {
@@ -209,21 +206,6 @@ struct DashboardView: View {
                         GlassAccountRow(account: account) {
                                 selectedAccount = account
                         }
-                    }
-                    
-                    if viewModel.accounts.count > 3 {
-                        NavigationLink {
-                            // TODO: Full accounts list
-                            Text("All Accounts")
-                        } label: {
-                            HStack {
-                                Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
-                                Image(systemName: "chevron.right")
-                            }
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        }
-                        .padding(.top, 4)
                     }
                 }
             } else {
@@ -237,6 +219,38 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func accountsSectionHeader(viewModel: DashboardViewModel) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "building.columns")
+                .foregroundStyle(.secondary)
+
+            Text(AppLocalization.string("dashboard.accounts", defaultValue: "Accounts"))
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if viewModel.accounts.count > 3 {
+                NavigationLink {
+                    AccountsListView {
+                        Task { await viewModel.refresh() }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .accessibilityIdentifier("dashboard.accounts.viewAll")
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 8)
     }
     
     // MARK: - Recent Transactions Section
