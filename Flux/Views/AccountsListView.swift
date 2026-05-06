@@ -36,19 +36,16 @@ struct AccountsListView: View {
                 }
             }
             .padding()
-            .padding(.bottom, 24)
+            .padding(.bottom, 96)
         }
         .navigationTitle(AppLocalization.string("dashboard.accounts", defaultValue: "Accounts"))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showAddAccount = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel(AppLocalization.string("action.addAccount", defaultValue: "Add Account"))
-                .accessibilityIdentifier("accounts.addButton")
+        .overlay(alignment: .bottomTrailing) {
+            FloatingActionButton {
+                showAddAccount = true
             }
+            .accessibilityIdentifier("accounts.addButton")
+            .padding(.trailing, 25)
+            .padding(.bottom, 20)
         }
         .sheet(isPresented: $showAddAccount) {
             AccountEntrySheet(onSave: onAccountsChanged)
