@@ -896,6 +896,9 @@ struct MonthlyTrendRow: View {
                     font: .caption,
                     fontWeight: .semibold
                 )
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .allowsTightening(true)
                 Text(AppLocalization.string("reports.net", defaultValue: "Net"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)

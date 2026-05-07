@@ -608,6 +608,17 @@ final class LocalizationTests: XCTestCase {
         )
     }
 
+    func testReportsNetUsesFinancialWordingAcrossChineseLocalizations() {
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.net", locale: "zh-Hans"),
+            "净额"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.net", locale: "zh-Hant"),
+            "淨額"
+        )
+    }
+
     func testCategoryLocalizationUsesRequestedSimplifiedChineseWording() {
         let originalLanguage = AppLanguagePreference.language
         defer { AppLanguagePreference.language = originalLanguage }
