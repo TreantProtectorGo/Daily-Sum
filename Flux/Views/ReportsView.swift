@@ -861,16 +861,16 @@ struct MonthlyTrendRow: View {
     @Environment(\.regionalSettings) private var regionalSettings
     
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
             Text(DateFormatterUtility.shared.formatReportMonth(trend.month))
                 .font(.subheadline)
-                .frame(width: 80, alignment: .leading)
-            
-            Spacer()
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(width: 72, alignment: .leading)
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(currency: trend.income, code: currencyCode)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(AppColors.income)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -879,11 +879,11 @@ struct MonthlyTrendRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            .frame(width: 80)
+            .frame(maxWidth: .infinity, alignment: .trailing)
             
             VStack(alignment: .trailing, spacing: 2) {
                 Text(currency: trend.expenses, code: currencyCode)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(AppColors.expense)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -892,14 +892,14 @@ struct MonthlyTrendRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            .frame(width: 80)
+            .frame(maxWidth: .infinity, alignment: .trailing)
             
             VStack(alignment: .trailing, spacing: 2) {
                 AmountText(
                     trend.net,
                     currencyCode: currencyCode,
                     showSign: true,
-                    font: .caption,
+                    font: .subheadline,
                     fontWeight: .semibold
                 )
                 .lineLimit(1)
@@ -909,7 +909,7 @@ struct MonthlyTrendRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            .frame(width: 70)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 }
