@@ -1261,6 +1261,41 @@ final class FluxTests: XCTestCase {
     }
 
     @MainActor
+    func testDefaultSeederCreatesDebugTransactions() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+
+        try await seeder.seedIfNeeded()
+
+        let transactions = try context.fetch(FetchDescriptor<Flux.Transaction>())
+        XCTAssertGreaterThanOrEqual(transactions.count, 10)
+        XCTAssertTrue(transactions.contains { $0.type == TransactionType.income })
+        XCTAssertTrue(transactions.contains { $0.type == TransactionType.expense })
+
+        let calendar = Calendar(identifier: .gregorian)
+        let months = Set(transactions.map { transaction in
+            calendar.dateComponents([.year, .month], from: transaction.date)
+        })
+        XCTAssertGreaterThanOrEqual(months.count, 4)
+    }
+
+    @MainActor
+    func testDefaultSeederDoesNotDuplicateDebugTransactions() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+
+        try await seeder.seedIfNeeded()
+        let firstCount = try context.fetchCount(FetchDescriptor<Flux.Transaction>())
+
+        try await seeder.seedIfNeeded()
+        let secondCount = try context.fetchCount(FetchDescriptor<Flux.Transaction>())
+
+        XCTAssertEqual(firstCount, secondCount)
+    }
+
+    @MainActor
     func testDashboardDisplayCurrencyUsesUserPreference() throws {
         XCTAssertEqual(
             DashboardViewModel.resolvedDisplayCurrencyCode(preferredCurrencyCode: "TWD"),
@@ -1431,6 +1466,49 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(viewModel.totalIncome, 200)
         XCTAssertEqual(viewModel.monthlyTrends.count, 1)
         XCTAssertEqual(viewModel.monthlyTrends.first?.income, 200)
+    }
+
+    func testMonthlyTrendMetricResolvesIncomeExpensesAndNetAmounts() {
+        let trend = ReportsViewModel.MonthlyTrend(
+            month: Date(timeIntervalSince1970: 0),
+            income: 100,
+            expenses: 40
+        )
+
+        XCTAssertEqual(ReportsViewModel.MonthlyTrendMetric.income.amount(in: trend), 100)
+        XCTAssertEqual(ReportsViewModel.MonthlyTrendMetric.expenses.amount(in: trend), 40)
+        XCTAssertEqual(ReportsViewModel.MonthlyTrendMetric.net.amount(in: trend), 60)
+    }
+
+    @MainActor
+    func testRecentMonthlyTrendRowsShowNewestFirst() {
+        let calendar = Calendar(identifier: .gregorian)
+        let trends = (1...7).map { month in
+            ReportsViewModel.MonthlyTrend(
+                month: calendar.date(from: DateComponents(year: 2026, month: month, day: 1))!,
+                income: Decimal(month),
+                expenses: 0
+            )
+        }
+
+        let rows = ReportsViewModel.recentMonthlyTrendRows(from: trends, limit: 6)
+        let months = rows.map { calendar.component(.month, from: $0.month) }
+
+        XCTAssertEqual(months, [7, 6, 5, 4, 3, 2])
+    }
+
+    @MainActor
+    func testReportsMonthlyTrendsUseRecentMonthsForDefaultPeriod() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+
+        try await seeder.seedIfNeeded()
+
+        let viewModel = ReportsViewModel(modelContext: context)
+        await viewModel.loadReports()
+
+        XCTAssertGreaterThanOrEqual(viewModel.monthlyTrends.count, 4)
     }
 
     @MainActor

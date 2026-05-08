@@ -471,15 +471,20 @@ struct ReportsView: View {
     
     @ViewBuilder
     private func monthlyTrendsSection(viewModel: ReportsViewModel) -> some View {
+        let recentTrends = Array(viewModel.monthlyTrends.suffix(6))
+        let trendRows = ReportsViewModel.recentMonthlyTrendRows(from: viewModel.monthlyTrends)
+
         VStack(alignment: .leading, spacing: 12) {
-            Text(AppLocalization.string("reports.monthlyTrends", defaultValue: "Monthly Trends"))
+            Text(AppLocalization.string("reports.monthlyTrends", defaultValue: "Recent 6-Month Trend"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
             
             GlassCard(cornerRadius: 16, padding: 16) {
-                VStack(spacing: 12) {
-                    ForEach(viewModel.monthlyTrends.suffix(6)) { trend in
+                VStack(spacing: 16) {
+                    MonthlyTrendLineChart(trends: recentTrends)
+
+                    ForEach(trendRows) { trend in
                         MonthlyTrendRow(
                             trend: trend,
                             currencyCode: displayCurrencyCode
@@ -854,6 +859,95 @@ struct CategoryDonutChart: View {
     }
 }
 
+struct MonthlyTrendLineChart: View {
+    let trends: [ReportsViewModel.MonthlyTrend]
+
+    private let metrics = ReportsViewModel.MonthlyTrendMetric.allCases
+    private let calendar = Calendar.current
+
+    private var monthValues: [Date] {
+        trends.map(\.month)
+    }
+
+    private var xDomain: ClosedRange<Date> {
+        let firstMonth = monthValues.first ?? .now
+        let lastMonth = monthValues.last ?? firstMonth
+        let start = calendar.date(byAdding: .day, value: -12, to: firstMonth) ?? firstMonth
+        let end = calendar.date(byAdding: .day, value: 24, to: lastMonth) ?? lastMonth
+        return start...end
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Chart {
+                RuleMark(y: .value("Zero", 0))
+                    .foregroundStyle(.secondary.opacity(0.22))
+
+                ForEach(metrics) { metric in
+                    ForEach(trends) { trend in
+                        LineMark(
+                            x: .value("Month", trend.month),
+                            y: .value(metric.localizedName, metric.doubleAmount(in: trend))
+                        )
+                        .foregroundStyle(by: .value("Metric", metric.localizedName))
+                        .interpolationMethod(.catmullRom)
+
+                        PointMark(
+                            x: .value("Month", trend.month),
+                            y: .value(metric.localizedName, metric.doubleAmount(in: trend))
+                        )
+                        .foregroundStyle(by: .value("Metric", metric.localizedName))
+                        .symbolSize(18)
+                    }
+                }
+            }
+            .frame(height: 150)
+            .chartLegend(.hidden)
+            .chartForegroundStyleScale(
+                domain: metrics.map(\.localizedName),
+                range: metrics.map(\.color)
+            )
+            .chartXScale(domain: xDomain)
+            .chartXAxis {
+                AxisMarks(values: monthValues) { value in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(0.12))
+                    if let date = value.as(Date.self) {
+                        AxisValueLabel {
+                            Text(DateFormatterUtility.shared.formatReportChartMonth(date))
+                                .font(.caption2)
+                        }
+                    }
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { _ in
+                    AxisGridLine()
+                        .foregroundStyle(.secondary.opacity(0.12))
+                    AxisValueLabel()
+                        .font(.caption2)
+                }
+            }
+
+            HStack(spacing: 12) {
+                ForEach(metrics) { metric in
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(metric.color)
+                            .frame(width: 7, height: 7)
+                        Text(metric.localizedName)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+    }
+}
+
 struct MonthlyTrendRow: View {
     let trend: ReportsViewModel.MonthlyTrend
     let currencyCode: String
@@ -865,7 +959,7 @@ struct MonthlyTrendRow: View {
             Text(DateFormatterUtility.shared.formatReportMonth(trend.month))
                 .font(.subheadline)
                 .lineLimit(1)
-                .minimumScaleFactor(0.85)
+                .minimumScaleFactor(0.8)
                 .frame(width: 72, alignment: .leading)
             
             VStack(alignment: .trailing, spacing: 2) {

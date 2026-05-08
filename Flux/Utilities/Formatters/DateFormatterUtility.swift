@@ -58,7 +58,24 @@ struct DateFormatterUtility {
 
     /// Formats month/year labels used in reports trend rows.
     func formatReportMonth(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
-        date.formatted(.dateTime.month(.abbreviated).year().locale(locale))
+        if locale.identifier.hasPrefix("zh") {
+            let components = calendar.dateComponents([.year, .month], from: date)
+            if let year = components.year, let month = components.month {
+                return "\(year % 100)年\(month)月"
+            }
+        }
+
+        return date.formatted(.dateTime.month(.abbreviated).year().locale(locale))
+    }
+
+    /// Formats compact month labels used on report charts.
+    func formatReportChartMonth(_ date: Date, locale: Locale = AppLocalization.locale) -> String {
+        if locale.identifier.hasPrefix("zh") {
+            let month = calendar.component(.month, from: date)
+            return "\(month)月"
+        }
+
+        return date.formatted(.dateTime.month(.abbreviated).locale(locale))
     }
     
     /// Formats a week range for weekly views

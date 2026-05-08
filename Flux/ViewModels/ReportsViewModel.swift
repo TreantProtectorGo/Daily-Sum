@@ -69,6 +69,58 @@ final class ReportsViewModel {
         
         var net: Decimal { income - expenses }
     }
+
+    enum MonthlyTrendMetric: String, CaseIterable, Identifiable {
+        case income
+        case expenses
+        case net
+
+        var id: String { rawValue }
+
+        var localizedName: String {
+            switch self {
+            case .income:
+                AppLocalization.string("reports.income", defaultValue: "Income")
+            case .expenses:
+                AppLocalization.string("reports.expenses", defaultValue: "Expenses")
+            case .net:
+                AppLocalization.string("reports.net", defaultValue: "Net")
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .income:
+                AppColors.income
+            case .expenses:
+                AppColors.expense
+            case .net:
+                AppColors.transfer
+            }
+        }
+
+        func amount(in trend: MonthlyTrend) -> Decimal {
+            switch self {
+            case .income:
+                trend.income
+            case .expenses:
+                trend.expenses
+            case .net:
+                trend.net
+            }
+        }
+
+        func doubleAmount(in trend: MonthlyTrend) -> Double {
+            NSDecimalNumber(decimal: amount(in: trend)).doubleValue
+        }
+    }
+
+    static func recentMonthlyTrendRows(
+        from trends: [MonthlyTrend],
+        limit: Int = 6
+    ) -> [MonthlyTrend] {
+        Array(trends.suffix(limit).reversed())
+    }
     
     enum ReportPeriod: String, CaseIterable, Identifiable {
         case month = "Month"
@@ -218,6 +270,18 @@ final class ReportsViewModel {
             )
             let transactions = try modelContext.fetch(descriptor)
             let convertedTransactions = try await convertTransactions(transactions)
+            let trendDateRange = monthlyTrendDateRange(endingAt: endDate)
+            let trendStartDate = trendDateRange.start
+            let trendEndDate = trendDateRange.end
+            let trendDescriptor = FetchDescriptor<Transaction>(
+                predicate: #Predicate<Transaction> {
+                    !$0.isRecurringTemplate
+                        && $0.date >= trendStartDate
+                        && $0.date <= trendEndDate
+                }
+            )
+            let trendTransactions = try modelContext.fetch(trendDescriptor)
+            let convertedTrendTransactions = try await convertTransactions(trendTransactions)
             
             // Calculate totals
             totalIncome = convertedTransactions
@@ -241,7 +305,7 @@ final class ReportsViewModel {
             incomeByCategory = groupByCategory(incomeTransactions, total: totalIncome)
             
             // Calculate monthly trends
-            monthlyTrends = calculateMonthlyTrends(convertedTransactions)
+            monthlyTrends = calculateMonthlyTrends(convertedTrendTransactions)
             
         } catch {
             errorMessage = error.localizedDescription
@@ -380,6 +444,15 @@ final class ReportsViewModel {
             return MonthlyTrend(month: month, income: income, expenses: expenses)
         }
         .sorted { $0.month < $1.month }
+    }
+
+    private func monthlyTrendDateRange(endingAt endDate: Date) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let endMonthStart = calendar.date(
+            from: calendar.dateComponents([.year, .month], from: endDate)
+        ) ?? endDate
+        let start = calendar.date(byAdding: .month, value: -5, to: endMonthStart) ?? endMonthStart
+        return (start, endDate)
     }
 
     private func convertTransactions(

@@ -46,6 +46,9 @@ struct DefaultDataSeeder {
         let currencyCount = try context.fetchCount(FetchDescriptor<Currency>())
         let categoryCount = try context.fetchCount(FetchDescriptor<Category>())
         let accountCount = try context.fetchCount(FetchDescriptor<Account>())
+        #if DEBUG
+        let transactionCount = try context.fetchCount(FetchDescriptor<Transaction>())
+        #endif
         
         if currencyCount == 0 {
             try seedCurrencies()
@@ -58,6 +61,12 @@ struct DefaultDataSeeder {
         if accountCount == 0 {
             try seedAccounts()
         }
+
+        #if DEBUG
+        if transactionCount == 0 {
+            try seedDebugSampleTransactions()
+        }
+        #endif
         
         try context.save()
     }
@@ -125,6 +134,92 @@ struct DefaultDataSeeder {
             context.insert(account)
         }
     }
+
+    // MARK: - Debug Sample Transaction Seeding
+
+    #if DEBUG
+    private func seedDebugSampleTransactions() throws {
+        let accounts = try context.fetch(FetchDescriptor<Account>())
+        guard let account = accounts.first else { return }
+
+        let categories = try context.fetch(FetchDescriptor<Category>())
+        let salary = category(
+            matching: "category.income.salary",
+            type: .income,
+            in: categories
+        )
+        let freelance = category(
+            matching: "category.income.freelance",
+            type: .income,
+            in: categories
+        )
+        let dining = category(
+            matching: "category.expense.dining",
+            type: .expense,
+            in: categories
+        )
+        let groceries = category(
+            matching: "category.expense.groceries",
+            type: .expense,
+            in: categories
+        )
+        let housing = category(
+            matching: "category.expense.housing",
+            type: .expense,
+            in: categories
+        )
+
+        let samples: [(monthOffset: Int, day: Int, amount: Decimal, type: TransactionType, notes: String, category: Category?)] = [
+            (-5, 5, 28600, .income, "Sample salary", salary),
+            (-5, 8, 4200, .expense, "Sample rent", housing),
+            (-5, 15, 920, .expense, "Sample groceries", groceries),
+            (-4, 5, 29200, .income, "Sample salary", salary),
+            (-4, 12, 1380, .expense, "Sample dining", dining),
+            (-3, 5, 29500, .income, "Sample salary", salary),
+            (-3, 18, 1680, .expense, "Sample groceries", groceries),
+            (-2, 5, 30100, .income, "Sample salary", salary),
+            (-2, 21, 2350, .expense, "Sample dining", dining),
+            (-1, 5, 31000, .income, "Sample salary", salary),
+            (-1, 11, 5200, .income, "Sample freelance", freelance),
+            (-1, 22, 4100, .expense, "Sample rent", housing),
+            (0, 5, 31800, .income, "Sample salary", salary),
+            (0, 14, 1850, .expense, "Sample dining", dining),
+            (0, 20, 2400, .expense, "Sample groceries", groceries)
+        ]
+
+        for sample in samples {
+            let transaction = Transaction(
+                amount: sample.amount,
+                currencyCode: account.currencyCode,
+                type: sample.type,
+                date: sampleDate(monthOffset: sample.monthOffset, day: sample.day),
+                notes: sample.notes,
+                account: account,
+                category: sample.category
+            )
+            context.insert(transaction)
+        }
+    }
+
+    private func category(
+        matching key: String,
+        type: TransactionType,
+        in categories: [Category]
+    ) -> Category? {
+        categories.first { $0.nameKey == key && $0.type == type }
+            ?? categories.first { $0.type == type }
+    }
+
+    private func sampleDate(monthOffset: Int, day: Int) -> Date {
+        let calendar = Calendar.current
+        let now = Date.now
+        let shifted = calendar.date(byAdding: .month, value: monthOffset, to: now) ?? now
+        var components = calendar.dateComponents([.year, .month], from: shifted)
+        components.day = day
+        components.hour = 12
+        return calendar.date(from: components) ?? shifted
+    }
+    #endif
 }
 
 // MARK: - App Initialization Extension

@@ -589,7 +589,27 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             simplifiedChineseLabel,
-            date.formatted(.dateTime.month(.abbreviated).year().locale(Locale(identifier: "zh-Hans")))
+            "26年1月"
+        )
+    }
+
+    func testReportMonthUsesShortChineseFormat() {
+        let calendar = Calendar(identifier: .gregorian)
+        let date = calendar.date(from: DateComponents(year: 2025, month: 12, day: 1))!
+
+        XCTAssertEqual(
+            DateFormatterUtility.shared.formatReportMonth(
+                date,
+                locale: Locale(identifier: "zh-Hant")
+            ),
+            "25年12月"
+        )
+        XCTAssertEqual(
+            DateFormatterUtility.shared.formatReportChartMonth(
+                date,
+                locale: Locale(identifier: "zh-Hant")
+            ),
+            "12月"
         )
     }
 
@@ -616,6 +636,44 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(
             localizedStringValue(key: "reports.net", locale: "zh-Hant"),
             "淨額"
+        )
+    }
+
+    func testReportsExpensesUsesSpendingWordingAcrossChineseLocalizations() {
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.expenses", locale: "zh-Hans"),
+            "支出"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.expenses", locale: "zh-Hant"),
+            "支出"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.totalExpenses", locale: "zh-Hans"),
+            "总支出"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.totalExpenses", locale: "zh-Hant"),
+            "總支出"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.expensesByCategory", locale: "zh-Hans"),
+            "按类别划分的支出"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.expensesByCategory", locale: "zh-Hant"),
+            "按類別劃分的支出"
+        )
+    }
+
+    func testReportsMonthlyTrendsTitleUsesRecentHalfYearWordingInChinese() {
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.monthlyTrends", locale: "zh-Hans"),
+            "近半年走势"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "reports.monthlyTrends", locale: "zh-Hant"),
+            "近半年走勢"
         )
     }
 
