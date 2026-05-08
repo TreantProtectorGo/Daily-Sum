@@ -6041,48 +6041,117 @@
         }
       }
     },
-    "settings.privacy.message" : {
-      "extractionState" : "stale",
+    "settings.supportFlux.message" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Data stays local-first, with optional iCloud sync and manual backup restore controls."
+            "value" : "Your donation goes directly to the developer and supports future Flux updates."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "数据默认以本地存储为主，并可选择启用 iCloud 同步和手动备份还原功能。"
+            "value" : "你的捐赠会直接支持开发者，并帮助 Flux 持续更新。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "資料預設以本地儲存為主，並可選擇啟用 iCloud 同步和手動備份還原功能。"
+            "value" : "你的捐贈會直接支持開發者，並幫助 Flux 持續更新。"
           }
         }
       }
     },
-    "settings.privacy.title" : {
-      "extractionState" : "stale",
+    "settings.supportFlux.donate" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Privacy First"
+            "value" : "Donate Money"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "隐私第一"
+            "value" : "捐赠"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "隱私第一"
+            "value" : "捐贈"
+          }
+        }
+      }
+    },
+    "settings.supportFlux.donate.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Buy Me a Coffee"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Buy Me a Coffee"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 Buy Me a Coffee"
+          }
+        }
+      }
+    },
+    "settings.supportFlux.note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thank you for supporting the independent work behind Flux."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "感谢你支持 Flux 背后的独立开发。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "感謝你支持 Flux 背後的獨立開發。"
+          }
+        }
+      }
+    },
+    "settings.supportFlux.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support Flux"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持 Flux"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持 Flux"
           }
         }
       }

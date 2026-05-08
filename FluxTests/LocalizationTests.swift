@@ -166,8 +166,16 @@ final class LocalizationTests: XCTestCase {
             "Clear all data?"
         )
         XCTAssertEqual(
-            localizedStringValue(key: "settings.privacy.message", locale: "en"),
-            "Data stays local-first, with optional iCloud sync and manual backup restore controls."
+            localizedStringValue(key: "settings.supportFlux.title", locale: "en"),
+            "Support Flux"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "settings.supportFlux.donate", locale: "en"),
+            "Donate Money"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "settings.supportFlux.donate.subtitle", locale: "en"),
+            "Open Buy Me a Coffee"
         )
     }
 
@@ -206,6 +214,51 @@ final class LocalizationTests: XCTestCase {
                 locale: "zh-Hant"
             ),
             "編輯收入"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.title",
+                locale: "zh-Hant"
+            ),
+            "支持 Flux"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.donate",
+                locale: "zh-Hant"
+            ),
+            "捐贈"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.donate.subtitle",
+                locale: "zh-Hant"
+            ),
+            "開啟 Buy Me a Coffee"
+        )
+    }
+
+    func testSimplifiedChineseSupportFluxCopyMatchesCurrentWording() {
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.title",
+                locale: "zh-Hans"
+            ),
+            "支持 Flux"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.donate",
+                locale: "zh-Hans"
+            ),
+            "捐赠"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.donate.subtitle",
+                locale: "zh-Hans"
+            ),
+            "打开 Buy Me a Coffee"
         )
     }
 
