@@ -6070,19 +6070,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Donate Money"
+            "value" : "Sponsor a Coffee"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "捐赠"
+            "value" : "赞助一杯咖啡"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "捐贈"
+            "value" : "贊助一杯咖啡"
           }
         }
       }
@@ -6093,19 +6093,42 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Buy Me a Coffee"
+            "value" : "Choose the amount on Buy Me a Coffee"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 Buy Me a Coffee"
+            "value" : "在 Buy Me a Coffee 选择金额"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟 Buy Me a Coffee"
+            "value" : "喺 Buy Me a Coffee 選擇金額"
+          }
+        }
+      }
+    },
+    "settings.supportFlux.heroTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy the Developer a Coffee"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请开发者喝杯咖啡"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請開發者喝杯咖啡"
           }
         }
       }

@@ -114,6 +114,7 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showSupportFluxSheet) {
             SupportFluxSheet()
+                .presentationDragIndicator(.visible)
         }
         .onAppear {
             Task {
@@ -520,8 +521,8 @@ private struct SupportFluxSheet: View {
 
                         Text(
                             AppLocalization.string(
-                                "settings.supportFlux.title",
-                                defaultValue: "Support Flux"
+                                "settings.supportFlux.heroTitle",
+                                defaultValue: "Buy the Developer a Coffee"
                             )
                         )
                         .font(.headline)
@@ -542,21 +543,11 @@ private struct SupportFluxSheet: View {
                 Section {
                     Link(destination: Self.donationURL) {
                         HStack(spacing: 10) {
-                            ZStack {
-                                Circle()
-                                    .fill(.orange.opacity(0.18))
-                                    .frame(width: 42, height: 42)
-
-                                Image(systemName: "cup.and.saucer.fill")
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.orange)
-                            }
-
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(
                                     AppLocalization.string(
                                         "settings.supportFlux.donate",
-                                        defaultValue: "Donate Money"
+                                        defaultValue: "Sponsor a Coffee"
                                     )
                                 )
                                 .font(.body.weight(.semibold))
@@ -565,7 +556,7 @@ private struct SupportFluxSheet: View {
                                 Text(
                                     AppLocalization.string(
                                         "settings.supportFlux.donate.subtitle",
-                                        defaultValue: "Open Buy Me a Coffee"
+                                        defaultValue: "Choose the amount on Buy Me a Coffee"
                                     )
                                 )
                                 .font(.caption)
@@ -578,21 +569,23 @@ private struct SupportFluxSheet: View {
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
                         .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
                         .background(
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(Color.accentColor.opacity(0.10))
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color.accentColor.opacity(0.16))
                         )
                         .overlay {
-                            RoundedRectangle(cornerRadius: 18)
-                                .stroke(Color.accentColor.opacity(0.22), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.accentColor.opacity(0.28), lineWidth: 1)
                         }
-                        .glassBackground(cornerRadius: 18, isInteractive: true)
+                        .glassBackground(cornerRadius: 20, isInteractive: true)
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .accessibilityIdentifier("settings.supportFlux.donate.link")
                 } footer: {
@@ -603,7 +596,7 @@ private struct SupportFluxSheet: View {
                         )
                     )
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.72))
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
             }

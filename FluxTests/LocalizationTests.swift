@@ -170,12 +170,16 @@ final class LocalizationTests: XCTestCase {
             "Support Flux"
         )
         XCTAssertEqual(
+            localizedStringValue(key: "settings.supportFlux.heroTitle", locale: "en"),
+            "Buy the Developer a Coffee"
+        )
+        XCTAssertEqual(
             localizedStringValue(key: "settings.supportFlux.donate", locale: "en"),
-            "Donate Money"
+            "Sponsor a Coffee"
         )
         XCTAssertEqual(
             localizedStringValue(key: "settings.supportFlux.donate.subtitle", locale: "en"),
-            "Open Buy Me a Coffee"
+            "Choose the amount on Buy Me a Coffee"
         )
     }
 
@@ -227,14 +231,21 @@ final class LocalizationTests: XCTestCase {
                 key: "settings.supportFlux.donate",
                 locale: "zh-Hant"
             ),
-            "捐贈"
+            "贊助一杯咖啡"
         )
         XCTAssertEqual(
             localizedStringValue(
                 key: "settings.supportFlux.donate.subtitle",
                 locale: "zh-Hant"
             ),
-            "開啟 Buy Me a Coffee"
+            "喺 Buy Me a Coffee 選擇金額"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.heroTitle",
+                locale: "zh-Hant"
+            ),
+            "請開發者喝杯咖啡"
         )
     }
 
@@ -251,14 +262,21 @@ final class LocalizationTests: XCTestCase {
                 key: "settings.supportFlux.donate",
                 locale: "zh-Hans"
             ),
-            "捐赠"
+            "赞助一杯咖啡"
         )
         XCTAssertEqual(
             localizedStringValue(
                 key: "settings.supportFlux.donate.subtitle",
                 locale: "zh-Hans"
             ),
-            "打开 Buy Me a Coffee"
+            "在 Buy Me a Coffee 选择金额"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.supportFlux.heroTitle",
+                locale: "zh-Hans"
+            ),
+            "请开发者喝杯咖啡"
         )
     }
 
