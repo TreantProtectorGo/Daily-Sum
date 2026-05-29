@@ -1,2 +1,5 @@
-docs/
+docs/*
+!docs/
+!docs/privacy.html
+!docs/privacy.css
 .worktrees/
