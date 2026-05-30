@@ -166,6 +166,10 @@ final class LocalizationTests: XCTestCase {
             "Clear all data?"
         )
         XCTAssertEqual(
+            localizedStringValue(key: "settings.privacyPolicy.title", locale: "en"),
+            "Privacy Policy"
+        )
+        XCTAssertEqual(
             localizedStringValue(key: "settings.supportFlux.title", locale: "en"),
             "Support Flux"
         )
@@ -228,6 +232,13 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             localizedStringValue(
+                key: "settings.privacyPolicy.title",
+                locale: "zh-Hant"
+            ),
+            "私隱政策"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
                 key: "settings.supportFlux.donate",
                 locale: "zh-Hant"
             ),
@@ -256,6 +267,13 @@ final class LocalizationTests: XCTestCase {
                 locale: "zh-Hans"
             ),
             "支持 Flux"
+        )
+        XCTAssertEqual(
+            localizedStringValue(
+                key: "settings.privacyPolicy.title",
+                locale: "zh-Hans"
+            ),
+            "隐私政策"
         )
         XCTAssertEqual(
             localizedStringValue(

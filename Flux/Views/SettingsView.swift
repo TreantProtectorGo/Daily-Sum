@@ -6,6 +6,8 @@ import UIKit
 
 /// App settings including regional preferences and data management
 struct SettingsView: View {
+    private static let privacyPolicyURL = URL(string: "https://treantprotectorgo.github.io/flux-privacy-policy/")!
+
     private let autoPopWhenTabSwitch: Bool
 
     @Environment(\.dismiss) private var dismiss
@@ -494,6 +496,22 @@ struct SettingsView: View {
                 }
             }
             .accessibilityIdentifier("settings.supportFlux.button")
+
+            Link(destination: Self.privacyPolicyURL) {
+                HStack {
+                    Text(
+                        AppLocalization.string(
+                            "settings.privacyPolicy.title",
+                            defaultValue: "Privacy Policy"
+                        )
+                    )
+                    Spacer()
+                    Image(systemName: "arrow.up.forward")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .accessibilityIdentifier("settings.privacyPolicy.link")
         }
     }
 
