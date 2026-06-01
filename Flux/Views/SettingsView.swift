@@ -62,6 +62,7 @@ struct SettingsView: View {
             currencySection(viewModel: viewModel)
             exchangeRateSection(viewModel: viewModel)
             languageSection(viewModel: viewModel)
+            themeSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
             remindersSection(viewModel: viewModel)
             reportsSection(viewModel: viewModel)
@@ -321,6 +322,35 @@ struct SettingsView: View {
             Text(AppLocalization.string("settings.language", defaultValue: "Language"))
         } footer: {
             Text(AppLocalization.string("settings.language.footer", defaultValue: "Choose the language used by the app interface."))
+        }
+    }
+
+    @ViewBuilder
+    private func themeSection(viewModel: SettingsViewModel) -> some View {
+        Section {
+            Picker(
+                AppLocalization.string("settings.theme", defaultValue: "Appearance"),
+                selection: Binding(
+                    get: { viewModel.appTheme },
+                    set: { viewModel.appTheme = $0 }
+                )
+            ) {
+                ForEach(AppTheme.allCases) { theme in
+                    Label(theme.displayName, systemImage: theme.systemImage)
+                        .tag(theme)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.theme.picker")
+        } header: {
+            Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
+        } footer: {
+            Text(
+                AppLocalization.string(
+                    "settings.theme.footer",
+                    defaultValue: "Choose whether Flux follows the device appearance or stays in light or dark mode."
+                )
+            )
         }
     }
 

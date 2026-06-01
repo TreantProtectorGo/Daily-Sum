@@ -17,6 +17,7 @@ struct FluxApp: App {
     @State private var isLoading = true
     @State private var loadError: Error?
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
+    @AppStorage(AppThemePreference.storageKey) private var appThemeCode = AppTheme.system.rawValue
     private let cloudSyncSettingsStore: any CloudSyncSettingsStoring
 
     init() {
@@ -59,6 +60,7 @@ struct FluxApp: App {
                     runAutomaticBackupIfNeeded(in: container)
                 }
             }
+            .preferredColorScheme(AppTheme.from(rawValue: appThemeCode).preferredColorScheme)
         }
     }
 

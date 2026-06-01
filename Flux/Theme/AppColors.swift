@@ -6,8 +6,17 @@ import SwiftUI
 enum AppColors {
     // MARK: - Semantic Colors
     
-    /// Primary brand color
+    /// Primary Flux brand color, backed by the AccentColor asset for platform tinting.
     static let primary = Color.accentColor
+
+    /// Secondary brand accent for selected states, chart emphasis, and subtle highlights.
+    static let secondaryAccent = Color(red: 0.0, green: 0.58, blue: 0.52)
+
+    /// Warm counterpoint to the teal brand color for moments that need extra emphasis.
+    static let brandCoral = Color(red: 0.93, green: 0.33, blue: 0.26)
+
+    /// Quiet brand-tinted surface for non-critical highlighted UI.
+    static let brandSurfaceTint = Color.accentColor.opacity(0.08)
     
     /// Background color for main content areas
     static var background: Color {
@@ -45,24 +54,24 @@ enum AppColors {
     static let expense = Color.red
     
     /// Color for transfer transactions
-    static let transfer = Color.blue
+    static let transfer = secondaryAccent
     
     // MARK: - Category Colors
     
     /// Default category colors available for selection
     static let categoryColors: [Color] = [
-        .red,
-        .orange,
-        .yellow,
-        .green,
-        .mint,
-        .teal,
-        .cyan,
-        .blue,
-        .indigo,
-        .purple,
-        .pink,
-        .brown
+        Color(red: 0.93, green: 0.33, blue: 0.26),
+        Color(red: 0.95, green: 0.58, blue: 0.16),
+        Color(red: 0.86, green: 0.72, blue: 0.23),
+        Color(red: 0.16, green: 0.65, blue: 0.39),
+        Color(red: 0.0, green: 0.58, blue: 0.52),
+        Color(red: 0.05, green: 0.50, blue: 0.66),
+        Color(red: 0.18, green: 0.42, blue: 0.78),
+        Color(red: 0.39, green: 0.36, blue: 0.78),
+        Color(red: 0.62, green: 0.32, blue: 0.70),
+        Color(red: 0.78, green: 0.29, blue: 0.49),
+        Color(red: 0.55, green: 0.38, blue: 0.24),
+        Color(red: 0.35, green: 0.42, blue: 0.45)
     ]
     
     // MARK: - Account Type Colors
@@ -71,7 +80,7 @@ enum AppColors {
     static let accountCash = Color.green
     
     /// Color for bank accounts
-    static let accountBank = Color.blue
+    static let accountBank = primary
     
     /// Color for credit card accounts
     static let accountCreditCard = Color.orange
@@ -80,7 +89,7 @@ enum AppColors {
     static let accountInvestment = Color.purple
     
     /// Color for other account types
-    static let accountOther = Color.gray
+    static let accountOther = Color(red: 0.35, green: 0.42, blue: 0.45)
     
     // MARK: - UI Element Colors
     
@@ -99,10 +108,10 @@ enum AppColors {
     // MARK: - Glass Effect Colors
     
     /// Tint color for glass effects (subtle)
-    static let glassTint = Color.white.opacity(0.1)
+    static let glassTint = brandSurfaceTint
     
     /// Border color for glass cards
-    static let glassBorder = Color.white.opacity(0.2)
+    static let glassBorder = Color.accentColor.opacity(0.18)
 }
 
 // MARK: - Budget Progress Color

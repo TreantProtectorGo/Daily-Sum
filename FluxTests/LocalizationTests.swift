@@ -79,6 +79,17 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(AppLanguage.from(rawValue: "invalid"), .system)
     }
 
+    func testAppThemeFallbackToSystemForInvalidRawValue() {
+        XCTAssertEqual(AppTheme.from(rawValue: nil), .system)
+        XCTAssertEqual(AppTheme.from(rawValue: "invalid"), .system)
+    }
+
+    func testAppThemePreferredColorSchemeMapping() {
+        XCTAssertNil(AppTheme.system.preferredColorScheme)
+        XCTAssertEqual(AppTheme.light.preferredColorScheme, .light)
+        XCTAssertEqual(AppTheme.dark.preferredColorScheme, .dark)
+    }
+
     func testLocalizedValuesFollowSelectedAppLanguage() {
         let originalLanguage = AppLanguagePreference.language
         defer { AppLanguagePreference.language = originalLanguage }
@@ -90,6 +101,55 @@ final class LocalizationTests: XCTestCase {
         AppLanguagePreference.language = .simplifiedChinese
         XCTAssertEqual(TransactionType.income.localizedName, "收入")
         XCTAssertEqual(SupportedCurrency.USD.localizedName, "美元")
+    }
+
+    func testThemeCopyMatchesCurrentWordingAcrossLanguages() {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+
+        let expectations: [(AppLanguage, [String: String])] = [
+            (
+                .english,
+                [
+                    "settings.theme": "Appearance",
+                    "settings.theme.system": "System",
+                    "settings.theme.light": "Light",
+                    "settings.theme.dark": "Dark",
+                    "settings.theme.footer": "Choose whether Flux follows the device appearance or stays in light or dark mode."
+                ]
+            ),
+            (
+                .simplifiedChinese,
+                [
+                    "settings.theme": "外观",
+                    "settings.theme.system": "跟随系统",
+                    "settings.theme.light": "浅色",
+                    "settings.theme.dark": "深色",
+                    "settings.theme.footer": "选择 Flux 跟随设备外观，或固定使用浅色或深色模式。"
+                ]
+            ),
+            (
+                .traditionalChinese,
+                [
+                    "settings.theme": "外觀",
+                    "settings.theme.system": "跟隨系統",
+                    "settings.theme.light": "淺色",
+                    "settings.theme.dark": "深色",
+                    "settings.theme.footer": "選擇 Flux 跟隨裝置外觀，或固定使用淺色或深色模式。"
+                ]
+            )
+        ]
+
+        for (language, localizedValues) in expectations {
+            AppLanguagePreference.language = language
+            for (key, expectedValue) in localizedValues {
+                XCTAssertEqual(
+                    AppLocalization.string(key, defaultValue: ""),
+                    expectedValue,
+                    "\(key) should match \(language)"
+                )
+            }
+        }
     }
 
     func testSystemCategoryKeyIsLocalizedInEnglishMode() {

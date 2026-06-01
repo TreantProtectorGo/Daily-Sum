@@ -280,6 +280,12 @@ final class SettingsViewModel {
         }
     }
 
+    var appTheme: AppTheme {
+        didSet {
+            AppThemePreference.theme = appTheme
+        }
+    }
+
     var travelCurrencySource: TravelCurrencySource {
         didSet {
             TravelCurrencyPreference.source = travelCurrencySource
@@ -555,6 +561,7 @@ final class SettingsViewModel {
         self.rememberLastUsedAccount = TransactionAccountPreference.rememberLastUsedAccount
         self.autoPresentAccountAfterCategorySelection = TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
         self.appLanguage = AppLanguagePreference.language
+        self.appTheme = AppThemePreference.theme
         self.travelCurrencySource = TravelCurrencyPreference.source
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -760,6 +767,7 @@ final class SettingsViewModel {
         autoPresentAccountAfterCategorySelection =
             TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
         appLanguage = AppLanguagePreference.language
+        appTheme = AppThemePreference.theme
         travelCurrencySource = TravelCurrencyPreference.source
         detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
