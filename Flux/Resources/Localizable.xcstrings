@@ -5972,29 +5972,6 @@
         }
       }
     },
-    "settings.language.footer" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose the language used by the app interface."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择应用程序界面使用的语言。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇應用程式介面使用的語言。"
-          }
-        }
-      }
-    },
     "settings.language.simplifiedChinese" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6405,29 +6382,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "深色"
-          }
-        }
-      }
-    },
-    "settings.theme.footer" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose whether Flux follows the device appearance or stays in light or dark mode."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "选择 Flux 跟随设备外观，或固定使用浅色或深色模式。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "選擇 Flux 跟隨裝置外觀，或固定使用淺色或深色模式。"
           }
         }
       }

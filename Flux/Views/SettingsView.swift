@@ -320,8 +320,6 @@ struct SettingsView: View {
             }
         } header: {
             Text(AppLocalization.string("settings.language", defaultValue: "Language"))
-        } footer: {
-            Text(AppLocalization.string("settings.language.footer", defaultValue: "Choose the language used by the app interface."))
         }
     }
 
@@ -339,20 +337,13 @@ struct SettingsView: View {
                     Label(theme.displayName, systemImage: theme.systemImage)
                         .tag(theme)
                 }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.theme.picker")
-        } header: {
-            Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
-        } footer: {
-            Text(
-                AppLocalization.string(
-                    "settings.theme.footer",
-                    defaultValue: "Choose whether Flux follows the device appearance or stays in light or dark mode."
-                )
-            )
         }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("settings.theme.picker")
+    } header: {
+        Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
     }
+}
 
     // MARK: - Data Summary Section
     

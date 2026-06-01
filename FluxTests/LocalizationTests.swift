@@ -114,8 +114,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme": "Appearance",
                     "settings.theme.system": "System",
                     "settings.theme.light": "Light",
-                    "settings.theme.dark": "Dark",
-                    "settings.theme.footer": "Choose whether Flux follows the device appearance or stays in light or dark mode."
+                    "settings.theme.dark": "Dark"
                 ]
             ),
             (
@@ -124,8 +123,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme": "外观",
                     "settings.theme.system": "跟随系统",
                     "settings.theme.light": "浅色",
-                    "settings.theme.dark": "深色",
-                    "settings.theme.footer": "选择 Flux 跟随设备外观，或固定使用浅色或深色模式。"
+                    "settings.theme.dark": "深色"
                 ]
             ),
             (
@@ -134,8 +132,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme": "外觀",
                     "settings.theme.system": "跟隨系統",
                     "settings.theme.light": "淺色",
-                    "settings.theme.dark": "深色",
-                    "settings.theme.footer": "選擇 Flux 跟隨裝置外觀，或固定使用淺色或深色模式。"
+                    "settings.theme.dark": "深色"
                 ]
             )
         ]
