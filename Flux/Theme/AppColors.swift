@@ -20,19 +20,29 @@ enum AppColors {
         #if os(iOS)
         Color(UIColor { traits in
             if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.20, green: 0.68, blue: 0.66, alpha: 0.78)
+                UIColor(red: 0.23, green: 0.62, blue: 0.60, alpha: 1.0)
             } else {
-                UIColor(red: 0.00, green: 0.48, blue: 0.45, alpha: 0.86)
+                UIColor(red: 0.00, green: 0.40, blue: 0.38, alpha: 1.0)
             }
         })
         #else
-        secondaryAccent.opacity(0.82)
+        secondaryAccent
         #endif
     }
 
     /// Selected tab color; intentionally quieter than primary actions.
     static var selectedNavigation: Color {
-        interactiveText
+        #if os(iOS)
+        Color(UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                UIColor(red: 0.25, green: 0.70, blue: 0.66, alpha: 1.0)
+            } else {
+                UIColor(red: 0.00, green: 0.45, blue: 0.43, alpha: 1.0)
+            }
+        })
+        #else
+        secondaryAccent
+        #endif
     }
 
     /// Muted teal for informational icons that should not read as primary actions.
@@ -40,13 +50,13 @@ enum AppColors {
         #if os(iOS)
         Color(UIColor { traits in
             if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.18, green: 0.58, blue: 0.56, alpha: 0.70)
+                UIColor(red: 0.22, green: 0.53, blue: 0.51, alpha: 1.0)
             } else {
-                UIColor(red: 0.00, green: 0.42, blue: 0.39, alpha: 0.72)
+                UIColor(red: 0.00, green: 0.42, blue: 0.39, alpha: 1.0)
             }
         })
         #else
-        secondaryAccent.opacity(0.72)
+        secondaryAccent
         #endif
     }
 

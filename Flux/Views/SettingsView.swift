@@ -79,7 +79,6 @@ struct SettingsView: View {
             // About
             aboutSection(viewModel: viewModel)
         }
-        .tint(AppColors.interactiveText)
         .alert(
             AppLocalization.string("settings.clearData.title", defaultValue: "Do you want to clear all data?"),
             isPresented: $showClearDataConfirmation,
@@ -148,6 +147,7 @@ struct SettingsView: View {
                         .tag(account.id as UUID?)
                 }
             }
+            .tint(AppColors.interactiveText)
             
             Toggle(
                 AppLocalization.string("settings.rememberLastAccount", defaultValue: "Remember Last Used Account"),
@@ -156,6 +156,7 @@ struct SettingsView: View {
                     set: { viewModel.rememberLastUsedAccount = $0 }
                 )
             )
+            .tint(AppColors.interactiveText)
 
             Toggle(
                 AppLocalization.string(
@@ -167,6 +168,7 @@ struct SettingsView: View {
                     set: { viewModel.autoPresentAccountAfterCategorySelection = $0 }
                 )
             )
+            .tint(AppColors.interactiveText)
         } header: {
             Text(AppLocalization.string("settings.transactionDefaults", defaultValue: "Transaction Defaults"))
         } footer: {
@@ -197,6 +199,7 @@ struct SettingsView: View {
                         .tag(rowLimit)
                 }
             }
+            .tint(AppColors.interactiveText)
         } header: {
             Text(AppLocalization.string("settings.reports", defaultValue: "Reports"))
         } footer: {
@@ -226,6 +229,7 @@ struct SettingsView: View {
                     }
                 )
             )
+            .tint(AppColors.interactiveText)
         } header: {
             Text(AppLocalization.string("settings.reminders", defaultValue: "Notifications"))
         }
@@ -253,6 +257,7 @@ struct SettingsView: View {
                         .tag(currency.rawValue)
                 }
             }
+            .tint(AppColors.interactiveText)
         }
     }
 
@@ -277,6 +282,7 @@ struct SettingsView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+            .foregroundStyle(AppColors.interactiveText)
 
             Button {
                 showExchangeCalculator = true
@@ -288,6 +294,7 @@ struct SettingsView: View {
                         )
                     )
             }
+            .foregroundStyle(AppColors.interactiveText)
         } header: {
             Text(
                 AppLocalization.string(
@@ -319,6 +326,7 @@ struct SettingsView: View {
                         .tag(language)
                 }
             }
+            .tint(AppColors.interactiveText)
         } header: {
             Text(AppLocalization.string("settings.language", defaultValue: "Language"))
         }
@@ -340,6 +348,7 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .tint(AppColors.interactiveText)
             .accessibilityIdentifier("settings.theme.picker")
         } header: {
             Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
@@ -409,6 +418,7 @@ struct SettingsView: View {
                     set: { viewModel.isCloudSyncEnabled = $0 }
                 )
             )
+            .tint(AppColors.interactiveText)
             .disabled(cloudSyncRequiresAttention)
             .opacity(cloudSyncRequiresAttention ? 0.5 : 1)
             .saturation(cloudSyncRequiresAttention ? 0 : 1)
@@ -434,6 +444,7 @@ struct SettingsView: View {
                         .tag(frequency)
                 }
             }
+            .tint(AppColors.interactiveText)
             .accessibilityIdentifier("settings.backup.automatic.picker")
 
             Picker(
@@ -451,6 +462,7 @@ struct SettingsView: View {
                         .tag(limit)
                 }
             }
+            .tint(AppColors.interactiveText)
             .accessibilityIdentifier("settings.backup.retention.picker")
 
             Button {
@@ -463,6 +475,7 @@ struct SettingsView: View {
                     )
                 )
             }
+            .foregroundStyle(AppColors.interactiveText)
             .accessibilityIdentifier("settings.backup.sheet.button")
 
             Text(
@@ -516,6 +529,7 @@ struct SettingsView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+            .foregroundStyle(AppColors.interactiveText)
             .accessibilityIdentifier("settings.privacyPolicy.link")
         }
     }
@@ -654,6 +668,7 @@ private struct ManagedBackupSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
+                    .tint(AppColors.interactiveText)
                     .accessibilityLabel(AppLocalization.string("action.close", defaultValue: "Close"))
                     .accessibilityIdentifier("settings.backup.close.button")
                 }
@@ -813,6 +828,7 @@ private struct TravelCurrencySettingsSheet: View {
                         )
                         .tag(TravelCurrencySource.manual)
                     }
+                    .tint(AppColors.interactiveText)
 
                     HStack {
                         Text(
@@ -874,6 +890,7 @@ private struct TravelCurrencySettingsSheet: View {
                                     .tag(Optional(currency.rawValue))
                             }
                         }
+                        .tint(AppColors.interactiveText)
                     }
                 } footer: {
                     Text(
@@ -898,6 +915,7 @@ private struct TravelCurrencySettingsSheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
+                    .tint(AppColors.interactiveText)
                 }
             }
         }
