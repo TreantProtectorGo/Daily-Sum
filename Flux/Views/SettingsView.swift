@@ -22,7 +22,6 @@ struct SettingsView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showBackupSheet = false
-    @State private var showSupportFluxSheet = false
 
     init(autoPopWhenTabSwitch: Bool = false) {
         self.autoPopWhenTabSwitch = autoPopWhenTabSwitch
@@ -113,10 +112,6 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showBackupSheet) {
             ManagedBackupSheet(viewModel: viewModel)
-        }
-        .sheet(isPresented: $showSupportFluxSheet) {
-            SupportFluxSheet()
-                .presentationDragIndicator(.visible)
         }
         .onAppear {
             Task {
@@ -479,24 +474,6 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Button {
-                showSupportFluxSheet = true
-            } label: {
-                HStack {
-                    Text(
-                        AppLocalization.string(
-                            "settings.supportFlux.title",
-                            defaultValue: "Support Flux"
-                        )
-                    )
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .accessibilityIdentifier("settings.supportFlux.button")
-
             Link(destination: Self.privacyPolicyURL) {
                 HStack {
                     Text(
@@ -515,129 +492,6 @@ struct SettingsView: View {
         }
     }
 
-}
-
-private struct SupportFluxSheet: View {
-    private static let donationURL = URL(string: "https://buymeacoffee.com/ethan3330")!
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(.yellow.opacity(0.18))
-                                .frame(width: 56, height: 56)
-
-                            Image(systemName: "cup.and.saucer.fill")
-                                .font(.title2.weight(.semibold))
-                                .foregroundStyle(.orange)
-                        }
-
-                        Text(
-                            AppLocalization.string(
-                                "settings.supportFlux.heroTitle",
-                                defaultValue: "Buy the Developer a Coffee"
-                            )
-                        )
-                        .font(.headline)
-
-                        Text(
-                            AppLocalization.string(
-                                "settings.supportFlux.message",
-                                defaultValue: "Your donation goes directly to the developer and supports future Flux updates."
-                            )
-                        )
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 6)
-                }
-
-                Section {
-                    Link(destination: Self.donationURL) {
-                        HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(
-                                    AppLocalization.string(
-                                        "settings.supportFlux.donate",
-                                        defaultValue: "Sponsor a Coffee"
-                                    )
-                                )
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.primary)
-
-                                Text(
-                                    AppLocalization.string(
-                                        "settings.supportFlux.donate.subtitle",
-                                        defaultValue: "Choose the amount on Buy Me a Coffee"
-                                    )
-                                )
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "arrow.up.forward")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(Color.accentColor.opacity(0.16))
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.accentColor.opacity(0.28), lineWidth: 1)
-                        }
-                        .glassBackground(cornerRadius: 20, isInteractive: true)
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .accessibilityIdentifier("settings.supportFlux.donate.link")
-                } footer: {
-                    Text(
-                        AppLocalization.string(
-                            "settings.supportFlux.note",
-                            defaultValue: "Thank you for supporting the independent work behind Flux."
-                        )
-                    )
-                    .font(.footnote)
-                    .foregroundStyle(Color.primary.opacity(0.72))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
-            .navigationTitle(
-                AppLocalization.string(
-                    "settings.supportFlux.title",
-                    defaultValue: "Support Flux"
-                )
-            )
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                    .accessibilityLabel(AppLocalization.string("action.close", defaultValue: "Close"))
-                    .accessibilityIdentifier("settings.supportFlux.close.button")
-                }
-            }
-        }
-    }
 }
 
 private struct ManagedBackupSheet: View {

@@ -169,22 +169,6 @@ final class LocalizationTests: XCTestCase {
             localizedStringValue(key: "settings.privacyPolicy.title", locale: "en"),
             "Privacy Policy"
         )
-        XCTAssertEqual(
-            localizedStringValue(key: "settings.supportFlux.title", locale: "en"),
-            "Support Flux"
-        )
-        XCTAssertEqual(
-            localizedStringValue(key: "settings.supportFlux.heroTitle", locale: "en"),
-            "Buy the Developer a Coffee"
-        )
-        XCTAssertEqual(
-            localizedStringValue(key: "settings.supportFlux.donate", locale: "en"),
-            "Sponsor a Coffee"
-        )
-        XCTAssertEqual(
-            localizedStringValue(key: "settings.supportFlux.donate.subtitle", locale: "en"),
-            "Choose the amount on Buy Me a Coffee"
-        )
     }
 
     func testTraditionalChineseSettingsCopyMatchesCurrentWording() {
@@ -225,49 +209,14 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             localizedStringValue(
-                key: "settings.supportFlux.title",
-                locale: "zh-Hant"
-            ),
-            "支持 Flux"
-        )
-        XCTAssertEqual(
-            localizedStringValue(
                 key: "settings.privacyPolicy.title",
                 locale: "zh-Hant"
             ),
             "私隱政策"
         )
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.donate",
-                locale: "zh-Hant"
-            ),
-            "贊助一杯咖啡"
-        )
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.donate.subtitle",
-                locale: "zh-Hant"
-            ),
-            "喺 Buy Me a Coffee 選擇金額"
-        )
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.heroTitle",
-                locale: "zh-Hant"
-            ),
-            "請開發者喝杯咖啡"
-        )
     }
 
-    func testSimplifiedChineseSupportFluxCopyMatchesCurrentWording() {
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.title",
-                locale: "zh-Hans"
-            ),
-            "支持 Flux"
-        )
+    func testSimplifiedChinesePrivacyPolicyCopyMatchesCurrentWording() {
         XCTAssertEqual(
             localizedStringValue(
                 key: "settings.privacyPolicy.title",
@@ -275,27 +224,15 @@ final class LocalizationTests: XCTestCase {
             ),
             "隐私政策"
         )
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.donate",
-                locale: "zh-Hans"
-            ),
-            "赞助一杯咖啡"
-        )
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.donate.subtitle",
-                locale: "zh-Hans"
-            ),
-            "在 Buy Me a Coffee 选择金额"
-        )
-        XCTAssertEqual(
-            localizedStringValue(
-                key: "settings.supportFlux.heroTitle",
-                locale: "zh-Hans"
-            ),
-            "请开发者喝杯咖啡"
-        )
+    }
+
+    func testVersionOneDoesNotShipSupportFluxCopy() {
+        XCTAssertNil(localizedStringValueIfPresent(key: "settings.supportFlux.title", locale: "en"))
+        XCTAssertNil(localizedStringValueIfPresent(key: "settings.supportFlux.disclaimer", locale: "en"))
+        XCTAssertNil(localizedStringValueIfPresent(key: "settings.supportFlux.title", locale: "zh-Hant"))
+        XCTAssertNil(localizedStringValueIfPresent(key: "settings.supportFlux.disclaimer", locale: "zh-Hant"))
+        XCTAssertNil(localizedStringValueIfPresent(key: "settings.supportFlux.title", locale: "zh-Hans"))
+        XCTAssertNil(localizedStringValueIfPresent(key: "settings.supportFlux.disclaimer", locale: "zh-Hans"))
     }
 
     func testTravelCurrencyCopyMatchesCurrentWordingAcrossLanguages() {
@@ -627,6 +564,19 @@ final class LocalizationTests: XCTestCase {
         locale: String,
         table: String = "Localizable"
     ) -> String {
+        guard let value = localizedStringValueIfPresent(key: key, locale: locale, table: table) else {
+            XCTFail("Missing localization value for key \(key) locale \(locale)")
+            return ""
+        }
+
+        return value
+    }
+
+    private func localizedStringValueIfPresent(
+        key: String,
+        locale: String,
+        table: String = "Localizable"
+    ) -> String? {
         let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         let repoRoot = testsDirectory.deletingLastPathComponent()
         let xcstringsURL = repoRoot
@@ -646,14 +596,13 @@ final class LocalizationTests: XCTestCase {
                 let stringUnit = localeNode["stringUnit"] as? [String: Any],
                 let value = stringUnit["value"] as? String
             else {
-                XCTFail("Missing localization value for key \(key) locale \(locale)")
-                return ""
+                return nil
             }
 
             return value
         } catch {
             XCTFail("Failed to load \(table).xcstrings: \(error)")
-            return ""
+            return nil
         }
     }
 
