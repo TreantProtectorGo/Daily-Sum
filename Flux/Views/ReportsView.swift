@@ -272,6 +272,9 @@ struct ReportsView: View {
                         Text(currency: viewModel.totalIncome, code: displayCurrencyCode)
                             .font(.title3)
                             .fontWeight(.bold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .allowsTightening(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -289,6 +292,9 @@ struct ReportsView: View {
                         Text(currency: viewModel.totalExpenses, code: displayCurrencyCode)
                             .font(.title3)
                             .fontWeight(.bold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .allowsTightening(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -308,6 +314,9 @@ struct ReportsView: View {
                             font: .title3,
                             fontWeight: .bold
                         )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .allowsTightening(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -327,6 +336,9 @@ struct ReportsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .allowsTightening(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
