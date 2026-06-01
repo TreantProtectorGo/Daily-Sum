@@ -15,6 +15,41 @@ enum AppColors {
     /// Warm counterpoint to the teal brand color for moments that need extra emphasis.
     static let brandCoral = Color(red: 0.93, green: 0.33, blue: 0.26)
 
+    /// Quieter interactive color for default links, picker values, and selected navigation.
+    static var interactiveText: Color {
+        #if os(iOS)
+        Color(UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                UIColor(red: 0.20, green: 0.68, blue: 0.66, alpha: 0.78)
+            } else {
+                UIColor(red: 0.00, green: 0.48, blue: 0.45, alpha: 0.86)
+            }
+        })
+        #else
+        secondaryAccent.opacity(0.82)
+        #endif
+    }
+
+    /// Selected tab color; intentionally quieter than primary actions.
+    static var selectedNavigation: Color {
+        interactiveText
+    }
+
+    /// Muted teal for informational icons that should not read as primary actions.
+    static var mutedDataIcon: Color {
+        #if os(iOS)
+        Color(UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                UIColor(red: 0.18, green: 0.58, blue: 0.56, alpha: 0.70)
+            } else {
+                UIColor(red: 0.00, green: 0.42, blue: 0.39, alpha: 0.72)
+            }
+        })
+        #else
+        secondaryAccent.opacity(0.72)
+        #endif
+    }
+
     /// Quiet brand-tinted surface for non-critical highlighted UI.
     static let brandSurfaceTint = Color.accentColor.opacity(0.08)
     

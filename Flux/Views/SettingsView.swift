@@ -79,6 +79,7 @@ struct SettingsView: View {
             // About
             aboutSection(viewModel: viewModel)
         }
+        .tint(AppColors.interactiveText)
         .alert(
             AppLocalization.string("settings.clearData.title", defaultValue: "Do you want to clear all data?"),
             isPresented: $showClearDataConfirmation,
@@ -337,13 +338,13 @@ struct SettingsView: View {
                     Label(theme.displayName, systemImage: theme.systemImage)
                         .tag(theme)
                 }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.theme.picker")
+        } header: {
+            Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
         }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("settings.theme.picker")
-    } header: {
-        Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
     }
-}
 
     // MARK: - Data Summary Section
     
@@ -378,7 +379,13 @@ struct SettingsView: View {
     
     private func dataRow(label: String, value: String, systemImage: String) -> some View {
         HStack {
-            Label(label, systemImage: systemImage)
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(AppColors.mutedDataIcon)
+                    .frame(width: 20, alignment: .center)
+
+                Text(label)
+            }
             Spacer()
             Text(value)
                 .foregroundStyle(.secondary)
@@ -541,7 +548,7 @@ private struct ManagedBackupSheet: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(isBackupButtonDisabled ? Color.secondary : Color.accentColor)
+                    .foregroundStyle(isBackupButtonDisabled ? Color.secondary : AppColors.primary)
                     .disabled(isBackupButtonDisabled)
                     .accessibilityIdentifier("settings.backup.export.button")
 
