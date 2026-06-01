@@ -245,20 +245,51 @@ struct SettingsView: View {
     @ViewBuilder
     private func currencySection(viewModel: SettingsViewModel) -> some View {
         Section(AppLocalization.string("settings.currency", defaultValue: "Currency")) {
-            Picker(
-                AppLocalization.string("settings.defaultCurrency", defaultValue: "Default Currency"),
-                selection: Binding(
-                    get: { viewModel.defaultCurrencyCode },
-                    set: { viewModel.defaultCurrencyCode = $0 }
-                )
-            ) {
-                ForEach(viewModel.availableCurrencies, id: \.self) { currency in
-                    Text("\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)")
-                        .tag(currency.rawValue)
-                }
-            }
-            .tint(AppColors.interactiveText)
+            defaultCurrencyMenu(viewModel: viewModel)
         }
+    }
+
+    private func defaultCurrencyMenu(viewModel: SettingsViewModel) -> some View {
+        HStack(spacing: 12) {
+            Text(AppLocalization.string("settings.defaultCurrency.short", defaultValue: "Default"))
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            Menu {
+                ForEach(viewModel.availableCurrencies, id: \.self) { currency in
+                    Button {
+                        viewModel.defaultCurrencyCode = currency.rawValue
+                    } label: {
+                        if currency.rawValue == viewModel.defaultCurrencyCode {
+                            Label(currencyPickerTitle(currency), systemImage: "checkmark")
+                        } else {
+                            Text(currencyPickerTitle(currency))
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    if let selectedCurrency = SupportedCurrency(rawValue: viewModel.defaultCurrencyCode) {
+                        currencyPickerLabel(selectedCurrency)
+                    } else {
+                        Text(viewModel.defaultCurrencyCode)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+
+                    Image(systemName: "chevron.up.chevron.down")
+                        .imageScale(.small)
+                }
+                .foregroundStyle(AppColors.interactiveText)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .menuOrder(.fixed)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(AppLocalization.string("settings.defaultCurrency", defaultValue: "Default Currency"))
+        .accessibilityValue(viewModel.defaultCurrencyCode)
     }
 
     @ViewBuilder
@@ -790,6 +821,16 @@ private struct BackupFileRow: View {
     }
 }
 
+private func currencyPickerTitle(_ currency: SupportedCurrency) -> String {
+    "\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)"
+}
+
+private func currencyPickerLabel(_ currency: SupportedCurrency) -> some View {
+    Text(currencyPickerTitle(currency))
+        .lineLimit(1)
+        .truncationMode(.tail)
+}
+
 private struct TravelCurrencySettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var viewModel: SettingsViewModel
@@ -886,7 +927,7 @@ private struct TravelCurrencySettingsSheet: View {
                             .tag(String?.none)
 
                             ForEach(viewModel.availableTravelCurrencies, id: \.self) { currency in
-                                Text("\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)")
+                                currencyPickerLabel(currency)
                                     .tag(Optional(currency.rawValue))
                             }
                         }
