@@ -52,7 +52,8 @@ struct GlassAccountRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassBackground(cornerRadius: 12, isInteractive: true)
+        .glassBackground(cornerRadius: 12, isInteractive: true, style: .row)
+        .glassSurfaceHierarchy(style: .row, cornerRadius: 12)
     }
 }
 
@@ -102,7 +103,8 @@ struct AccountSummaryCard: View {
             .padding(16)
         }
         .buttonStyle(.plain)
-        .glassBackground(cornerRadius: 16, isInteractive: true)
+        .glassBackground(cornerRadius: 16, isInteractive: true, style: .section)
+        .glassSurfaceHierarchy(style: .section, cornerRadius: 16)
     }
 }
 

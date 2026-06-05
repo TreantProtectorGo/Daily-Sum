@@ -6,20 +6,99 @@ import SwiftUI
 struct GlassEffectModifier: ViewModifier {
     let cornerRadius: CGFloat
     let isInteractive: Bool
+    let style: GlassCardStyle
     
+    @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
             if isInteractive {
                 content
+                    .glassMaterialFoundation(style: style, cornerRadius: cornerRadius)
                     .glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius))
             } else {
                 content
+                    .glassMaterialFoundation(style: style, cornerRadius: cornerRadius)
                     .glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
             }
         } else {
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            fallbackBackground(for: content)
+                .glassMaterialFoundation(style: style, cornerRadius: cornerRadius)
         }
+    }
+
+    @ViewBuilder
+    private func fallbackBackground(for content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        switch style {
+        case .hero:
+            content
+                .background(.regularMaterial, in: shape)
+        case .section:
+            content
+                .background(.thinMaterial, in: shape)
+        case .row:
+            content
+                .background(.ultraThinMaterial, in: shape)
+        }
+    }
+}
+
+private struct GlassMaterialFoundationModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let style: GlassCardStyle
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                foundationLayer
+            }
+    }
+
+    @ViewBuilder
+    private var foundationLayer: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        switch style {
+        case .hero:
+            shape
+                .fill(heroFill)
+        case .section:
+            shape
+                .fill(sectionFill)
+        case .row:
+            shape
+                .fill(rowFill)
+        }
+    }
+
+    private var heroFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                AppColors.secondaryAccent.opacity(colorScheme == .dark ? 0.30 : 0.20),
+                AppColors.brandCoral.opacity(colorScheme == .dark ? 0.20 : 0.12),
+                Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.025)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var sectionFill: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.primary.opacity(colorScheme == .dark ? 0.065 : 0.028),
+                AppColors.secondaryAccent.opacity(colorScheme == .dark ? 0.075 : 0.020)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var rowFill: Color {
+        Color.primary.opacity(colorScheme == .dark ? 0.025 : 0.010)
     }
 }
 
@@ -62,9 +141,23 @@ extension View {
     ///   - isInteractive: Whether the element should respond to touch/hover (default: false)
     func glassBackground(
         cornerRadius: CGFloat = 16,
-        isInteractive: Bool = false
+        isInteractive: Bool = false,
+        style: GlassCardStyle = .row
     ) -> some View {
-        modifier(GlassEffectModifier(cornerRadius: cornerRadius, isInteractive: isInteractive))
+        modifier(
+            GlassEffectModifier(
+                cornerRadius: cornerRadius,
+                isInteractive: isInteractive,
+                style: style
+            )
+        )
+    }
+
+    func glassMaterialFoundation(
+        style: GlassCardStyle,
+        cornerRadius: CGFloat
+    ) -> some View {
+        modifier(GlassMaterialFoundationModifier(style: style, cornerRadius: cornerRadius))
     }
     
     /// Applies a prominent glass effect for primary actions

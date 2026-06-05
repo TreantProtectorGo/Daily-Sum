@@ -184,7 +184,8 @@ struct BudgetCard: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassBackground(cornerRadius: 16, isInteractive: true)
+        .glassBackground(cornerRadius: 16, isInteractive: true, style: .row)
+        .glassSurfaceHierarchy(style: .row, cornerRadius: 16)
     }
 }
 

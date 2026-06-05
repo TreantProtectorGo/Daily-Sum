@@ -487,10 +487,10 @@ struct ReportsView: View {
         let trendRows = ReportsViewModel.recentMonthlyTrendRows(from: viewModel.monthlyTrends)
 
         VStack(alignment: .leading, spacing: 12) {
-            Text(AppLocalization.string("reports.monthlyTrends", defaultValue: "Recent 6-Month Trend"))
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
+            GlassSectionHeader(
+                AppLocalization.string("reports.monthlyTrends", defaultValue: "Recent 6-Month Trend"),
+                systemImage: "chart.line.uptrend.xyaxis"
+            )
             
             GlassCard(cornerRadius: 16, padding: 16) {
                 VStack(spacing: 16) {
@@ -1067,7 +1067,8 @@ struct BudgetRowCard: View {
             .padding(12)
         }
         .buttonStyle(.plain)
-        .glassBackground(cornerRadius: 14, isInteractive: true)
+        .glassBackground(cornerRadius: 14, isInteractive: true, style: .row)
+        .glassSurfaceHierarchy(style: .row, cornerRadius: 14)
         .contextMenu {
             Button {
                 onTap()

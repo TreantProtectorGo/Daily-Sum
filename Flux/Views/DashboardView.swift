@@ -121,7 +121,7 @@ struct DashboardView: View {
     
     @ViewBuilder
     private func balanceCard(viewModel: DashboardViewModel) -> some View {
-        GlassCard(cornerRadius: 20, padding: 20) {
+        GlassCard(cornerRadius: 22, padding: 22, style: .hero) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(AppLocalization.string("dashboard.totalBalance", defaultValue: "Total Balance"))
                     .font(.subheadline)
@@ -204,7 +204,7 @@ struct DashboardView: View {
                 VStack(spacing: 8) {
                     ForEach(viewModel.accounts.prefix(3)) { account in
                         GlassAccountRow(account: account) {
-                                selectedAccount = account
+                            selectedAccount = account
                         }
                     }
                 }
@@ -223,16 +223,10 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func accountsSectionHeader(viewModel: DashboardViewModel) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "building.columns")
-                .foregroundStyle(.secondary)
-
-            Text(AppLocalization.string("dashboard.accounts", defaultValue: "Accounts"))
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
+        GlassSectionHeader(
+            AppLocalization.string("dashboard.accounts", defaultValue: "Accounts"),
+            systemImage: "building.columns"
+        ) {
             if viewModel.accounts.count > 3 {
                 NavigationLink {
                     AccountsListView {
@@ -249,8 +243,6 @@ struct DashboardView: View {
                 .accessibilityIdentifier("dashboard.accounts.viewAll")
             }
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 8)
     }
     
     // MARK: - Recent Transactions Section

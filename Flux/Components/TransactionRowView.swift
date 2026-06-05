@@ -214,7 +214,8 @@ struct GlassTransactionRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassBackground(cornerRadius: 12, isInteractive: true)
+        .glassBackground(cornerRadius: 12, isInteractive: true, style: .row)
+        .glassSurfaceHierarchy(style: .row, cornerRadius: 12)
     }
 }
 
