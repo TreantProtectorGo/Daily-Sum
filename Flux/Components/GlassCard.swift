@@ -60,11 +60,11 @@ private struct GlassSurfaceHierarchyModifier: ViewModifier {
     private var borderColor: Color {
         switch style {
         case .hero:
-            AppColors.secondaryAccent.opacity(colorScheme == .dark ? 0.36 : 0.28)
+            Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.10)
         case .section:
-            AppColors.glassBorder.opacity(colorScheme == .dark ? 1.0 : 0.85)
+            Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.075)
         case .row:
-            Color.primary.opacity(colorScheme == .dark ? 0.10 : 0.07)
+            Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.055)
         }
     }
 

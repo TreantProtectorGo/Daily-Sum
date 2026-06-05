@@ -77,9 +77,9 @@ private struct GlassMaterialFoundationModifier: ViewModifier {
     private var heroFill: LinearGradient {
         LinearGradient(
             colors: [
-                AppColors.secondaryAccent.opacity(colorScheme == .dark ? 0.30 : 0.20),
-                AppColors.brandCoral.opacity(colorScheme == .dark ? 0.20 : 0.12),
-                Color.primary.opacity(colorScheme == .dark ? 0.08 : 0.025)
+                neutralSurface.opacity(colorScheme == .dark ? 0.42 : 0.88),
+                elevatedNeutralSurface.opacity(colorScheme == .dark ? 0.30 : 0.66),
+                Color.primary.opacity(colorScheme == .dark ? 0.035 : 0.012)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -89,8 +89,8 @@ private struct GlassMaterialFoundationModifier: ViewModifier {
     private var sectionFill: LinearGradient {
         LinearGradient(
             colors: [
-                Color.primary.opacity(colorScheme == .dark ? 0.065 : 0.028),
-                AppColors.secondaryAccent.opacity(colorScheme == .dark ? 0.075 : 0.020)
+                neutralSurface.opacity(colorScheme == .dark ? 0.28 : 0.58),
+                elevatedNeutralSurface.opacity(colorScheme == .dark ? 0.16 : 0.34)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -98,7 +98,35 @@ private struct GlassMaterialFoundationModifier: ViewModifier {
     }
 
     private var rowFill: Color {
-        Color.primary.opacity(colorScheme == .dark ? 0.025 : 0.010)
+        neutralSurface.opacity(colorScheme == .dark ? 0.14 : 0.24)
+    }
+
+    private var neutralSurface: Color {
+        #if os(iOS)
+        Color(UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                UIColor(red: 0.12, green: 0.13, blue: 0.14, alpha: 1.0)
+            } else {
+                UIColor(red: 0.98, green: 0.98, blue: 0.97, alpha: 1.0)
+            }
+        })
+        #else
+        colorScheme == .dark ? Color(red: 0.12, green: 0.13, blue: 0.14) : Color(red: 0.98, green: 0.98, blue: 0.97)
+        #endif
+    }
+
+    private var elevatedNeutralSurface: Color {
+        #if os(iOS)
+        Color(UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                UIColor(red: 0.18, green: 0.19, blue: 0.20, alpha: 1.0)
+            } else {
+                UIColor(red: 0.93, green: 0.94, blue: 0.93, alpha: 1.0)
+            }
+        })
+        #else
+        colorScheme == .dark ? Color(red: 0.18, green: 0.19, blue: 0.20) : Color(red: 0.93, green: 0.94, blue: 0.93)
+        #endif
     }
 }
 
