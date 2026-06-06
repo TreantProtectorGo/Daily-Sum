@@ -81,7 +81,7 @@ struct DateRangePicker: View {
             }
         }
         .padding()
-        .glassBackground(cornerRadius: 16)
+        .glassBackground(cornerRadius: 16, style: .section)
     }
 }
 

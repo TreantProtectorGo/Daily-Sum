@@ -134,7 +134,7 @@ struct ExchangeCalculatorSheet: View {
                 }
             }
             .padding(16)
-            .glassBackground(cornerRadius: 12, isInteractive: true)
+            .glassBackground(cornerRadius: 12, isInteractive: true, style: .section)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }

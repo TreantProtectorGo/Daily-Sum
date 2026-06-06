@@ -275,7 +275,7 @@ struct TransactionEntrySheet: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                 }
-                .glassBackground(cornerRadius: 12, isInteractive: true)
+                .glassBackground(cornerRadius: 12, isInteractive: true, style: .section)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             } else {
