@@ -15,7 +15,7 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: selectedTabBinding) {
             Tab(
-                AppLocalization.string("tab.dashboard", defaultValue: "Dashboard"),
+                AppLocalization.string("tab.dashboard", defaultValue: "主頁"),
                 systemImage: "house.fill",
                 value: .dashboard
             ) {
@@ -76,7 +76,7 @@ enum AppTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .dashboard:
-            AppLocalization.string("tab.dashboard", defaultValue: "Dashboard")
+            AppLocalization.string("tab.dashboard", defaultValue: "主頁")
         case .transactions:
             AppLocalization.string("tab.transactions", defaultValue: "Transactions")
         case .reports:

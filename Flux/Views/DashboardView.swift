@@ -24,7 +24,12 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     if let viewModel {
-                        balanceCard(viewModel: viewModel)
+                        BalanceOverviewCard(
+                            totalBalance: viewModel.totalBalance,
+                            accountCount: viewModel.accounts.count,
+                            hasAccounts: viewModel.hasAccounts,
+                            currencyCode: displayCurrencyCode
+                        )
                         
                         accountsSection(viewModel: viewModel)
                         
@@ -39,7 +44,7 @@ struct DashboardView: View {
                 .padding()
                 .padding(.bottom, 80)
             }
-            .navigationTitle(AppLocalization.string("dashboard.title", defaultValue: "Dashboard"))
+            .navigationTitle(AppLocalization.string("dashboard.title", defaultValue: "主頁"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
@@ -114,34 +119,6 @@ struct DashboardView: View {
             }
         }
     }
-    
-    // MARK: - Balance Card
-    
-    @ViewBuilder
-    private func balanceCard(viewModel: DashboardViewModel) -> some View {
-        GlassCard(cornerRadius: 22, padding: 22, style: .hero) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(AppLocalization.string("dashboard.totalBalance", defaultValue: "Total Balance"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                
-                Text(currency: viewModel.totalBalance, code: displayCurrencyCode)
-                    .font(.system(size: 36, weight: .bold))
-                
-                if viewModel.hasAccounts {
-                    HStack(spacing: 4) {
-                        Image(systemName: "building.columns.fill")
-                            .font(.caption)
-                        Text("\(viewModel.accounts.count) accounts")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-    
     // MARK: - Accounts Section
     
     @ViewBuilder
