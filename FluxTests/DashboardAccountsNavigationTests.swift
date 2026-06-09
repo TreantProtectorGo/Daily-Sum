@@ -31,4 +31,20 @@ final class DashboardAccountsNavigationTests: XCTestCase {
         XCTAssertTrue(source.contains(".padding(.bottom, 20)"))
         XCTAssertFalse(source.contains("ToolbarItem(placement: .topBarTrailing)"))
     }
+
+    func testDashboardDoesNotShowMonthlyIncomeExpenseSummaryCards() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Flux")
+            .appendingPathComponent("Views")
+            .appendingPathComponent("DashboardView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertFalse(source.contains("monthlySummarySection"))
+        XCTAssertFalse(source.contains("dashboard.income"))
+        XCTAssertFalse(source.contains("dashboard.expenses"))
+        XCTAssertFalse(source.contains("viewModel.monthlyIncome"))
+        XCTAssertFalse(source.contains("viewModel.monthlyExpenses"))
+    }
 }

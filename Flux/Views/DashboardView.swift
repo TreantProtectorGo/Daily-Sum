@@ -26,8 +26,6 @@ struct DashboardView: View {
                     if let viewModel {
                         balanceCard(viewModel: viewModel)
                         
-                        monthlySummarySection(viewModel: viewModel)
-                        
                         accountsSection(viewModel: viewModel)
                         
                         recentTransactionsSection(viewModel: viewModel)
@@ -141,55 +139,6 @@ struct DashboardView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-    
-    // MARK: - Monthly Summary
-    
-    @ViewBuilder
-    private func monthlySummarySection(viewModel: DashboardViewModel) -> some View {
-        HStack(spacing: 12) {
-            // Income
-            GlassCard(cornerRadius: 16, padding: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .foregroundStyle(AppColors.income)
-                        Text(AppLocalization.string("dashboard.income", defaultValue: "Income"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    AmountText(
-                        viewModel.monthlyIncome,
-                        currencyCode: displayCurrencyCode,
-                        font: .title3,
-                        fontWeight: .semibold
-                    )
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            
-            // Expenses
-            GlassCard(cornerRadius: 16, padding: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .foregroundStyle(AppColors.expense)
-                        Text(AppLocalization.string("dashboard.expenses", defaultValue: "Expenses"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    AmountText(
-                        -viewModel.monthlyExpenses,
-                        currencyCode: displayCurrencyCode,
-                        font: .title3,
-                        fontWeight: .semibold
-                    )
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
     }
     
