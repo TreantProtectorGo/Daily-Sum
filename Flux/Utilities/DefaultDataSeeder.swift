@@ -48,6 +48,7 @@ struct DefaultDataSeeder {
         let accountCount = try context.fetchCount(FetchDescriptor<Account>())
         #if DEBUG
         let transactionCount = try context.fetchCount(FetchDescriptor<Transaction>())
+        let budgetCount = try context.fetchCount(FetchDescriptor<Budget>())
         #endif
         
         if currencyCount == 0 {
@@ -65,6 +66,9 @@ struct DefaultDataSeeder {
         #if DEBUG
         if transactionCount == 0 {
             try seedDebugSampleTransactions()
+        }
+        if budgetCount == 0 {
+            try seedDebugSampleBudgets()
         }
         #endif
         
@@ -198,6 +202,41 @@ struct DefaultDataSeeder {
                 category: sample.category
             )
             context.insert(transaction)
+        }
+    }
+
+    private func seedDebugSampleBudgets() throws {
+        let categories = try context.fetch(FetchDescriptor<Category>())
+        let dining = category(
+            matching: "category.expense.dining",
+            type: .expense,
+            in: categories
+        )
+        let groceries = category(
+            matching: "category.expense.groceries",
+            type: .expense,
+            in: categories
+        )
+        let housing = category(
+            matching: "category.expense.housing",
+            type: .expense,
+            in: categories
+        )
+
+        let samples: [(limit: Decimal, category: Category?)] = [
+            (3000, dining),
+            (5000, groceries),
+            (5200, housing)
+        ]
+
+        for sample in samples {
+            let budget = Budget(
+                limitAmount: sample.limit,
+                currencyCode: SupportedCurrency.defaultFromLocale.rawValue,
+                period: .monthly,
+                category: sample.category
+            )
+            context.insert(budget)
         }
     }
 

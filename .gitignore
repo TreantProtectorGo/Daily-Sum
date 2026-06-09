@@ -3,3 +3,12 @@ docs/*
 !docs/privacy.html
 !docs/privacy.css
 .worktrees/
+
+# macOS
+.DS_Store
+
+# Generated App Store screenshot artifacts
+marketing/app-store/contact-sheet*.png
+marketing/app-store/raw-screenshots*/
+marketing/app-store/screenshots*/
+marketing/app-store-upload/
