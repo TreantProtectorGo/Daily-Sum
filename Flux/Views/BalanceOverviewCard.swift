@@ -288,7 +288,7 @@ struct BalanceOverviewCard: View {
             showSign: true
         )
         let percent = BalanceTrendCalculator.percentageText(summary.percentChange)
-        return "\(selectedRange.summaryTitle) \(amount) (\(percent))"
+        return "\(amount) (\(percent))"
     }
 
     var body: some View {

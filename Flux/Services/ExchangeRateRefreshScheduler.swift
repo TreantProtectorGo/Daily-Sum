@@ -4,13 +4,16 @@ import SwiftData
 @MainActor
 final class ExchangeRateRefreshScheduler {
     private let refreshInterval: TimeInterval
+    private let failureRetryInterval: TimeInterval
     private let provider: any ExchangeRateProvider
 
     init(
         refreshInterval: TimeInterval = 60 * 60 * 24,
+        failureRetryInterval: TimeInterval = 60 * 30,
         provider: (any ExchangeRateProvider)? = nil
     ) {
         self.refreshInterval = refreshInterval
+        self.failureRetryInterval = failureRetryInterval
         self.provider = provider ?? HKMAExchangeRateProvider()
     }
 
@@ -24,6 +27,14 @@ final class ExchangeRateRefreshScheduler {
     ) -> Bool {
         guard let lastSuccessfulSyncDate else { return true }
         return now.timeIntervalSince(lastSuccessfulSyncDate) >= refreshInterval
+    }
+
+    func shouldRetryAfterFailure(
+        lastFailedAttemptDate: Date?,
+        now: Date = .now
+    ) -> Bool {
+        guard let lastFailedAttemptDate else { return true }
+        return now.timeIntervalSince(lastFailedAttemptDate) >= failureRetryInterval
     }
 
     @discardableResult
@@ -44,12 +55,20 @@ final class ExchangeRateRefreshScheduler {
             return false
         }
 
+        if !force && !shouldRetryAfterFailure(
+            lastFailedAttemptDate: ExchangeRateSyncPreference.lastFailedAttemptDate,
+            now: now
+        ) {
+            return false
+        }
+
         let quoteCurrencyCodes = SupportedCurrency.allCases
             .map(\.rawValue)
             .filter { $0 != normalizedBaseCurrencyCode }
 
         guard !quoteCurrencyCodes.isEmpty else {
             ExchangeRateSyncPreference.lastSuccessfulSyncDate = now
+            ExchangeRateSyncPreference.lastFailedAttemptDate = nil
             return false
         }
 
@@ -57,12 +76,18 @@ final class ExchangeRateRefreshScheduler {
             context: context,
             provider: provider
         )
-        _ = try await repository.refreshLatestRates(
-            baseCurrencyCode: normalizedBaseCurrencyCode,
-            quoteCurrencyCodes: quoteCurrencyCodes
-        )
+        do {
+            _ = try await repository.refreshLatestRates(
+                baseCurrencyCode: normalizedBaseCurrencyCode,
+                quoteCurrencyCodes: quoteCurrencyCodes
+            )
 
-        ExchangeRateSyncPreference.lastSuccessfulSyncDate = now
-        return true
+            ExchangeRateSyncPreference.lastSuccessfulSyncDate = now
+            ExchangeRateSyncPreference.lastFailedAttemptDate = nil
+            return true
+        } catch {
+            ExchangeRateSyncPreference.lastFailedAttemptDate = now
+            throw error
+        }
     }
 }

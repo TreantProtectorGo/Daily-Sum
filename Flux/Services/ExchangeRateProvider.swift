@@ -82,12 +82,12 @@ struct HKMAExchangeRateProvider: ExchangeRateProvider {
     private let baseURL: URL
 
     init(
-        session: URLSession = .shared,
+        session: URLSession? = nil,
         baseURL: URL = URL(
             string: "https://api.hkma.gov.hk/public/market-data-and-statistics/monthly-statistical-bulletin/er-ir/er-eeri-daily"
         )!
     ) {
-        self.session = session
+        self.session = session ?? Self.makeDefaultSession()
         self.baseURL = baseURL
     }
 
@@ -241,5 +241,13 @@ struct HKMAExchangeRateProvider: ExchangeRateProvider {
         var utcCalendar = Calendar(identifier: .gregorian)
         utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return utcCalendar.startOfDay(for: date)
+    }
+
+    private static func makeDefaultSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 12
+        configuration.timeoutIntervalForResource = 20
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: configuration)
     }
 }

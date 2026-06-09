@@ -42,10 +42,16 @@ final class ServiceTests: XCTestCase {
         private(set) var callCount = 0
         private let snapshotDate: Date
         private let rates: [String: Decimal]
+        private let error: Swift.Error?
 
-        init(snapshotDate: Date, rates: [String: Decimal]) {
+        init(
+            snapshotDate: Date,
+            rates: [String: Decimal],
+            error: Swift.Error? = nil
+        ) {
             self.snapshotDate = snapshotDate
             self.rates = rates
+            self.error = error
         }
 
         func fetchRates(
@@ -54,6 +60,9 @@ final class ServiceTests: XCTestCase {
             on date: Date?
         ) async throws -> ExchangeRateSnapshot {
             callCount += 1
+            if let error {
+                throw error
+            }
 
             let requestedRates = quoteCurrencyCodes.reduce(into: [String: Decimal]()) {
                 result,
@@ -73,6 +82,7 @@ final class ServiceTests: XCTestCase {
     var container: ModelContainer!
     var context: ModelContext!
     var originalLastSuccessfulRateSyncDate: Date?
+    var originalLastFailedRateSyncAttemptDate: Date?
     var originalInstallmentPurgeFlag: Any?
     var originalAppLanguage: AppLanguage?
     
@@ -81,6 +91,8 @@ final class ServiceTests: XCTestCase {
         context = container.mainContext
         originalLastSuccessfulRateSyncDate = ExchangeRateSyncPreference.lastSuccessfulSyncDate
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
+        originalLastFailedRateSyncAttemptDate = ExchangeRateSyncPreference.lastFailedAttemptDate
+        ExchangeRateSyncPreference.lastFailedAttemptDate = nil
         originalInstallmentPurgeFlag = UserDefaults.standard.object(forKey: "flux.installment.purge.v1.done")
         originalAppLanguage = AppLanguagePreference.language
         AppLanguagePreference.language = .english
@@ -89,6 +101,8 @@ final class ServiceTests: XCTestCase {
     override func tearDown() async throws {
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = originalLastSuccessfulRateSyncDate
         originalLastSuccessfulRateSyncDate = nil
+        ExchangeRateSyncPreference.lastFailedAttemptDate = originalLastFailedRateSyncAttemptDate
+        originalLastFailedRateSyncAttemptDate = nil
         if let originalInstallmentPurgeFlag {
             UserDefaults.standard.set(originalInstallmentPurgeFlag, forKey: "flux.installment.purge.v1.done")
         } else {
@@ -1449,5 +1463,61 @@ final class ServiceTests: XCTestCase {
         XCTAssertFalse(refreshed)
         XCTAssertEqual(provider.callCount, 0)
         XCTAssertEqual(ExchangeRateSyncPreference.lastSuccessfulSyncDate, recentDate)
+    }
+
+    func testExchangeRateRefreshSchedulerRecordsFailedAttempt() async throws {
+        let now = Date(timeIntervalSince1970: 1_739_571_200) // 2025-02-15 UTC
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
+        ExchangeRateSyncPreference.lastFailedAttemptDate = nil
+
+        let provider = MockExchangeRateProvider(
+            snapshotDate: now,
+            rates: [:],
+            error: URLError(.timedOut)
+        )
+        let scheduler = ExchangeRateRefreshScheduler(
+            refreshInterval: 60 * 60 * 24,
+            provider: provider
+        )
+
+        do {
+            _ = try await scheduler.refreshLatestRatesIfNeeded(
+                context: context,
+                baseCurrencyCode: "USD",
+                now: now
+            )
+            XCTFail("Expected timeout to propagate")
+        } catch {
+            XCTAssertEqual((error as? URLError)?.code, .timedOut)
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertNil(ExchangeRateSyncPreference.lastSuccessfulSyncDate)
+        XCTAssertEqual(ExchangeRateSyncPreference.lastFailedAttemptDate, now)
+    }
+
+    func testExchangeRateRefreshSchedulerSkipsDuringFailureBackoff() async throws {
+        let now = Date(timeIntervalSince1970: 1_739_571_200) // 2025-02-15 UTC
+        ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
+        ExchangeRateSyncPreference.lastFailedAttemptDate = now.addingTimeInterval(-(60 * 10))
+
+        let provider = MockExchangeRateProvider(
+            snapshotDate: now,
+            rates: ["TWD": 32]
+        )
+        let scheduler = ExchangeRateRefreshScheduler(
+            refreshInterval: 60 * 60 * 24,
+            failureRetryInterval: 60 * 30,
+            provider: provider
+        )
+
+        let refreshed = try await scheduler.refreshLatestRatesIfNeeded(
+            context: context,
+            baseCurrencyCode: "USD",
+            now: now
+        )
+
+        XCTAssertFalse(refreshed)
+        XCTAssertEqual(provider.callCount, 0)
     }
 }

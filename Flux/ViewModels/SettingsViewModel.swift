@@ -12,6 +12,7 @@ private let kRememberLastUsedTransactionAccount = "flux.rememberLastUsedTransact
 private let kLastUsedTransactionAccountId = "flux.lastUsedTransactionAccountId"
 private let kAutoPresentAccountAfterCategorySelection = "flux.autoPresentAccountAfterCategorySelection"
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
+private let kLastFailedRateSyncAttemptDate = "flux.lastFailedRateSyncAttemptDate"
 private let kTravelCurrencySource = "flux.travelCurrencySource"
 private let kDetectedTravelCurrencyCode = "flux.detectedTravelCurrencyCode"
 private let kManualTravelCurrencyCode = "flux.manualTravelCurrencyCode"
@@ -101,7 +102,24 @@ enum ExchangeRateSyncPreference {
             UserDefaults.standard.object(forKey: kLastSuccessfulRateSyncDate) as? Date
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: kLastSuccessfulRateSyncDate)
+            if let newValue {
+                UserDefaults.standard.set(newValue, forKey: kLastSuccessfulRateSyncDate)
+            } else {
+                UserDefaults.standard.removeObject(forKey: kLastSuccessfulRateSyncDate)
+            }
+        }
+    }
+
+    static var lastFailedAttemptDate: Date? {
+        get {
+            UserDefaults.standard.object(forKey: kLastFailedRateSyncAttemptDate) as? Date
+        }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(newValue, forKey: kLastFailedRateSyncAttemptDate)
+            } else {
+                UserDefaults.standard.removeObject(forKey: kLastFailedRateSyncAttemptDate)
+            }
         }
     }
 }

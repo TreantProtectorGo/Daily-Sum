@@ -101,6 +101,13 @@ final class DashboardAccountsNavigationTests: XCTestCase {
         XCTAssertTrue(source.contains("LineMark"))
         XCTAssertTrue(source.contains("AreaMark"))
         XCTAssertTrue(source.contains("rangeSummaryText"))
+        let rangeSummaryBody = try XCTUnwrap(
+            source.range(of: "private var rangeSummaryText: String")?.lowerBound
+        )
+        let rangeSummarySource = String(source[rangeSummaryBody...])
+            .prefix(500)
+        XCTAssertFalse(rangeSummarySource.contains("selectedRange.summaryTitle"))
+        XCTAssertTrue(rangeSummarySource.contains("return \"\\(amount) (\\(percent))\""))
         XCTAssertTrue(source.contains("BalanceTrendCalculator"))
         XCTAssertTrue(source.contains("Text(currency: totalBalance, code: currencyCode)"))
         XCTAssertTrue(source.contains(".frame(height: 180)"))
