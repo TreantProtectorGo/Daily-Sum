@@ -67,6 +67,128 @@ struct BalanceTrendPoint: Identifiable {
     }
 }
 
+enum BalanceTrendPolarity: Equatable {
+    case positive
+    case negative
+
+    var color: Color {
+        switch self {
+        case .positive:
+            AppColors.income
+        case .negative:
+            AppColors.expense
+        }
+    }
+}
+
+struct BalanceTrendChartPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let balance: Decimal
+    let polarity: BalanceTrendPolarity
+    let segmentID: String
+
+    var balanceValue: Double {
+        NSDecimalNumber(decimal: balance).doubleValue
+    }
+}
+
+enum BalanceTrendChartSeries {
+    static func points(from points: [BalanceTrendPoint]) -> [BalanceTrendChartPoint] {
+        guard let first = points.first else { return [] }
+
+        var output: [BalanceTrendChartPoint] = []
+        var segmentIndex = 0
+        var currentPolarity = polarity(for: first.balance, fallback: .positive)
+
+        append(
+            first,
+            polarity: currentPolarity,
+            segmentIndex: segmentIndex,
+            to: &output
+        )
+
+        for point in points.dropFirst() {
+            guard let previous = output.last else { continue }
+            let nextPolarity = polarity(for: point.balance, fallback: currentPolarity)
+
+            if nextPolarity != currentPolarity, let zeroDate = zeroCrossingDate(
+                from: previous.date,
+                previousBalance: previous.balance,
+                to: point.date,
+                nextBalance: point.balance
+            ) {
+                let zeroPoint = BalanceTrendPoint(date: zeroDate, balance: 0)
+                append(
+                    zeroPoint,
+                    polarity: currentPolarity,
+                    segmentIndex: segmentIndex,
+                    to: &output
+                )
+
+                segmentIndex += 1
+                currentPolarity = nextPolarity
+                append(
+                    zeroPoint,
+                    polarity: currentPolarity,
+                    segmentIndex: segmentIndex,
+                    to: &output
+                )
+            }
+
+            append(
+                point,
+                polarity: currentPolarity,
+                segmentIndex: segmentIndex,
+                to: &output
+            )
+        }
+
+        return output
+    }
+
+    private static func append(
+        _ point: BalanceTrendPoint,
+        polarity: BalanceTrendPolarity,
+        segmentIndex: Int,
+        to output: inout [BalanceTrendChartPoint]
+    ) {
+        output.append(
+            BalanceTrendChartPoint(
+                date: point.date,
+                balance: point.balance,
+                polarity: polarity,
+                segmentID: "\(polarity)-\(segmentIndex)"
+            )
+        )
+    }
+
+    private static func polarity(
+        for balance: Decimal,
+        fallback: BalanceTrendPolarity
+    ) -> BalanceTrendPolarity {
+        if balance > 0 { return .positive }
+        if balance < 0 { return .negative }
+        return fallback
+    }
+
+    private static func zeroCrossingDate(
+        from previousDate: Date,
+        previousBalance: Decimal,
+        to nextDate: Date,
+        nextBalance: Decimal
+    ) -> Date? {
+        let previousValue = NSDecimalNumber(decimal: previousBalance).doubleValue
+        let nextValue = NSDecimalNumber(decimal: nextBalance).doubleValue
+        let distance = abs(previousValue) + abs(nextValue)
+        guard distance > 0 else { return nil }
+
+        let fraction = abs(previousValue) / distance
+        let interval = nextDate.timeIntervalSince(previousDate)
+        return previousDate.addingTimeInterval(interval * fraction)
+    }
+}
+
 struct BalanceTrendSummary {
     var points: [BalanceTrendPoint] = []
     var currentBalance: Decimal = 0
@@ -75,22 +197,30 @@ struct BalanceTrendSummary {
     var change: Decimal {
         currentBalance - startingBalance
     }
-
-    var percentChange: Decimal {
-        guard startingBalance != 0 else { return 0 }
-        return change / abs(startingBalance) * 100
-    }
 }
 
-enum BalanceTrendCalculator {
-    static func percentageText(_ percent: Decimal) -> String {
-        let value = NSDecimalNumber(decimal: percent).doubleValue
-        let formatted = value.formatted(
-            .number
-                .precision(.fractionLength(2))
-                .sign(strategy: .always())
+enum BalanceTrendDisclosureCopy {
+    static func accountText(_ accountCount: Int) -> String {
+        AppLocalization.formatted(
+            "%lld accounts",
+            defaultValue: "%lld accounts",
+            Int64(accountCount)
         )
-        return "\(formatted)%"
+    }
+
+    static func summary(
+        range: BalanceTrendRange,
+        accountCount: Int,
+        hasAccounts: Bool
+    ) -> String {
+        guard hasAccounts else { return range.title }
+        return "\(range.title) · \(accountText(accountCount))"
+    }
+
+    static func accessibilityLabel(isExpanded: Bool) -> String {
+        isExpanded
+            ? AppLocalization.string("balance.trend.hide", defaultValue: "Hide balance trend")
+            : AppLocalization.string("balance.trend.show", defaultValue: "Show balance trend")
     }
 }
 
@@ -264,6 +394,7 @@ struct BalanceOverviewCard: View {
     @State private var viewModel: BalanceTrendViewModel?
     @State private var selectedRange: BalanceTrendRange = .week
     @State private var showInfo = false
+    @AppStorage("dashboard.balanceTrendExpanded") private var isTrendExpanded = false
 
     let totalBalance: Decimal
     let accountCount: Int
@@ -281,25 +412,32 @@ struct BalanceOverviewCard: View {
         summary.change < 0 ? AppColors.expense : AppColors.income
     }
 
+    private var chartPoints: [BalanceTrendChartPoint] {
+        BalanceTrendChartSeries.points(from: summary.points)
+    }
+
     private var rangeSummaryText: String {
         let amount = CurrencyFormatter.shared.format(
             summary.change,
             currencyCode: currencyCode,
             showSign: true
         )
-        let percent = BalanceTrendCalculator.percentageText(summary.percentChange)
-        return "\(amount) (\(percent))"
+        return amount
     }
 
     var body: some View {
         GlassCard(cornerRadius: 22, padding: 22, style: .hero) {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                chartSection
-                rangeSelector
-                accountCountLabel
+                trendDisclosureControl
+
+                if isTrendExpanded {
+                    rangeSelector
+                    trendExpandedFooter
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .animation(.snappy(duration: 0.28), value: isTrendExpanded)
         }
         .accessibilityIdentifier("dashboard.totalBalance.card")
         .task {
@@ -328,6 +466,109 @@ struct BalanceOverviewCard: View {
                     defaultValue: "This trend estimates past total balance from current included account balances and recorded transactions. It is not investment market performance."
                 )
             )
+        }
+    }
+
+    @ViewBuilder
+    private var trendDisclosureControl: some View {
+        if isTrendExpanded {
+            chartSection(isCompact: false)
+        } else {
+            Button {
+                setTrendExpanded(true)
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    chartSection(isCompact: true)
+                    disclosureSummaryPill
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(BalanceTrendDisclosureCopy.accessibilityLabel(isExpanded: false))
+            .accessibilityValue(
+                BalanceTrendDisclosureCopy.summary(
+                    range: selectedRange,
+                    accountCount: accountCount,
+                    hasAccounts: hasAccounts
+                )
+            )
+            .accessibilityIdentifier("dashboard.balanceTrend.disclosure")
+        }
+    }
+
+    private var disclosureSummaryPill: some View {
+        HStack(spacing: 8) {
+            Text(
+                BalanceTrendDisclosureCopy.summary(
+                    range: selectedRange,
+                    accountCount: accountCount,
+                    hasAccounts: hasAccounts
+                )
+            )
+            .font(.caption)
+            .fontWeight(.semibold)
+
+            Image(systemName: "chevron.down")
+                .font(.caption2.weight(.bold))
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background {
+            Capsule(style: .continuous)
+                .fill(.thinMaterial)
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(.secondary.opacity(0.12), lineWidth: 1)
+                }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private var trendExpandedFooter: some View {
+        Button {
+            setTrendExpanded(false)
+        } label: {
+            HStack(spacing: 4) {
+                if hasAccounts {
+                    Image(systemName: "building.columns.fill")
+                        .font(.caption)
+                    Text(BalanceTrendDisclosureCopy.accountText(accountCount))
+                        .font(.caption)
+                }
+
+                Spacer(minLength: 12)
+
+                Image(systemName: "chevron.up")
+                    .font(.caption.weight(.semibold))
+                    .frame(width: 28, height: 28)
+                    .background {
+                        Circle()
+                            .fill(.thinMaterial)
+                            .overlay {
+                                Circle()
+                                    .stroke(.secondary.opacity(0.12), lineWidth: 1)
+                            }
+                    }
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(BalanceTrendDisclosureCopy.accessibilityLabel(isExpanded: true))
+        .accessibilityValue(
+            BalanceTrendDisclosureCopy.summary(
+                range: selectedRange,
+                accountCount: accountCount,
+                hasAccounts: hasAccounts
+            )
+        )
+        .accessibilityIdentifier("dashboard.balanceTrend.collapse")
+    }
+
+    private func setTrendExpanded(_ expanded: Bool) {
+        withAnimation(.snappy(duration: 0.28)) {
+            isTrendExpanded = expanded
         }
     }
 
@@ -367,44 +608,51 @@ struct BalanceOverviewCard: View {
         }
     }
 
-    private var chartSection: some View {
-        Chart(summary.points) { point in
-            AreaMark(
-                x: .value("Date", point.date),
-                y: .value("Balance", point.balanceValue)
-            )
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [trendColor.opacity(0.28), trendColor.opacity(0.02)],
-                    startPoint: .top,
-                    endPoint: .bottom
+    private func chartSection(isCompact: Bool) -> some View {
+        Chart(chartPoints) { point in
+            if !isCompact {
+                AreaMark(
+                    x: .value("Date", point.date),
+                    yStart: .value("HK$0", 0),
+                    yEnd: .value("Balance", point.balanceValue),
+                    series: .value("Trend Segment", point.segmentID)
                 )
-            )
-            .interpolationMethod(.catmullRom)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [point.polarity.color.opacity(0.22), point.polarity.color.opacity(0.02)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.catmullRom)
+            }
 
             LineMark(
                 x: .value("Date", point.date),
-                y: .value("Balance", point.balanceValue)
+                y: .value("Balance", point.balanceValue),
+                series: .value("Trend Segment", point.segmentID)
             )
-            .foregroundStyle(trendColor)
-            .lineStyle(.init(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .foregroundStyle(isCompact ? point.polarity.color.opacity(0.74) : point.polarity.color)
+            .lineStyle(.init(lineWidth: isCompact ? 2 : 3, lineCap: .round, lineJoin: .round))
             .interpolationMethod(.catmullRom)
         }
         .chartXAxis(.hidden)
         .chartYAxis {
-            AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 4]))
-                    .foregroundStyle(.secondary.opacity(0.28))
-                AxisValueLabel {
-                    if let number = value.as(Double.self) {
-                        Text(CurrencyFormatter.shared.formatCompact(Decimal(number), currencyCode: currencyCode))
+            if !isCompact {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 4]))
+                        .foregroundStyle(.secondary.opacity(0.24))
+                    AxisValueLabel {
+                        if let number = value.as(Double.self) {
+                            Text(CurrencyFormatter.shared.formatCompact(Decimal(number), currencyCode: currencyCode))
+                        }
                     }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
             }
         }
-        .frame(height: 180)
+        .frame(height: isCompact ? 44 : 180)
         .overlay {
             if viewModel?.isLoading == true {
                 ProgressView()
@@ -442,18 +690,6 @@ struct BalanceOverviewCard: View {
         .accessibilityIdentifier("balance.range.selector")
     }
 
-    @ViewBuilder
-    private var accountCountLabel: some View {
-        if hasAccounts {
-            HStack(spacing: 4) {
-                Image(systemName: "building.columns.fill")
-                    .font(.caption)
-                Text("\(accountCount) accounts")
-                    .font(.caption)
-            }
-            .foregroundStyle(.secondary)
-        }
-    }
 }
 
 #Preview("Balance Overview Card") {
