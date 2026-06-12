@@ -115,6 +115,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme.system": "System",
                     "settings.theme.light": "Light",
                     "settings.theme.dark": "Dark",
+                    "settings.options": "Options",
                     "settings.startup": "Startup",
                     "settings.defaultLaunchPage": "Default Page",
                     "settings.defaultLaunchPage.footer": "Choose which tab opens when you launch Flux."
@@ -127,6 +128,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme.system": "跟随系统",
                     "settings.theme.light": "浅色",
                     "settings.theme.dark": "深色",
+                    "settings.options": "选项",
                     "settings.startup": "启动",
                     "settings.defaultLaunchPage": "默认开启页面",
                     "settings.defaultLaunchPage.footer": "选择启动 Flux 时开启的分页。"
@@ -139,6 +141,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme.system": "跟隨系統",
                     "settings.theme.light": "淺色",
                     "settings.theme.dark": "深色",
+                    "settings.options": "選項",
                     "settings.startup": "啟動",
                     "settings.defaultLaunchPage": "預設開啟頁面",
                     "settings.defaultLaunchPage.footer": "選擇啟動 Flux 時開啟的分頁。"

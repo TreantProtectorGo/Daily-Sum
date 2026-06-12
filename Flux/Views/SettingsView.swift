@@ -60,13 +60,9 @@ struct SettingsView: View {
         Form {
             // Currency Settings
             currencySection(viewModel: viewModel)
-            exchangeRateSection(viewModel: viewModel)
-            languageSection(viewModel: viewModel)
+            optionsSection(viewModel: viewModel)
             themeSection(viewModel: viewModel)
-            startupSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
-            remindersSection(viewModel: viewModel)
-            reportsSection(viewModel: viewModel)
             
             // Data Summary
             dataSummarySection(viewModel: viewModel)
@@ -182,60 +178,6 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private func reportsSection(viewModel: SettingsViewModel) -> some View {
-        Section {
-            Picker(
-                AppLocalization.string(
-                    "settings.reports.categoryRows",
-                    defaultValue: "Category Rows"
-                ),
-                selection: Binding(
-                    get: { viewModel.reportsCategoryRowLimit },
-                    set: { viewModel.reportsCategoryRowLimit = $0 }
-                )
-            ) {
-                ForEach(ReportsCategoryRowLimitPreference.supportedValues, id: \.self) { rowLimit in
-                    Text("\(rowLimit)")
-                        .tag(rowLimit)
-                }
-            }
-            .tint(AppColors.interactiveText)
-        } header: {
-            Text(AppLocalization.string("settings.reports", defaultValue: "Reports"))
-        } footer: {
-            Text(
-                AppLocalization.string(
-                    "settings.reports.categoryRows.footer",
-                    defaultValue: "Controls how many category rows are shown by default in Reports before you tap Show more."
-                )
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func remindersSection(viewModel: SettingsViewModel) -> some View {
-        Section {
-            Toggle(
-                AppLocalization.string("settings.reminders.status", defaultValue: "All Notifications"),
-                isOn: Binding(
-                    get: { viewModel.allNotificationsEnabled },
-                    set: { isEnabled in
-                        Task {
-                            let action = await viewModel.setAllNotificationsEnabled(isEnabled)
-                            if action == .openSystemSettings {
-                                openSystemSettings()
-                            }
-                        }
-                    }
-                )
-            )
-            .tint(AppColors.interactiveText)
-        } header: {
-            Text(AppLocalization.string("settings.reminders", defaultValue: "Notifications"))
-        }
-    }
-
     private func openSystemSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
@@ -247,6 +189,37 @@ struct SettingsView: View {
     private func currencySection(viewModel: SettingsViewModel) -> some View {
         Section(AppLocalization.string("settings.currency", defaultValue: "Currency")) {
             defaultCurrencyMenu(viewModel: viewModel)
+            Button {
+                showTravelCurrencySettings = true
+            } label: {
+                HStack {
+                    Text(
+                        AppLocalization.string(
+                            "settings.exchangeRate.configuration",
+                            defaultValue: "Foreign Currency Mode"
+                        )
+                    )
+                    Spacer()
+                    Text(viewModel.travelCurrencySettingSummary)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(AppColors.interactiveText)
+
+            Button {
+                showExchangeCalculator = true
+            } label: {
+                Text(
+                        AppLocalization.string(
+                            "settings.exchangeRate.openCalculator",
+                            defaultValue: "Exchange Calculator"
+                        )
+                )
+            }
+            .foregroundStyle(AppColors.interactiveText)
         }
     }
 
@@ -293,74 +266,17 @@ struct SettingsView: View {
         .accessibilityValue(viewModel.defaultCurrencyCode)
     }
 
-    @ViewBuilder
-    private func exchangeRateSection(viewModel: SettingsViewModel) -> some View {
-        Section {
-            Button {
-                showTravelCurrencySettings = true
-            } label: {
-                HStack {
-                    Text(
-                        AppLocalization.string(
-                            "settings.exchangeRate.configuration",
-                            defaultValue: "Foreign Currency Mode"
-                        )
-                    )
-                    Spacer()
-                    Text(viewModel.travelCurrencySettingSummary)
-                        .foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .foregroundStyle(AppColors.interactiveText)
-
-            Button {
-                showExchangeCalculator = true
-            } label: {
-                Text(
-                        AppLocalization.string(
-                            "settings.exchangeRate.openCalculator",
-                            defaultValue: "Exchange Calculator"
-                        )
-                    )
-            }
-            .foregroundStyle(AppColors.interactiveText)
-        } header: {
-            Text(
-                AppLocalization.string(
-                    "settings.exchangeRate.travelSection",
-                    defaultValue: "Foreign Currency"
-                )
-            )
-        }
-    }
-
-    // MARK: - Language Section
+    // MARK: - Options Section
 
     @ViewBuilder
-    private func languageSection(viewModel: SettingsViewModel) -> some View {
+    private func optionsSection(viewModel: SettingsViewModel) -> some View {
         Section {
-            Picker(
-                AppLocalization.string("settings.defaultLanguage", defaultValue: "App Language"),
-                selection: Binding(
-                    get: {
-                        viewModel.appLanguage == .system
-                            ? .traditionalChinese
-                            : viewModel.appLanguage
-                    },
-                    set: { viewModel.appLanguage = $0 }
-                )
-            ) {
-                ForEach(AppLanguage.allCases.filter { $0 != .system }) { language in
-                    Text(language.displayName)
-                        .tag(language)
-                }
-            }
-            .tint(AppColors.interactiveText)
+            appLanguagePicker(viewModel: viewModel)
+            defaultLaunchPagePicker(viewModel: viewModel)
+            allNotificationsToggle(viewModel: viewModel)
+            categoryRowsPicker(viewModel: viewModel)
         } header: {
-            Text(AppLocalization.string("settings.language", defaultValue: "Language"))
+            Text(AppLocalization.string("settings.options", defaultValue: "Options"))
         }
     }
 
@@ -387,33 +303,78 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private func startupSection(viewModel: SettingsViewModel) -> some View {
-        Section {
-            Picker(
-                AppLocalization.string("settings.defaultLaunchPage", defaultValue: "Default Page"),
-                selection: Binding(
-                    get: { viewModel.appLaunchTab },
-                    set: { viewModel.appLaunchTab = $0 }
-                )
-            ) {
-                ForEach(viewModel.availableLaunchTabs) { tab in
-                    Label(tab.title, systemImage: tab.icon)
-                        .tag(tab)
-                }
-            }
-            .tint(AppColors.interactiveText)
-            .accessibilityIdentifier("settings.defaultLaunchPage.picker")
-        } header: {
-            Text(AppLocalization.string("settings.startup", defaultValue: "Startup"))
-        } footer: {
-            Text(
-                AppLocalization.string(
-                    "settings.defaultLaunchPage.footer",
-                    defaultValue: "Choose which tab opens when you launch Flux."
-                )
+    private func appLanguagePicker(viewModel: SettingsViewModel) -> some View {
+        Picker(
+            AppLocalization.string("settings.defaultLanguage", defaultValue: "App Language"),
+            selection: Binding(
+                get: {
+                    viewModel.appLanguage == .system
+                        ? .traditionalChinese
+                        : viewModel.appLanguage
+                },
+                set: { viewModel.appLanguage = $0 }
             )
+        ) {
+            ForEach(AppLanguage.allCases.filter { $0 != .system }) { language in
+                Text(language.displayName)
+                    .tag(language)
+            }
         }
+        .tint(AppColors.interactiveText)
+    }
+
+    private func defaultLaunchPagePicker(viewModel: SettingsViewModel) -> some View {
+        Picker(
+            AppLocalization.string("settings.defaultLaunchPage", defaultValue: "Default Page"),
+            selection: Binding(
+                get: { viewModel.appLaunchTab },
+                set: { viewModel.appLaunchTab = $0 }
+            )
+        ) {
+            ForEach(viewModel.availableLaunchTabs) { tab in
+                Label(tab.title, systemImage: tab.icon)
+                    .tag(tab)
+            }
+        }
+        .tint(AppColors.interactiveText)
+        .accessibilityIdentifier("settings.defaultLaunchPage.picker")
+    }
+
+    private func allNotificationsToggle(viewModel: SettingsViewModel) -> some View {
+        Toggle(
+            AppLocalization.string("settings.reminders.status", defaultValue: "All Notifications"),
+            isOn: Binding(
+                get: { viewModel.allNotificationsEnabled },
+                set: { isEnabled in
+                    Task {
+                        let action = await viewModel.setAllNotificationsEnabled(isEnabled)
+                        if action == .openSystemSettings {
+                            openSystemSettings()
+                        }
+                    }
+                }
+            )
+        )
+        .tint(AppColors.interactiveText)
+    }
+
+    private func categoryRowsPicker(viewModel: SettingsViewModel) -> some View {
+        Picker(
+            AppLocalization.string(
+                "settings.reports.categoryRows",
+                defaultValue: "Category Rows"
+            ),
+            selection: Binding(
+                get: { viewModel.reportsCategoryRowLimit },
+                set: { viewModel.reportsCategoryRowLimit = $0 }
+            )
+        ) {
+            ForEach(ReportsCategoryRowLimitPreference.supportedValues, id: \.self) { rowLimit in
+                Text("\(rowLimit)")
+                    .tag(rowLimit)
+            }
+        }
+        .tint(AppColors.interactiveText)
     }
 
     // MARK: - Data Summary Section
