@@ -9,7 +9,7 @@ enum AccountServiceError: LocalizedError, Equatable {
         case .cannotChangeCurrencyWithTravelTransactions:
             return AppLocalization.string(
                 "account.error.travelCurrencyChangeUnsupported",
-                defaultValue: "This account has travel transactions. Create a new account instead of changing its currency."
+                defaultValue: "This account has foreign currency transactions. Create a new account instead of changing its currency."
             )
         }
     }

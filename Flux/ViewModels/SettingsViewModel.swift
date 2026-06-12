@@ -304,6 +304,12 @@ final class SettingsViewModel {
         }
     }
 
+    var appLaunchTab: AppTab {
+        didSet {
+            AppLaunchTabPreference.defaultTab = appLaunchTab
+        }
+    }
+
     var travelCurrencySource: TravelCurrencySource {
         didSet {
             TravelCurrencyPreference.source = travelCurrencySource
@@ -393,6 +399,10 @@ final class SettingsViewModel {
         TravelCurrencyManualSelection.availableCurrencies(
             defaultCurrencyCode: defaultCurrencyCode
         )
+    }
+
+    var availableLaunchTabs: [AppTab] {
+        AppLaunchTabPreference.supportedTabs
     }
 
     var exchangeRateProviderName: String {
@@ -580,6 +590,7 @@ final class SettingsViewModel {
         self.autoPresentAccountAfterCategorySelection = TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
         self.appLanguage = AppLanguagePreference.language
         self.appTheme = AppThemePreference.theme
+        self.appLaunchTab = AppLaunchTabPreference.defaultTab
         self.travelCurrencySource = TravelCurrencyPreference.source
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -786,6 +797,7 @@ final class SettingsViewModel {
             TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
         appLanguage = AppLanguagePreference.language
         appTheme = AppThemePreference.theme
+        appLaunchTab = AppLaunchTabPreference.defaultTab
         travelCurrencySource = TravelCurrencyPreference.source
         detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode

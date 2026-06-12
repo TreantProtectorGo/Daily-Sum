@@ -364,19 +364,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This account has travel transactions. Create a new account instead of changing its currency."
+            "value" : "This account has foreign currency transactions. Create a new account instead of changing its currency."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此账户已有旅行交易。请改为建立新账户，而不是直接更改币别。"
+            "value" : "此账户已有外币交易。请改为建立新账户，而不是直接更改币别。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此帳戶已有旅行交易。請改為建立新帳戶，而不是直接更改幣別。"
+            "value" : "此帳戶已有外幣交易。請改為建立新帳戶，而不是直接更改幣別。"
           }
         }
       }
@@ -3282,19 +3282,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show Travel Transactions Only"
+            "value" : "Show Foreign Currency Transactions Only"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅显示旅行交易"
+            "value" : "仅显示外币交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "僅顯示旅遊交易"
+            "value" : "僅顯示外幣交易"
           }
         }
       }
@@ -5459,19 +5459,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel Currency Mode"
+            "value" : "Foreign Currency Mode"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行货币设定"
+            "value" : "外币设定"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行貨幣設定"
+            "value" : "外幣設定"
           }
         }
       }
@@ -5511,13 +5511,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动模式会根据你目前的位置更新旅行货币。手动模式会持续生效，直到你切回自动。"
+            "value" : "自动模式会根据你目前的位置更新外币。手动模式会持续生效，直到你切回自动。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自動模式會根據你目前的位置更新旅行貨幣。手動模式會持續生效，直到你切回自動。"
+            "value" : "自動模式會根據你目前的位置更新外幣。手動模式會持續生效，直到你切回自動。"
           }
         }
       }
@@ -5620,19 +5620,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Current Travel Currency"
+            "value" : "Current Foreign Currency"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前旅行货币"
+            "value" : "目前外币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前旅行貨幣"
+            "value" : "目前外幣"
           }
         }
       }
@@ -5735,19 +5735,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selected Travel Currency"
+            "value" : "Selected Foreign Currency"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择的旅行货币"
+            "value" : "选择的外币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選擇的旅行貨幣"
+            "value" : "選擇的外幣"
           }
         }
       }
@@ -5919,19 +5919,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel Currency"
+            "value" : "Foreign Currency"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行货币"
+            "value" : "外币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行貨幣"
+            "value" : "外幣"
           }
         }
       }
@@ -5942,19 +5942,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatically Detect Travel Currency"
+            "value" : "Automatically Detect Foreign Currency"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动侦测旅行货币"
+            "value" : "自动侦测外币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自動偵測旅行貨幣"
+            "value" : "自動偵測外幣"
           }
         }
       }
@@ -7460,19 +7460,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel Transaction"
+            "value" : "Foreign Currency Transaction"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行交易"
+            "value" : "外币交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行交易"
+            "value" : "外幣交易"
           }
         }
       }
@@ -7483,19 +7483,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel"
+            "value" : "Foreign"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行"
+            "value" : "外币"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行"
+            "value" : "外幣"
           }
         }
       }
@@ -7529,19 +7529,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Travel mode on — amount is entered in %@"
+            "value" : "Foreign currency mode on — amount is entered in %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行模式已开启，金额会以 %@ 输入"
+            "value" : "外币模式已开启，金额会以 %@ 输入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行模式已開啟，金額會以 %@ 輸入"
+            "value" : "外幣模式已開啟，金額會以 %@ 輸入"
           }
         }
       }

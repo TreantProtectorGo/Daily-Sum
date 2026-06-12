@@ -2,14 +2,18 @@ import SwiftUI
 import SwiftData
 
 struct MainTabView: View {
-    @SceneStorage("mainTab.selectedTab") private var selectedTabRawValue = AppTab.dashboard.rawValue
     @SceneStorage("mainTab.searchText") private var searchText = ""
+    @State private var selectedTab: AppTab
 
     private var selectedTabBinding: Binding<AppTab> {
         Binding(
-            get: { AppTab(rawValue: selectedTabRawValue) ?? .dashboard },
-            set: { selectedTabRawValue = $0.rawValue }
+            get: { selectedTab },
+            set: { selectedTab = $0 }
         )
+    }
+
+    init() {
+        _selectedTab = State(initialValue: AppLaunchTabPreference.initialSelectedTab)
     }
     
     var body: some View {
@@ -97,6 +101,31 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .reports: "chart.bar.fill"
         case .budgets: "chart.pie.fill"
         case .search: "magnifyingglass"
+        }
+    }
+}
+
+enum AppLaunchTabPreference {
+    static let storageKey = "flux.defaultLaunchTab"
+    static let supportedTabs: [AppTab] = [.dashboard, .transactions, .reports, .budgets]
+
+    static var initialSelectedTab: AppTab {
+        defaultTab
+    }
+
+    static var defaultTab: AppTab {
+        get {
+            guard let rawValue = UserDefaults.standard.string(forKey: storageKey),
+                  let tab = AppTab(rawValue: rawValue),
+                  supportedTabs.contains(tab) else {
+                return .dashboard
+            }
+
+            return tab
+        }
+        set {
+            let normalizedTab = supportedTabs.contains(newValue) ? newValue : .dashboard
+            UserDefaults.standard.set(normalizedTab.rawValue, forKey: storageKey)
         }
     }
 }

@@ -327,7 +327,7 @@ struct TransactionEntrySheet: View {
                 Toggle(
                     AppLocalization.string(
                         "transaction.travel",
-                        defaultValue: "Travel Transaction"
+                        defaultValue: "Foreign Currency Transaction"
                     ),
                     isOn: Binding(
                         get: { isTravelTransaction },

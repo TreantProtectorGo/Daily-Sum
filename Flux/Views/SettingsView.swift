@@ -63,6 +63,7 @@ struct SettingsView: View {
             exchangeRateSection(viewModel: viewModel)
             languageSection(viewModel: viewModel)
             themeSection(viewModel: viewModel)
+            startupSection(viewModel: viewModel)
             transactionDefaultsSection(viewModel: viewModel)
             remindersSection(viewModel: viewModel)
             reportsSection(viewModel: viewModel)
@@ -302,7 +303,7 @@ struct SettingsView: View {
                     Text(
                         AppLocalization.string(
                             "settings.exchangeRate.configuration",
-                            defaultValue: "Travel Currency Mode"
+                            defaultValue: "Foreign Currency Mode"
                         )
                     )
                     Spacer()
@@ -330,7 +331,7 @@ struct SettingsView: View {
             Text(
                 AppLocalization.string(
                     "settings.exchangeRate.travelSection",
-                    defaultValue: "Travel Currency"
+                    defaultValue: "Foreign Currency"
                 )
             )
         }
@@ -383,6 +384,35 @@ struct SettingsView: View {
             .accessibilityIdentifier("settings.theme.picker")
         } header: {
             Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
+        }
+    }
+
+    @ViewBuilder
+    private func startupSection(viewModel: SettingsViewModel) -> some View {
+        Section {
+            Picker(
+                AppLocalization.string("settings.defaultLaunchPage", defaultValue: "Default Page"),
+                selection: Binding(
+                    get: { viewModel.appLaunchTab },
+                    set: { viewModel.appLaunchTab = $0 }
+                )
+            ) {
+                ForEach(viewModel.availableLaunchTabs) { tab in
+                    Label(tab.title, systemImage: tab.icon)
+                        .tag(tab)
+                }
+            }
+            .tint(AppColors.interactiveText)
+            .accessibilityIdentifier("settings.defaultLaunchPage.picker")
+        } header: {
+            Text(AppLocalization.string("settings.startup", defaultValue: "Startup"))
+        } footer: {
+            Text(
+                AppLocalization.string(
+                    "settings.defaultLaunchPage.footer",
+                    defaultValue: "Choose which tab opens when you launch Flux."
+                )
+            )
         }
     }
 
@@ -842,7 +872,7 @@ private struct TravelCurrencySettingsSheet: View {
                     Picker(
                         AppLocalization.string(
                             "settings.exchangeRate.configuration",
-                            defaultValue: "Travel Currency Mode"
+                            defaultValue: "Foreign Currency Mode"
                         ),
                         selection: Binding(
                             get: { viewModel.travelCurrencySource },
@@ -893,7 +923,7 @@ private struct TravelCurrencySettingsSheet: View {
                         Text(
                             AppLocalization.string(
                                 "settings.exchangeRate.currentTravelCurrency",
-                                defaultValue: "Current Travel Currency"
+                                defaultValue: "Current Foreign Currency"
                             )
                         )
                         Spacer()
@@ -911,7 +941,7 @@ private struct TravelCurrencySettingsSheet: View {
                         Picker(
                             AppLocalization.string(
                                 "settings.exchangeRate.manualTravelCurrency",
-                                defaultValue: "Selected Travel Currency"
+                                defaultValue: "Selected Foreign Currency"
                             ),
                             selection: Binding(
                                 get: { viewModel.manualTravelCurrencyCode },
@@ -945,7 +975,7 @@ private struct TravelCurrencySettingsSheet: View {
             .navigationTitle(
                 AppLocalization.string(
                     "settings.exchangeRate.configuration",
-                    defaultValue: "Travel Currency Mode"
+                    defaultValue: "Foreign Currency Mode"
                 )
             )
             .navigationBarTitleDisplayMode(.inline)

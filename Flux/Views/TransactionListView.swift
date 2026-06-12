@@ -504,7 +504,7 @@ struct TransactionFiltersSheet: View {
                     Toggle(
                         AppLocalization.string(
                             "filter.travelTransactions",
-                            defaultValue: "Show Travel Transactions Only"
+                            defaultValue: "Show Foreign Currency Transactions Only"
                         ),
                         isOn: $viewModel.showTravelTransactionsOnly
                     )
