@@ -56,6 +56,7 @@ struct FluxApp: App {
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
                 Task { @MainActor in
+                    await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)
                     runAutomaticBackupIfNeeded(in: container)
                 }
@@ -101,6 +102,7 @@ struct FluxApp: App {
             if let container {
                 await requestNotificationAuthorizationIfNeeded(in: container)
                 Task { @MainActor in
+                    await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)
                     await refreshExchangeRatesIfNeeded(in: container)
                     runAutomaticBackupIfNeeded(in: container)
@@ -117,6 +119,12 @@ struct FluxApp: App {
 
     private func reloadModelContainerForCloudSyncChange() async {
         await initializeApp()
+    }
+
+    @MainActor
+    private func refreshTravelCurrencyPreferenceIfNeeded() async {
+        let refresher = TravelCurrencyPreferenceRefresher()
+        await refresher.refreshDetectedTravelCurrency()
     }
 
     @MainActor

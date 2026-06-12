@@ -890,11 +890,10 @@ final class SettingsViewModel {
     }
 
     func refreshTravelCurrencyState() async {
-        guard travelCurrencyLocationService.authorizationStatus() == .authorized else {
-            return
-        }
-
-        detectedTravelCurrencyCode = await travelCurrencyLocationService.detectLocalCurrency()?.rawValue
+        let refresher = TravelCurrencyPreferenceRefresher(
+            locationService: travelCurrencyLocationService
+        )
+        detectedTravelCurrencyCode = await refresher.refreshDetectedTravelCurrency()
     }
 
     func refreshReminderAuthorizationStatus() async {
