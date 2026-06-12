@@ -5775,6 +5775,29 @@
         }
       }
     },
+    "settings.exchangeRate.locationNotEnabled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location Not Enabled"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未启用定位"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未啟用定位"
+          }
+        }
+      }
+    },
     "settings.exchangeRate.manualTravelCurrency" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5886,6 +5909,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "匯率計算器"
+          }
+        }
+      }
+    },
+    "settings.exchangeRate.refreshLocation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Location to Update"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用定位更新"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用定位更新"
           }
         }
       }

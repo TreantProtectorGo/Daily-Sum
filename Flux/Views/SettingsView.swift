@@ -120,6 +120,7 @@ struct SettingsView: View {
             guard newPhase == .active else { return }
             Task {
                 await viewModel.refreshReminderAuthorizationStatus()
+                await viewModel.refreshTravelCurrencyState()
             }
         }
     }
@@ -870,14 +871,24 @@ private struct TravelCurrencySettingsSheet: View {
                             )
                         )
                         Spacer()
-                        Text(
-                            viewModel.detectedLocationCurrencyCode
-                                ?? AppLocalization.string(
-                                    "settings.exchangeRate.detectedCurrency.none",
-                                    defaultValue: "Not Detected"
-                                )
-                        )
+                        Text(viewModel.detectedLocationCurrencyDisplayText)
                             .foregroundStyle(.secondary)
+                    }
+
+                    if viewModel.travelCurrencySource == .automatic {
+                        Button {
+                            Task {
+                                await viewModel.requestTravelCurrencyLocationUpdate()
+                            }
+                        } label: {
+                            Text(
+                                AppLocalization.string(
+                                    "settings.exchangeRate.refreshLocation",
+                                    defaultValue: "Use Location to Update"
+                                )
+                            )
+                        }
+                        .foregroundStyle(AppColors.interactiveText)
                     }
 
                     HStack {

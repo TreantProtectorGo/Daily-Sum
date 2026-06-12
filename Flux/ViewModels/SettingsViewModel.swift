@@ -432,6 +432,25 @@ final class SettingsViewModel {
         resolvedTravelCurrencyState.detectedLocationCurrencyCode
     }
 
+    var detectedLocationCurrencyDisplayText: String {
+        if let detectedLocationCurrencyCode {
+            return detectedLocationCurrencyCode
+        }
+
+        if travelCurrencySource == .automatic,
+           travelCurrencyLocationService.authorizationStatus() != .authorized {
+            return AppLocalization.string(
+                "settings.exchangeRate.locationNotEnabled",
+                defaultValue: "Location Not Enabled"
+            )
+        }
+
+        return AppLocalization.string(
+            "settings.exchangeRate.detectedCurrency.none",
+            defaultValue: "Not Detected"
+        )
+    }
+
     var currentTravelCurrencyCode: String? {
         resolvedTravelCurrencyState.currentTravelCurrencyCode
     }
@@ -899,6 +918,11 @@ final class SettingsViewModel {
 
     func setManualTravelCurrencyCode(_ currencyCode: String?) {
         manualTravelCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(currencyCode)
+    }
+
+    func requestTravelCurrencyLocationUpdate() async {
+        _ = await travelCurrencyLocationService.requestAuthorizationIfNeeded()
+        await refreshTravelCurrencyState()
     }
 
     func refreshTravelCurrencyState() async {
