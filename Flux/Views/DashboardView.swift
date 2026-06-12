@@ -5,6 +5,7 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: DashboardViewModel?
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
+    let onViewAllTransactions: (() -> Void)?
     
     @State private var showAddTransaction = false
     @State private var showAddAccount = false
@@ -12,6 +13,10 @@ struct DashboardView: View {
     @State private var selectedAccount: Account?
     @State private var selectedTransaction: TransactionEditorSelection?
     @State private var selectedBudget: Budget?
+
+    init(onViewAllTransactions: (() -> Void)? = nil) {
+        self.onViewAllTransactions = onViewAllTransactions
+    }
 
     private var displayCurrencyCode: String {
         UserCurrencyPreference.resolvedDisplayCurrencyCode(
@@ -190,17 +195,22 @@ struct DashboardView: View {
                     }
                     
                     if viewModel.recentTransactionRows.count > 5 {
-                        NavigationLink {
-                            TransactionListView()
-                        } label: {
-                            HStack {
-                                Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
-                                Image(systemName: "chevron.right")
+                        if let onViewAllTransactions {
+                            Button(action: onViewAllTransactions) {
+                                recentTransactionsViewAllLabel
                             }
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("dashboard.recentTransactions.viewAll")
+                            .padding(.top, 4)
+                        } else {
+                            NavigationLink {
+                                TransactionListView()
+                            } label: {
+                                recentTransactionsViewAllLabel
+                            }
+                            .accessibilityIdentifier("dashboard.recentTransactions.viewAll")
+                            .padding(.top, 4)
                         }
-                        .padding(.top, 4)
                     }
                 }
             } else {
@@ -214,6 +224,15 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private var recentTransactionsViewAllLabel: some View {
+        HStack {
+            Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
+            Image(systemName: "chevron.right")
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
     }
     
     // MARK: - Budget Overview Section

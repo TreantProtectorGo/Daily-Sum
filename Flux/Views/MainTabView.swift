@@ -19,7 +19,9 @@ struct MainTabView: View {
                 systemImage: "house.fill",
                 value: .dashboard
             ) {
-                DashboardView()
+                DashboardView {
+                    selectedTabBinding.wrappedValue = .transactions
+                }
             }
             
             Tab(
