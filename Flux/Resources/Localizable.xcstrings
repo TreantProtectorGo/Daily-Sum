@@ -5453,6 +5453,52 @@
         }
       }
     },
+    "settings.defaultLaunchPage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default Page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认开启页面"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設開啟頁面"
+          }
+        }
+      }
+    },
+    "settings.defaultLaunchPage.footer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose which tab opens when you launch Flux."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择启动 Flux 时开启的分页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇啟動 Flux 時開啟的分頁。"
+          }
+        }
+      }
+    },
     "settings.exchangeRate.configuration" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6438,6 +6484,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "控制報表中預設顯示的類別行數，超過後可點「顯示更多」展開。"
+          }
+        }
+      }
+    },
+    "settings.startup" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startup"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启动"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟動"
           }
         }
       }
