@@ -96,16 +96,10 @@ struct AccountEntrySheet: View {
             )
             .textInputAutocapitalization(.words)
 
-            Picker(AppLocalization.string("account.type", defaultValue: "Type"), selection: $accountType) {
-                ForEach(AccountType.allCases, id: \.self) { type in
-                    HStack {
-                        Image(systemName: type.defaultIcon)
-                        Text(type.localizedName)
-                    }
-                    .tag(type)
-                }
-            }
-            .pickerStyle(.menu)
+            AccountTypeSelectionBox(
+                title: AppLocalization.string("account.type", defaultValue: "Account Type"),
+                selection: $accountType
+            )
 
             currencyPicker
 
