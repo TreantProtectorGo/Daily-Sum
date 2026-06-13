@@ -149,6 +149,7 @@ final class BackupExportService: BackupExportServicing {
                     currencyCode: transaction.currencyCode,
                     type: transaction.type,
                     date: transaction.date,
+                    createdAt: transaction.createdAt,
                     notes: transaction.notes,
                     isTravelTransaction: transaction.isTravelTransaction,
                     travelAmount: transaction.travelAmount,

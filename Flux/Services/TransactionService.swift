@@ -163,7 +163,11 @@ final class TransactionService {
         sortDescending: Bool = true
     ) throws -> [Transaction] {
         var descriptor = FetchDescriptor<Transaction>(
-            sortBy: [SortDescriptor(\.date, order: sortDescending ? .reverse : .forward)]
+            sortBy: [
+                SortDescriptor(\.date, order: sortDescending ? .reverse : .forward),
+                SortDescriptor(\.createdAt, order: sortDescending ? .reverse : .forward),
+                SortDescriptor(\.id)
+            ]
         )
 
         descriptor.predicate = #Predicate<Transaction> { !$0.isRecurringTemplate }

@@ -122,7 +122,7 @@ final class TransactionListViewModel {
             calendar.startOfDay(for: row.date)
         }
         return grouped.sorted { $0.key > $1.key }
-            .map { (date: $0.key, rows: $0.value) }
+            .map { (date: $0.key, rows: Self.sortRowsForTimeline($0.value)) }
     }
 
     var visibleUpcomingScheduledRows: [TransactionRowSnapshot] {
@@ -156,7 +156,7 @@ final class TransactionListViewModel {
         do {
             let descriptor = FetchDescriptor<Transaction>(
                 predicate: #Predicate<Transaction> { !$0.isRecurringTemplate },
-                sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
+                sortBy: Self.timelineSortDescriptors
             )
             transactions = try modelContext.fetch(descriptor)
             transactionRows = transactions.map(TransactionRowSnapshot.init(transaction:))
@@ -215,8 +215,8 @@ final class TransactionListViewModel {
             }
         }
         
-        filteredTransactions = result
-        filteredTransactionRows = result.map(TransactionRowSnapshot.init(transaction:))
+        filteredTransactions = Self.sortTransactionsForTimeline(result)
+        filteredTransactionRows = filteredTransactions.map(TransactionRowSnapshot.init(transaction:))
     }
     
     func clearFilters() {
@@ -351,12 +351,44 @@ final class TransactionListViewModel {
 
     private var timelineTransactionRows: [TransactionRowSnapshot] {
         guard showUpcomingScheduled else {
-            return filteredTransactionRows
+            return Self.sortRowsForTimeline(filteredTransactionRows)
         }
 
         let now = Date.now
-        return filteredTransactionRows.filter { row in
+        return Self.sortRowsForTimeline(filteredTransactionRows.filter { row in
             !(row.isGeneratedFromRecurring && row.date > now)
+        })
+    }
+
+    private static var timelineSortDescriptors: [SortDescriptor<Transaction>] {
+        [
+            SortDescriptor(\Transaction.date, order: .reverse),
+            SortDescriptor(\Transaction.createdAt, order: .reverse),
+            SortDescriptor(\Transaction.id)
+        ]
+    }
+
+    private static func sortTransactionsForTimeline(_ transactions: [Transaction]) -> [Transaction] {
+        transactions.sorted {
+            if $0.date != $1.date {
+                return $0.date > $1.date
+            }
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt > $1.createdAt
+            }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+    }
+
+    private static func sortRowsForTimeline(_ rows: [TransactionRowSnapshot]) -> [TransactionRowSnapshot] {
+        rows.sorted {
+            if $0.date != $1.date {
+                return $0.date > $1.date
+            }
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt > $1.createdAt
+            }
+            return $0.id.uuidString < $1.id.uuidString
         }
     }
 

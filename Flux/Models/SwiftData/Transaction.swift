@@ -18,6 +18,9 @@ final class Transaction {
     
     /// Transaction date/time in UTC
     var date: Date = Date()
+
+    /// Date when this transaction record was created.
+    var createdAt: Date = Date()
     
     /// Optional user notes
     var notes: String?
@@ -85,6 +88,7 @@ final class Transaction {
         currencyCode: String,
         type: TransactionType,
         date: Date = .now,
+        createdAt: Date = .now,
         notes: String? = nil,
         isTravelTransaction: Bool? = nil,
         travelAmount: Decimal? = nil,
@@ -110,6 +114,7 @@ final class Transaction {
         self.currencyCode = currencyCode
         self.type = type
         self.date = date
+        self.createdAt = createdAt
         self.notes = notes
         self.isTravelTransaction = isTravelTransaction
         self.travelAmount = travelAmount

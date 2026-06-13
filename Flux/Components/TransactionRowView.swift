@@ -15,6 +15,7 @@ struct TransactionRowSnapshot: Identifiable {
     let travelAmount: Decimal?
     let travelCurrencyCode: String?
     let date: Date
+    let createdAt: Date
     let isTravelTransaction: Bool
     let isGeneratedFromRecurring: Bool
     let isUpcoming: Bool
@@ -40,6 +41,7 @@ struct TransactionRowSnapshot: Identifiable {
         travelAmount = transaction.resolvedTravelSnapshot?.travelAmount
         travelCurrencyCode = transaction.resolvedTravelSnapshot?.travelCurrencyCode
         date = transaction.date
+        createdAt = transaction.createdAt
         isTravelTransaction = transaction.isTravelTransaction ?? false
         isGeneratedFromRecurring = transaction.isGeneratedFromRecurring
         isUpcoming = transaction.isUpcoming

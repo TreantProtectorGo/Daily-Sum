@@ -85,6 +85,7 @@ struct BackupTransactionRecord: Codable, Equatable {
     var currencyCode: String
     var type: TransactionType
     var date: Date
+    var createdAt: Date? = nil
     var notes: String?
     var isTravelTransaction: Bool?
     var travelAmount: Decimal?

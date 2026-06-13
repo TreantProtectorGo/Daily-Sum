@@ -446,6 +446,7 @@ final class BackupImportService: BackupImportServicing {
                 currencyCode: record.currencyCode,
                 type: record.type,
                 date: record.date,
+                createdAt: record.createdAt ?? record.date,
                 notes: record.notes,
                 isTravelTransaction: record.isTravelTransaction,
                 travelAmount: record.travelAmount,
@@ -1413,6 +1414,7 @@ final class BackupImportService: BackupImportServicing {
         transaction.currencyCode == record.currencyCode &&
         transaction.type == record.type &&
         transaction.date == record.date &&
+        (record.createdAt == nil || transaction.createdAt == record.createdAt) &&
         transaction.notes == record.notes &&
         transaction.isTravelTransaction == record.isTravelTransaction &&
         transaction.travelAmount == record.travelAmount &&
@@ -1458,6 +1460,9 @@ final class BackupImportService: BackupImportServicing {
         transaction.currencyCode = record.currencyCode
         transaction.type = record.type
         transaction.date = record.date
+        if let createdAt = record.createdAt {
+            transaction.createdAt = createdAt
+        }
         transaction.notes = record.notes
         transaction.isTravelTransaction = record.isTravelTransaction
         transaction.travelAmount = record.travelAmount
