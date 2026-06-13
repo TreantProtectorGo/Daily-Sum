@@ -252,9 +252,13 @@ struct TransactionListView: View {
                         transactionRow(row, viewModel: viewModel)
                     }
                 } header: {
-                    Text(formatSectionDate(group.date))
-                        .font(.headline)
-                        .foregroundStyle(.primary)
+                    TransactionDateSectionHeader(
+                        dateText: formatSectionDate(group.date),
+                        weekdayText: formatSectionWeekday(group.date),
+                        incomeTotal: group.incomeTotal,
+                        expenseTotal: group.expenseTotal,
+                        currencyCode: group.currencyCode
+                    )
                 }
             }
             
@@ -429,6 +433,47 @@ struct TransactionListView: View {
         } else {
             return date.formatted(.dateTime.month().day().year())
         }
+    }
+
+    private func formatSectionWeekday(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide))
+    }
+}
+
+private struct TransactionDateSectionHeader: View {
+    let dateText: String
+    let weekdayText: String
+    let incomeTotal: Decimal
+    let expenseTotal: Decimal
+    let currencyCode: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("\(dateText) · \(weekdayText)")
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .layoutPriority(1)
+
+            Spacer(minLength: 6)
+
+            if let currencyCode {
+                HStack(spacing: 8) {
+                    Text("+\(CurrencyFormatter.shared.formatCompact(incomeTotal, currencyCode: currencyCode))")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+
+                    Text("-\(CurrencyFormatter.shared.formatCompact(expenseTotal, currencyCode: currencyCode))")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            }
+        }
+        .textCase(nil)
     }
 }
 

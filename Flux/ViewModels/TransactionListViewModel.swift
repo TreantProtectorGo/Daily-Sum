@@ -30,6 +30,30 @@ enum TransactionListPreference {
     }
 }
 
+struct TransactionDateGroupSnapshot {
+    let date: Date
+    let rows: [TransactionRowSnapshot]
+    let incomeTotal: Decimal
+    let expenseTotal: Decimal
+    let currencyCode: String?
+
+    init(date: Date, rows: [TransactionRowSnapshot]) {
+        self.date = date
+        self.rows = rows
+
+        incomeTotal = rows
+            .filter { $0.signedAmount > 0 }
+            .reduce(Decimal.zero) { $0 + $1.signedAmount }
+
+        expenseTotal = rows
+            .filter { $0.signedAmount < 0 }
+            .reduce(Decimal.zero) { $0 + abs($1.signedAmount) }
+
+        let currencyCodes = Set(rows.map(\.currencyCode))
+        currencyCode = currencyCodes.count == 1 ? currencyCodes.first : nil
+    }
+}
+
 // MARK: - Transaction List View Model
 
 /// ViewModel for the Transaction List screen
@@ -116,13 +140,18 @@ final class TransactionListViewModel {
         shouldShowUpcomingHintBar
     }
     
-    var groupedTransactionRows: [(date: Date, rows: [TransactionRowSnapshot])] {
+    var groupedTransactionRows: [TransactionDateGroupSnapshot] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: timelineTransactionRows) { row in
             calendar.startOfDay(for: row.date)
         }
         return grouped.sorted { $0.key > $1.key }
-            .map { (date: $0.key, rows: Self.sortRowsForTimeline($0.value)) }
+            .map {
+                TransactionDateGroupSnapshot(
+                    date: $0.key,
+                    rows: Self.sortRowsForTimeline($0.value)
+                )
+            }
     }
 
     var visibleUpcomingScheduledRows: [TransactionRowSnapshot] {
