@@ -8,6 +8,7 @@ enum ModelContainerConfiguration {
         Currency.self,
         ExchangeRate.self,
         Category.self,
+        AccountTypeDefinition.self,
         Account.self,
         Transaction.self,
         ScheduledOccurrenceException.self,

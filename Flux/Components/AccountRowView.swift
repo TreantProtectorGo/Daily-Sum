@@ -7,14 +7,14 @@ struct AccountRowView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            AccountTypeIcon(accountType: account.type)
+            AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.name)
                     .font(.headline)
                     .lineLimit(1)
                 
-                Text(account.type.localizedName)
+                Text(account.resolvedTypeName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -74,7 +74,7 @@ struct AccountSummaryCard: View {
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    AccountTypeIcon(accountType: account.type, size: .small)
+                    AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type, size: .small)
                     Text(account.name)
                         .font(.headline)
                         .lineLimit(1)

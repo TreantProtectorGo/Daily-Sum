@@ -12,6 +12,9 @@ final class Account {
     
     /// Type of account (cash, bank, credit card, investment)
     var type: AccountType = AccountType.cash
+
+    /// User-manageable account type metadata. Falls back to `type` for legacy data.
+    var typeDefinition: AccountTypeDefinition?
     
     /// ISO 4217 currency code for this account
     var currencyCode: String = SupportedCurrency.USD.rawValue
@@ -41,6 +44,7 @@ final class Account {
         type: AccountType,
         currencyCode: String,
         initialBalance: Decimal = 0,
+        typeDefinition: AccountTypeDefinition? = nil,
         icon: String? = nil,
         colorHex: String = "#007AFF",
         includeInTotal: Bool = true,
@@ -49,10 +53,11 @@ final class Account {
         self.id = id
         self.name = name
         self.type = type
+        self.typeDefinition = typeDefinition
         self.currencyCode = currencyCode
         self.initialBalance = initialBalance
-        self.icon = icon ?? type.defaultIcon
-        self.colorHex = colorHex
+        self.icon = icon ?? typeDefinition?.icon ?? type.defaultIcon
+        self.colorHex = typeDefinition?.colorHex ?? colorHex
         self.includeInTotal = includeInTotal
         self.createdAt = createdAt
         self.transactions = []
@@ -63,6 +68,18 @@ final class Account {
     /// Parses the hex color into a SwiftUI Color
     var color: Color {
         Color(hex: colorHex) ?? .blue
+    }
+
+    var resolvedTypeName: String {
+        typeDefinition?.name ?? type.localizedName
+    }
+
+    var resolvedTypeIcon: String {
+        typeDefinition?.icon ?? type.icon
+    }
+
+    var resolvedTypeColor: Color {
+        typeDefinition?.color ?? type.color
     }
     
     /// Calculates the current balance based on initial balance and transactions

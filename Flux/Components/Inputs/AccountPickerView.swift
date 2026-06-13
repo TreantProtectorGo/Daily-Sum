@@ -32,7 +32,7 @@ struct AccountPickerView: View {
         } label: {
             HStack {
                 if let account = selectedAccount {
-                    AccountTypeIcon(accountType: account.type, size: .small)
+                    AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type, size: .small)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(account.name)
                             .font(.body)
@@ -123,14 +123,14 @@ private struct AccountPickerRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack {
-                AccountTypeIcon(accountType: account.type, size: .small)
+                AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type, size: .small)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.name)
                         .font(.subheadline)
                         .fontWeight(isSelected ? .semibold : .regular)
                     
-                    Text(account.type.localizedName)
+                    Text(account.resolvedTypeName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -169,7 +169,7 @@ struct InlineAccountPicker: View {
             
             ForEach(accounts) { account in
                 HStack {
-                    Image(systemName: account.type.defaultIcon)
+                    Image(systemName: account.resolvedTypeIcon)
                     Text(account.name)
                 }
                 .tag(account as Account?)

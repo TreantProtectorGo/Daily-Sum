@@ -40,11 +40,19 @@ struct DefaultDataSeeder {
         ("category.income.gift", "gift.fill", "#E74C3C"),
         ("category.income.refund", "arrow.counterclockwise.circle.fill", "#F39C12")
     ]
+
+    private let accountTypeDefinitions: [(name: String, icon: String, color: String, legacyType: AccountType)] = [
+        ("Cash", "banknote", "#34C759", .cash),
+        ("Bank Account", "building.columns", "#0A84FF", .bank),
+        ("Credit Card", "creditcard", "#FF9500", .creditCard),
+        ("Investment", "chart.line.uptrend.xyaxis", "#AF52DE", .investment)
+    ]
     
     /// Checks if seeding is needed and performs it
     func seedIfNeeded() async throws {
         let currencyCount = try context.fetchCount(FetchDescriptor<Currency>())
         let categoryCount = try context.fetchCount(FetchDescriptor<Category>())
+        let accountTypeDefinitionCount = try context.fetchCount(FetchDescriptor<AccountTypeDefinition>())
         let accountCount = try context.fetchCount(FetchDescriptor<Account>())
         #if DEBUG
         let transactionCount = try context.fetchCount(FetchDescriptor<Transaction>())
@@ -58,10 +66,16 @@ struct DefaultDataSeeder {
         if categoryCount == 0 {
             try seedCategories()
         }
+
+        if accountTypeDefinitionCount == 0 {
+            try seedAccountTypeDefinitions()
+        }
         
         if accountCount == 0 {
             try seedAccounts()
         }
+
+        try backfillAccountTypeDefinitions()
 
         #if DEBUG
         if transactionCount == 0 {
@@ -118,9 +132,24 @@ struct DefaultDataSeeder {
     }
 
     // MARK: - Account Seeding
+
+    private func seedAccountTypeDefinitions() throws {
+        for (index, item) in accountTypeDefinitions.enumerated() {
+            let definition = AccountTypeDefinition(
+                name: item.name,
+                icon: item.icon,
+                colorHex: item.color,
+                isSystemDefault: true,
+                sortOrder: index,
+                legacyType: item.legacyType
+            )
+            context.insert(definition)
+        }
+    }
     
     private func seedAccounts() throws {
         let defaultCurrencyCode = SupportedCurrency.defaultFromLocale.rawValue
+        let accountTypeMap = try accountTypeDefinitionsByLegacyType()
         
         let defaultAccounts: [(name: String, type: AccountType)] = [
             ("Cash", .cash),
@@ -133,9 +162,31 @@ struct DefaultDataSeeder {
                 name: item.name,
                 type: item.type,
                 currencyCode: defaultCurrencyCode,
-                initialBalance: 0
+                initialBalance: 0,
+                typeDefinition: accountTypeMap[item.type]
             )
             context.insert(account)
+        }
+    }
+
+    private func backfillAccountTypeDefinitions() throws {
+        let accountTypeMap = try accountTypeDefinitionsByLegacyType()
+        let accounts = try context.fetch(FetchDescriptor<Account>())
+
+        for account in accounts where account.typeDefinition == nil {
+            guard let definition = accountTypeMap[account.type] else { continue }
+            account.typeDefinition = definition
+            account.icon = definition.icon
+            account.colorHex = definition.colorHex
+        }
+    }
+
+    private func accountTypeDefinitionsByLegacyType() throws -> [AccountType: AccountTypeDefinition] {
+        let definitions = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
+        return definitions.reduce(into: [:]) { result, definition in
+            if let legacyType = definition.legacyType {
+                result[legacyType] = definition
+            }
         }
     }
 

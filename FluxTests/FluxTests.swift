@@ -1243,6 +1243,35 @@ final class FluxTests: XCTestCase {
         XCTAssertTrue(names.contains("Bank Account"))
         XCTAssertTrue(names.contains("Credit Card"))
     }
+
+    @MainActor
+    func testDefaultDataSeederCreatesDefaultAccountTypeDefinitionsAndBackfillsAccounts() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let legacyAccount = Account(
+            name: "Legacy Bank",
+            type: .bank,
+            currencyCode: "USD"
+        )
+        context.insert(legacyAccount)
+        try context.save()
+
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+
+        let definitions = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
+        XCTAssertEqual(definitions.count, 4)
+
+        let names = Set(definitions.map(\.name))
+        XCTAssertTrue(names.contains("Cash"))
+        XCTAssertTrue(names.contains("Bank Account"))
+        XCTAssertTrue(names.contains("Credit Card"))
+        XCTAssertTrue(names.contains("Investment"))
+
+        XCTAssertEqual(legacyAccount.typeDefinition?.name, "Bank Account")
+        XCTAssertEqual(legacyAccount.resolvedTypeName, "Bank Account")
+    }
     
     @MainActor
     func testDefaultDataSeederDoesNotDuplicateExistingAccounts() async throws {

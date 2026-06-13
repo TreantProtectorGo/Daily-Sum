@@ -12,6 +12,7 @@ struct AccountEntrySheet: View {
     
     @State private var name: String = ""
     @State private var accountType: AccountType = .cash
+    @State private var accountTypeDefinition: AccountTypeDefinition?
     @State private var selectedCurrency: SupportedCurrency = UserCurrencyPreference.supportedCurrency
     @State private var initialBalance: Decimal = 0
     
@@ -98,7 +99,7 @@ struct AccountEntrySheet: View {
 
             AccountTypeSelectionBox(
                 title: AppLocalization.string("account.type", defaultValue: "Account Type"),
-                selection: $accountType
+                selection: $accountTypeDefinition
             )
 
             currencyPicker
@@ -151,6 +152,7 @@ struct AccountEntrySheet: View {
         
         name = account.name
         accountType = account.type
+        accountTypeDefinition = account.typeDefinition
         if let currency = SupportedCurrency(rawValue: account.currencyCode) {
             selectedCurrency = currency
         }
@@ -171,7 +173,8 @@ struct AccountEntrySheet: View {
                 try service.update(
                     existing,
                     name: name.trimmingCharacters(in: .whitespaces),
-                    type: accountType,
+                    type: accountTypeDefinition == nil ? accountType : nil,
+                    typeDefinition: accountTypeDefinition,
                     currencyCode: selectedCurrency.rawValue
                 )
                 
@@ -181,12 +184,21 @@ struct AccountEntrySheet: View {
                     note: AppLocalization.string("account.balanceAdjustment.note", defaultValue: "Manual balance adjustment")
                 )
             } else {
-                try service.create(
-                    name: name.trimmingCharacters(in: .whitespaces),
-                    type: accountType,
-                    currencyCode: selectedCurrency.rawValue,
-                    initialBalance: initialBalance
-                )
+                if let accountTypeDefinition {
+                    try service.create(
+                        name: name.trimmingCharacters(in: .whitespaces),
+                        typeDefinition: accountTypeDefinition,
+                        currencyCode: selectedCurrency.rawValue,
+                        initialBalance: initialBalance
+                    )
+                } else {
+                    try service.create(
+                        name: name.trimmingCharacters(in: .whitespaces),
+                        type: accountType,
+                        currencyCode: selectedCurrency.rawValue,
+                        initialBalance: initialBalance
+                    )
+                }
             }
             
             onSave()

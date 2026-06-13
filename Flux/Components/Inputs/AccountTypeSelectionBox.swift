@@ -1,160 +1,259 @@
 import SwiftUI
+import SwiftData
 
 struct AccountTypeSelectionBox: View {
-    @Binding private var selection: AccountType
+    @Environment(\.modelContext) private var modelContext
 
+    @Binding private var selection: AccountTypeDefinition?
     private let title: String
-    private let options: [AccountTypeSelectionOption]
 
-    @State private var isExpanded = false
+    @Query(sort: \AccountTypeDefinition.sortOrder) private var definitions: [AccountTypeDefinition]
+    @State private var showManagement = false
 
-    init(
-        title: String,
-        selection: Binding<AccountType>,
-        options: [AccountType] = AccountType.allCases
-    ) {
+    init(title: String, selection: Binding<AccountTypeDefinition?>) {
         self.title = title
         self._selection = selection
-        self.options = options.map(AccountTypeSelectionOption.init(type:))
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            Button {
-                toggleExpansion()
-            } label: {
-                AccountTypeSelectionHeader(
-                    title: title,
-                    option: AccountTypeSelectionOption(type: selection),
-                    isExpanded: isExpanded
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(title)
-            .accessibilityValue(selection.localizedName)
-            .accessibilityHint(AppLocalization.string("account.type.change.hint", defaultValue: "Double tap to choose an account type."))
+        IconColorSelectionBox(
+            title: title,
+            placeholderTitle: AppLocalization.string("account.type", defaultValue: "Account Type"),
+            placeholderIcon: "wallet.pass",
+            placeholderColor: .secondary,
+            selection: $selection,
+            items: definitions,
+            manageTitle: "Manage Account Types"
+        ) {
+            showManagement = true
+        }
+        .onAppear(perform: selectDefaultIfNeeded)
+        .onChange(of: definitions.count) { _, _ in
+            selectDefaultIfNeeded()
+        }
+        .sheet(isPresented: $showManagement) {
+            AccountTypeDefinitionManagementSheet(selection: $selection)
+        }
+    }
 
-            if isExpanded {
-                VStack(spacing: 4) {
-                    ForEach(options) { option in
-                        AccountTypeSelectionOptionRow(
-                            option: option,
-                            isSelected: option.type == selection,
-                            action: { select(option.type) }
-                        )
+    private func selectDefaultIfNeeded() {
+        guard selection == nil else { return }
+        selection = definitions.first
+    }
+}
+
+private struct AccountTypeDefinitionManagementSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    @Binding var selection: AccountTypeDefinition?
+
+    @Query(sort: \AccountTypeDefinition.sortOrder) private var definitions: [AccountTypeDefinition]
+    @Query(sort: \Account.name) private var accounts: [Account]
+
+    @State private var editorMode: EditorMode?
+    @State private var deleteCandidate: AccountTypeDefinition?
+    @State private var reassignCandidate: AccountTypeDefinition?
+    @State private var errorMessage = ""
+    @State private var showError = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(definitions) { definition in
+                    Button {
+                        editorMode = .edit(definition)
+                    } label: {
+                        HStack(spacing: 12) {
+                            IconColorCircle(icon: definition.icon, color: definition.color, size: .small)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(definition.name)
+                                    .font(.body.weight(selection?.id == definition.id ? .semibold : .regular))
+                                Text("\(usageCount(for: definition)) accounts")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            if selection?.id == definition.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(AppColors.selectedNavigation)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            deleteCandidate = definition
+                        } label: {
+                            Label(AppLocalization.string("action.delete", defaultValue: "Delete"), systemImage: "trash")
+                        }
                     }
                 }
-                .padding(6)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(AppColors.glassBorder, lineWidth: 1)
+            }
+            .navigationTitle("Manage Account Types")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(AppLocalization.string("action.done", defaultValue: "Done")) {
+                        dismiss()
+                    }
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        editorMode = .create
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(AppLocalization.string("action.add", defaultValue: "Add"))
+                }
+            }
+            .sheet(item: $editorMode) { mode in
+                IconColorItemEditorSheet(
+                    title: mode.title,
+                    initialDraft: mode.initialDraft
+                ) { draft in
+                    try save(draft, mode: mode)
+                }
+            }
+            .confirmationDialog(
+                "Delete Account Type?",
+                isPresented: Binding(
+                    get: { deleteCandidate != nil },
+                    set: { if !$0 { deleteCandidate = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let deleteCandidate {
+                    let replacements = definitions.filter { $0.id != deleteCandidate.id }
+                    if usageCount(for: deleteCandidate) == 0 {
+                        Button(AppLocalization.string("action.delete", defaultValue: "Delete"), role: .destructive) {
+                            deleteUnused(deleteCandidate)
+                        }
+                    } else {
+                        ForEach(replacements) { replacement in
+                            Button("Move accounts to \(replacement.name)") {
+                                reassignAndDelete(deleteCandidate, replacement: replacement)
+                            }
+                        }
+                    }
+
+                    Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                        self.deleteCandidate = nil
+                    }
+                }
+            } message: {
+                if let deleteCandidate, usageCount(for: deleteCandidate) > 0 {
+                    Text("Choose another type for existing accounts before deleting.")
+                }
+            }
+            .alert(AppLocalization.string("error.title", defaultValue: "Error"), isPresented: $showError) {
+                Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
+            } message: {
+                Text(errorMessage)
             }
         }
-        .padding(.vertical, 4)
-        .animation(.snappy(duration: 0.22), value: isExpanded)
     }
 
-    private func toggleExpansion() {
-        isExpanded.toggle()
-    }
-
-    private func select(_ type: AccountType) {
-        guard selection != type else {
-            isExpanded = false
-            return
-        }
-
-        selection = type
-        isExpanded = false
-    }
-}
-
-private struct AccountTypeSelectionHeader: View {
-    let title: String
-    let option: AccountTypeSelectionOption
-    let isExpanded: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(.body)
-                .foregroundStyle(.primary)
-
-            Spacer(minLength: 12)
-
-            AccountTypeIcon(accountType: option.type, size: .small)
-
-            Text(option.title)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-
-            Image(systemName: "chevron.down")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .rotationEffect(.degrees(isExpanded ? 180 : 0))
-        }
-        .contentShape(.rect)
-    }
-}
-
-private struct AccountTypeSelectionOptionRow: View {
-    let option: AccountTypeSelectionOption
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                AccountTypeIcon(accountType: option.type, size: .small)
-
-                Text(option.title)
-                    .font(.body.weight(isSelected ? .semibold : .regular))
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                Image(systemName: "checkmark")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppColors.selectedNavigation)
-                    .opacity(isSelected ? 1 : 0)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selectedBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(option.title)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-    }
-
-    private var selectedBackground: Color {
-        isSelected ? option.type.color.opacity(0.14) : .clear
-    }
-}
-
-private struct AccountTypeSelectionOption: Identifiable, Hashable {
-    let type: AccountType
-
-    var id: AccountType { type }
-    var title: String { type.localizedName }
-}
-
-#Preview("Account Type Selection Box") {
-    @Previewable @State var accountType: AccountType = .bank
-
-    Form {
-        Section("Account Info") {
-            AccountTypeSelectionBox(
-                title: "Account Type",
-                selection: $accountType
+    private func save(_ draft: IconColorItemDraft, mode: EditorMode) throws {
+        let service = AccountTypeDefinitionService(context: modelContext)
+        switch mode {
+        case .create:
+            let created = try service.create(
+                name: draft.name,
+                icon: draft.icon,
+                colorHex: draft.colorHex
             )
+            selection = created
+        case .edit(let definition):
+            try service.update(
+                definition,
+                name: draft.name,
+                icon: draft.icon,
+                colorHex: draft.colorHex
+            )
+        }
+    }
+
+    private func deleteUnused(_ definition: AccountTypeDefinition) {
+        do {
+            try AccountTypeDefinitionService(context: modelContext).delete(definition)
+            if selection?.id == definition.id {
+                selection = definitions.first { $0.id != definition.id }
+            }
+            deleteCandidate = nil
+        } catch {
+            show(error)
+        }
+    }
+
+    private func reassignAndDelete(
+        _ definition: AccountTypeDefinition,
+        replacement: AccountTypeDefinition
+    ) {
+        do {
+            try AccountTypeDefinitionService(context: modelContext).reassignAndDelete(
+                definition,
+                replacement: replacement
+            )
+            if selection?.id == definition.id {
+                selection = replacement
+            }
+            deleteCandidate = nil
+        } catch {
+            show(error)
+        }
+    }
+
+    private func usageCount(for definition: AccountTypeDefinition) -> Int {
+        accounts.filter { $0.typeDefinition?.id == definition.id }.count
+    }
+
+    private func show(_ error: Error) {
+        errorMessage = error.localizedDescription
+        showError = true
+    }
+
+    private enum EditorMode: Identifiable {
+        case create
+        case edit(AccountTypeDefinition)
+
+        var id: String {
+            switch self {
+            case .create:
+                return "create"
+            case .edit(let definition):
+                return definition.id.uuidString
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .create:
+                return "New Account Type"
+            case .edit:
+                return "Edit Account Type"
+            }
+        }
+
+        var initialDraft: IconColorItemDraft {
+            switch self {
+            case .create:
+                return IconColorItemDraft(
+                    name: "",
+                    icon: "wallet.pass",
+                    colorHex: "#007AFF"
+                )
+            case .edit(let definition):
+                return IconColorItemDraft(
+                    name: definition.name,
+                    icon: definition.icon,
+                    colorHex: definition.colorHex
+                )
+            }
         }
     }
 }

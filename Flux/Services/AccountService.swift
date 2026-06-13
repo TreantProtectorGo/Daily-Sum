@@ -51,6 +51,30 @@ final class AccountService {
         try context.save()
         return account
     }
+
+    @discardableResult
+    func create(
+        name: String,
+        typeDefinition: AccountTypeDefinition,
+        currencyCode: String,
+        initialBalance: Decimal = 0,
+        includeInTotal: Bool = true
+    ) throws -> Account {
+        let legacyType = typeDefinition.legacyType ?? .cash
+        let account = Account(
+            name: name,
+            type: legacyType,
+            currencyCode: currencyCode,
+            initialBalance: initialBalance,
+            typeDefinition: typeDefinition,
+            icon: typeDefinition.icon,
+            colorHex: typeDefinition.colorHex,
+            includeInTotal: includeInTotal
+        )
+        context.insert(account)
+        try context.save()
+        return account
+    }
     
     // MARK: - Read
     
@@ -87,6 +111,7 @@ final class AccountService {
         _ account: Account,
         name: String? = nil,
         type: AccountType? = nil,
+        typeDefinition: AccountTypeDefinition? = nil,
         currencyCode: String? = nil,
         initialBalance: Decimal? = nil,
         icon: String? = nil,
@@ -103,6 +128,14 @@ final class AccountService {
         
         if let name { account.name = name }
         if let type { account.type = type }
+        if let typeDefinition {
+            account.typeDefinition = typeDefinition
+            if let legacyType = typeDefinition.legacyType {
+                account.type = legacyType
+            }
+            account.icon = typeDefinition.icon
+            account.colorHex = typeDefinition.colorHex
+        }
         if let currencyCode { account.currencyCode = currencyCode }
         if let initialBalance { account.initialBalance = initialBalance }
         if let icon { account.icon = icon }

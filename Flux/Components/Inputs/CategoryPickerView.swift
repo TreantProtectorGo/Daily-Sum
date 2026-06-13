@@ -192,6 +192,7 @@ private struct CategorySelectionSheet: View {
     let mode: CategoryPickerMode
     let onSelectionCompleted: ((Category?) -> Void)?
     @Environment(\.dismiss) private var dismiss
+    @State private var showManagement = false
     
     var body: some View {
         NavigationStack {
@@ -225,6 +226,207 @@ private struct CategorySelectionSheet: View {
             .accessibilityIdentifier("transaction.categoryPicker.sheet")
             .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Manage") {
+                        showManagement = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showManagement) {
+                CategoryManagementSheet(
+                    selectedCategory: $selectedCategory,
+                    mode: mode
+                )
+            }
+        }
+    }
+}
+
+private struct CategoryManagementSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    @Binding var selectedCategory: Category?
+    let mode: CategoryPickerMode
+
+    @Query(sort: \Category.nameKey) private var allCategories: [Category]
+
+    @State private var editorMode: EditorMode?
+    @State private var deleteCandidate: Category?
+    @State private var errorMessage = ""
+    @State private var showError = false
+
+    private var categories: [Category] {
+        allCategories
+            .filter { $0.type == mode.categoryType }
+            .sorted {
+                $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
+            }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(categories) { category in
+                    Button {
+                        editorMode = .edit(category)
+                    } label: {
+                        HStack(spacing: 12) {
+                            IconColorCircle(icon: category.icon, color: category.color, size: .small)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(category.displayName)
+                                    .font(.body.weight(selectedCategory?.id == category.id ? .semibold : .regular))
+
+                                Text(category.isSystemDefault ? "Default category" : "Custom category")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            if selectedCategory?.id == category.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(AppColors.selectedNavigation)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            deleteCandidate = category
+                        } label: {
+                            Label(AppLocalization.string("action.delete", defaultValue: "Delete"), systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Manage Categories")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(AppLocalization.string("action.done", defaultValue: "Done")) {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        editorMode = .create
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(AppLocalization.string("action.add", defaultValue: "Add"))
+                }
+            }
+            .sheet(item: $editorMode) { mode in
+                IconColorItemEditorSheet(
+                    title: mode.title,
+                    initialDraft: mode.initialDraft
+                ) { draft in
+                    try save(draft, mode: mode)
+                }
+            }
+            .confirmationDialog(
+                "Delete Category?",
+                isPresented: Binding(
+                    get: { deleteCandidate != nil },
+                    set: { if !$0 { deleteCandidate = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let deleteCandidate {
+                    Button(AppLocalization.string("action.delete", defaultValue: "Delete"), role: .destructive) {
+                        delete(deleteCandidate)
+                    }
+
+                    Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                        self.deleteCandidate = nil
+                    }
+                }
+            } message: {
+                Text("Transactions using this category will keep the transaction and clear the category.")
+            }
+            .alert(AppLocalization.string("error.title", defaultValue: "Error"), isPresented: $showError) {
+                Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+
+    private func save(_ draft: IconColorItemDraft, mode: EditorMode) throws {
+        let service = CategoryService(context: modelContext)
+        switch mode {
+        case .create:
+            let category = try service.create(
+                name: draft.name,
+                icon: draft.icon,
+                colorHex: draft.colorHex,
+                type: self.mode.categoryType
+            )
+            selectedCategory = category
+        case .edit(let category):
+            try service.update(
+                category,
+                name: draft.name,
+                icon: draft.icon,
+                colorHex: draft.colorHex
+            )
+        }
+    }
+
+    private func delete(_ category: Category) {
+        do {
+            try CategoryService(context: modelContext).delete(category)
+            if selectedCategory?.id == category.id {
+                selectedCategory = nil
+            }
+            deleteCandidate = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
+    }
+
+    private enum EditorMode: Identifiable {
+        case create
+        case edit(Category)
+
+        var id: String {
+            switch self {
+            case .create:
+                return "create"
+            case .edit(let category):
+                return category.id.uuidString
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .create:
+                return "New Category"
+            case .edit:
+                return "Edit Category"
+            }
+        }
+
+        var initialDraft: IconColorItemDraft {
+            switch self {
+            case .create:
+                return IconColorItemDraft(
+                    name: "",
+                    icon: "tag",
+                    colorHex: "#808080"
+                )
+            case .edit(let category):
+                return IconColorItemDraft(
+                    name: category.displayName,
+                    icon: category.icon,
+                    colorHex: category.colorHex
+                )
+            }
         }
     }
 }

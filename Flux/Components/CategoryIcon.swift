@@ -136,12 +136,35 @@ struct AccountTypeIcon: View {
     }
     
     var body: some View {
-        Image(systemName: accountType.icon)
-            .font(size.iconFont)
-            .foregroundStyle(accountType.color)
-            .frame(width: size.dimension, height: size.dimension)
-            .background(accountType.color.opacity(0.15))
-            .clipShape(Circle())
+        IconColorCircle(
+            icon: accountType.icon,
+            color: accountType.color,
+            size: size
+        )
+    }
+}
+
+struct AccountTypeDefinitionIcon: View {
+    let definition: AccountTypeDefinition?
+    let fallback: AccountType
+    let size: CategoryIcon.Size
+
+    init(
+        definition: AccountTypeDefinition?,
+        fallback: AccountType,
+        size: CategoryIcon.Size = .medium
+    ) {
+        self.definition = definition
+        self.fallback = fallback
+        self.size = size
+    }
+
+    var body: some View {
+        IconColorCircle(
+            icon: definition?.icon ?? fallback.icon,
+            color: definition?.color ?? fallback.color,
+            size: size
+        )
     }
 }
 

@@ -997,7 +997,115 @@ final class ServiceTests: XCTestCase {
     }
     
     // MARK: - CategoryService Tests
-    
+
+    func testAccountTypeDefinitionServiceCreatesUpdatesAndFetchesDefinitions() async throws {
+        let service = AccountTypeDefinitionService(context: context)
+
+        let type = try service.create(
+            name: "Crypto",
+            icon: "bitcoinsign.circle.fill",
+            colorHex: "#F7931A"
+        )
+
+        try service.update(
+            type,
+            name: "Crypto Wallet",
+            icon: "wallet.pass.fill",
+            colorHex: "#FF9500"
+        )
+
+        let definitions = try service.fetch()
+        XCTAssertEqual(definitions.count, 1)
+        XCTAssertEqual(definitions.first?.name, "Crypto Wallet")
+        XCTAssertEqual(definitions.first?.icon, "wallet.pass.fill")
+        XCTAssertEqual(definitions.first?.colorHex, "#FF9500")
+    }
+
+    func testAccountTypeDefinitionServiceRequiresReassignmentBeforeDeletingUsedType() async throws {
+        let typeService = AccountTypeDefinitionService(context: context)
+        let accountService = AccountService(context: context)
+
+        let cash = try typeService.create(
+            name: "Cash",
+            icon: "banknote",
+            colorHex: "#34C759",
+            legacyType: .cash
+        )
+        let bank = try typeService.create(
+            name: "Bank Account",
+            icon: "building.columns",
+            colorHex: "#0A84FF",
+            legacyType: .bank
+        )
+
+        let account = try accountService.create(
+            name: "Wallet",
+            typeDefinition: cash,
+            currencyCode: "USD"
+        )
+
+        do {
+            try typeService.delete(cash)
+            XCTFail("Deleting a used account type should require reassignment.")
+        } catch let error as AccountTypeDefinitionService.AccountTypeDefinitionError {
+            XCTAssertEqual(error, .typeInUse)
+        }
+
+        try typeService.reassignAndDelete(cash, replacement: bank)
+
+        XCTAssertEqual(account.typeDefinition?.id, bank.id)
+        XCTAssertEqual(try typeService.fetch().map(\.id), [bank.id])
+    }
+
+    func testCategoryDeleteNullifiesTransactionCategory() async throws {
+        let categoryService = CategoryService(context: context)
+        let accountService = AccountService(context: context)
+        let transactionService = TransactionService(context: context)
+
+        let category = try categoryService.create(
+            name: "Coffee",
+            icon: "cup.and.saucer.fill",
+            colorHex: "#6F4E37",
+            type: .expense
+        )
+        let account = try accountService.create(
+            name: "Cash",
+            type: .cash,
+            currencyCode: "USD"
+        )
+        let transaction = try transactionService.create(
+            amount: 38,
+            type: .expense,
+            account: account,
+            category: category
+        )
+
+        try categoryService.delete(category)
+
+        XCTAssertNil(transaction.category)
+    }
+
+    func testCategoryServiceUpdatesNameIconAndColor() async throws {
+        let service = CategoryService(context: context)
+        let category = try service.create(
+            name: "Coffee",
+            icon: "cup.and.saucer",
+            colorHex: "#6F4E37",
+            type: .expense
+        )
+
+        try service.update(
+            category,
+            name: "Cafe",
+            icon: "mug.fill",
+            colorHex: "#8B4513"
+        )
+
+        XCTAssertEqual(category.displayName, "Cafe")
+        XCTAssertEqual(category.icon, "mug.fill")
+        XCTAssertEqual(category.colorHex, "#8B4513")
+    }
+
     func testCategoryServiceHierarchy() async throws {
         let service = CategoryService(context: context)
         
