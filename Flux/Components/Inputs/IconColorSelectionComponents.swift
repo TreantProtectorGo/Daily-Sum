@@ -213,6 +213,10 @@ enum SFSymbolCatalog {
         UIImage(systemName: symbol.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
     }
 
+    static var selectable: [String] {
+        all.filter(isValid)
+    }
+
     private static func unique(_ symbols: [String]) -> [String] {
         var seen = Set<String>()
         return symbols.filter { seen.insert($0).inserted }
@@ -325,7 +329,7 @@ struct IconColorItemEditorSheet: View {
     private var iconSelectionPanel: some View {
         IconColorSelectionPanel {
             LazyVGrid(columns: pickerColumns, spacing: 18) {
-                ForEach(SFSymbolCatalog.all, id: \.self) { symbol in
+                ForEach(SFSymbolCatalog.selectable, id: \.self) { symbol in
                     SymbolCircleButton(
                         symbol: symbol,
                         tintColor: selectedColor,
