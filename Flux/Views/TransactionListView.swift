@@ -140,7 +140,7 @@ struct TransactionListView: View {
                     }
                 }
 
-                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                Button("Keep Subscription", role: .cancel) {
                     pendingScheduledDeleteTransactionID = nil
                 }
             },
@@ -191,7 +191,7 @@ struct TransactionListView: View {
                     }
                 }
 
-                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                Button("Keep Transaction", role: .cancel) {
                     pendingSourceDeleteTransactionID = nil
                 }
             },
@@ -600,7 +600,7 @@ struct TransactionFiltersSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel("Close")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {

@@ -48,7 +48,7 @@ struct BudgetEntrySheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel("Close")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -57,7 +57,7 @@ struct BudgetEntrySheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.save", defaultValue: "Save"))
+                    .accessibilityLabel("Apply")
                     .disabled(!isFormValid || isSaving)
                 }
             }

@@ -48,7 +48,7 @@ struct AccountEntrySheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel("Close")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -57,7 +57,7 @@ struct AccountEntrySheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.save", defaultValue: "Save"))
+                    .accessibilityLabel("Apply")
                     .disabled(!isFormValid || isSaving)
                 }
             }
@@ -81,7 +81,7 @@ struct AccountEntrySheet: View {
             Button(AppLocalization.string("action.confirm", defaultValue: "Confirm"), role: .destructive) {
                 deleteAccount()
             }
-            Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+            Button("Keep Account", role: .cancel) { }
         } message: {
             Text(AppLocalization.string("account.delete.confirm.message", defaultValue: "You cannot undo this action."))
         }

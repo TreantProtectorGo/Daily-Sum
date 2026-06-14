@@ -90,7 +90,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+            Button("Keep Data", role: .cancel) { }
         } message: {
             Text(AppLocalization.string("settings.clearData.message", defaultValue: "You cannot undo this action."))
         }
@@ -706,7 +706,7 @@ private struct ManagedBackupSheet: View {
                 ),
                 isPresented: $showRestoreConfirmation,
             ) {
-                Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) { }
+                Button("Keep Current Data", role: .cancel) { }
 
                 Button(
                     AppLocalization.string(

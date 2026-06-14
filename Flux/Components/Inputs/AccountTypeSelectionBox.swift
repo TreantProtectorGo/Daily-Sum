@@ -23,7 +23,7 @@ struct AccountTypeSelectionBox: View {
             placeholderColor: .secondary,
             selection: $selection,
             items: definitions,
-            manageTitle: "Manage Account Types"
+            manageTitle: "Edit account types"
         ) {
             showManagement = true
         }
@@ -93,11 +93,14 @@ private struct AccountTypeDefinitionManagementSheet: View {
                     }
                 }
             }
-            .navigationTitle("Manage Account Types")
+            .navigationTitle("Account Types")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(AppLocalization.string("action.done", defaultValue: "Done")) {
+                    IconToolbarButton(
+                        systemName: "checkmark",
+                        accessibilityLabel: "Finish"
+                    ) {
                         dismiss()
                     }
                 }
@@ -141,7 +144,7 @@ private struct AccountTypeDefinitionManagementSheet: View {
                         }
                     }
 
-                    Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                    Button("Keep Account Type", role: .cancel) {
                         self.deleteCandidate = nil
                     }
                 }

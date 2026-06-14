@@ -315,8 +315,8 @@ struct GlassDivider: View {
             }
             
             HStack(spacing: 12) {
-                GlassActionButton("Cancel", systemImage: "xmark") { }
-                GlassProminentButton("Save", systemImage: "checkmark") { }
+                GlassActionButton("Close", systemImage: "xmark") { }
+                GlassProminentButton("Apply", systemImage: "checkmark") { }
             }
         }
         .padding()

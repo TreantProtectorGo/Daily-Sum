@@ -170,7 +170,7 @@ struct TransactionEntrySheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel("Close")
                 }
                 
                 if TransactionEntryTypeEditing.canEditType(existingTransaction: existingTransaction) {
@@ -188,7 +188,7 @@ struct TransactionEntrySheet: View {
                     } label: {
                         Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.save", defaultValue: "Save"))
+                    .accessibilityLabel("Apply")
                     .disabled(!isFormValid || isSaving)
                 }
             }

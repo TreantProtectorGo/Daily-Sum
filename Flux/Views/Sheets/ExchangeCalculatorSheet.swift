@@ -31,7 +31,7 @@ struct ExchangeCalculatorSheet: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.cancel", defaultValue: "Cancel"))
+                    .accessibilityLabel("Close")
                 }
             }
             .task {

@@ -228,7 +228,10 @@ private struct CategorySelectionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Manage") {
+                    IconToolbarButton(
+                        systemName: "slider.horizontal.3",
+                        accessibilityLabel: "Edit categories"
+                    ) {
                         showManagement = true
                     }
                 }
@@ -302,11 +305,14 @@ private struct CategoryManagementSheet: View {
                     }
                 }
             }
-            .navigationTitle("Manage Categories")
+            .navigationTitle("Categories")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(AppLocalization.string("action.done", defaultValue: "Done")) {
+                    IconToolbarButton(
+                        systemName: "checkmark",
+                        accessibilityLabel: "Finish"
+                    ) {
                         dismiss()
                     }
                 }
@@ -341,7 +347,7 @@ private struct CategoryManagementSheet: View {
                         delete(deleteCandidate)
                     }
 
-                    Button(AppLocalization.string("action.cancel", defaultValue: "Cancel"), role: .cancel) {
+                    Button("Keep Category", role: .cancel) {
                         self.deleteCandidate = nil
                     }
                 }
