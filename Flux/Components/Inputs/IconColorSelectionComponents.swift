@@ -230,7 +230,6 @@ struct IconColorItemEditorSheet: View {
     @State private var draft: IconColorItemDraft
     @State private var errorMessage = ""
     @State private var showError = false
-    @State private var showSymbolPicker = false
 
     private let colors = [
         "#34C759", "#0A84FF", "#FF9500", "#AF52DE", "#FF3B30", "#5AC8FA",
@@ -252,65 +251,17 @@ struct IconColorItemEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Name", text: $draft.name)
-                        .textInputAutocapitalization(.words)
+            ScrollView {
+                VStack(spacing: 20) {
+                    nameField
+                    colorSelectionPanel
+                    iconSelectionPanel
                 }
-
-                Section("Icon") {
-                    Button {
-                        showSymbolPicker = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            IconColorCircle(
-                                icon: draft.icon,
-                                color: Color(hex: draft.colorHex) ?? .secondary,
-                                size: .medium
-                            )
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("SF Symbol")
-                                    .foregroundStyle(.primary)
-                                Text(draft.icon)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Section("Color") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 12) {
-                        ForEach(colors, id: \.self) { colorHex in
-                            Button {
-                                draft.colorHex = colorHex
-                            } label: {
-                                Circle()
-                                    .fill(Color(hex: colorHex) ?? .secondary)
-                                    .frame(width: 34, height: 34)
-                                    .overlay {
-                                        if draft.colorHex == colorHex {
-                                            Circle()
-                                                .stroke(.primary, lineWidth: 2)
-                                                .padding(-4)
-                                        }
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 20)
             }
+            .background(Color(uiColor: .systemGroupedBackground))
+            .scrollIndicators(.hidden)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -338,13 +289,60 @@ struct IconColorItemEditorSheet: View {
             } message: {
                 Text(errorMessage)
             }
-            .sheet(isPresented: $showSymbolPicker) {
-                SFSymbolPickerSheet(
-                    selectedSymbol: $draft.icon,
-                    tintColor: Color(hex: draft.colorHex) ?? .secondary
-                )
+        }
+    }
+
+    private var selectedColor: Color {
+        Color(hex: draft.colorHex) ?? .secondary
+    }
+
+    private var nameField: some View {
+        TextField("Name", text: $draft.name)
+            .textInputAutocapitalization(.words)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+    }
+
+    private var colorSelectionPanel: some View {
+        IconColorSelectionPanel {
+            LazyVGrid(columns: pickerColumns, spacing: 18) {
+                ForEach(colors, id: \.self) { colorHex in
+                    ColorSwatchButton(
+                        color: Color(hex: colorHex) ?? .secondary,
+                        isSelected: draft.colorHex == colorHex
+                    ) {
+                        draft.colorHex = colorHex
+                    }
+                }
             }
         }
+    }
+
+    private var iconSelectionPanel: some View {
+        IconColorSelectionPanel {
+            LazyVGrid(columns: pickerColumns, spacing: 18) {
+                ForEach(SFSymbolCatalog.all, id: \.self) { symbol in
+                    SymbolCircleButton(
+                        symbol: symbol,
+                        tintColor: selectedColor,
+                        isSelected: draft.icon == symbol
+                    ) {
+                        draft.icon = symbol
+                    }
+                }
+            }
+        }
+    }
+
+    private var pickerColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 36, maximum: 56), spacing: 8, alignment: .center),
+            count: 6
+        )
     }
 
     private func save() {
@@ -355,6 +353,98 @@ struct IconColorItemEditorSheet: View {
             errorMessage = error.localizedDescription
             showError = true
         }
+    }
+}
+
+private struct IconColorSelectionPanel<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(.horizontal, 16)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 30, style: .continuous)
+            )
+    }
+}
+
+private struct ColorSwatchButton: View {
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isSelected {
+                    Circle()
+                        .stroke(Color(uiColor: .systemGray3), lineWidth: 6)
+                        .frame(width: 48, height: 48)
+
+                    Circle()
+                        .stroke(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: 4)
+                        .frame(width: 40, height: 40)
+                }
+
+                Circle()
+                    .fill(color)
+                    .frame(width: 36, height: 36)
+            }
+            .frame(width: 52, height: 52)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Color")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+private struct SymbolCircleButton: View {
+    let symbol: String
+    let tintColor: Color
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isSelected {
+                    Circle()
+                        .stroke(Color(uiColor: .systemGray3), lineWidth: 6)
+                        .frame(width: 50, height: 50)
+
+                    Circle()
+                        .stroke(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: 4)
+                        .frame(width: 42, height: 42)
+                }
+
+                Circle()
+                    .fill(
+                        isSelected
+                            ? tintColor.opacity(0.14)
+                            : Color(uiColor: .tertiarySystemGroupedBackground)
+                    )
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: symbol)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(isSelected ? tintColor : Color(uiColor: .darkGray))
+                    .frame(width: 28, height: 28)
+                    .minimumScaleFactor(0.78)
+            }
+            .frame(width: 54, height: 54)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(symbol)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
