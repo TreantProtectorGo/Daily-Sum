@@ -282,7 +282,7 @@ private struct CategoryManagementSheet: View {
                                 Text(category.displayName)
                                     .font(.body.weight(selectedCategory?.id == category.id ? .semibold : .regular))
 
-                                Text(category.isSystemDefault ? "Default category" : "Custom category")
+                                Text("Total transactions: \(category.totalTransactionCount)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -300,8 +300,10 @@ private struct CategoryManagementSheet: View {
                         Button(role: .destructive) {
                             deleteCandidate = category
                         } label: {
-                            Label(AppLocalization.string("action.delete", defaultValue: "Delete"), systemImage: "trash")
+                            Image(systemName: "trash")
                         }
+                        .tint(.red)
+                        .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
                     }
                 }
             }

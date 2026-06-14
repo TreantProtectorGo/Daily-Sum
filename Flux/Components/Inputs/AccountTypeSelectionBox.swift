@@ -177,8 +177,10 @@ private struct AccountTypeDefinitionManagementSheet: View {
                         Button(role: .destructive) {
                             deleteCandidate = definition
                         } label: {
-                            Label(AppLocalization.string("action.delete", defaultValue: "Delete"), systemImage: "trash")
+                            Image(systemName: "trash")
                         }
+                        .tint(.red)
+                        .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
                     }
                 }
             }
