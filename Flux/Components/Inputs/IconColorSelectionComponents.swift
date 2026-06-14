@@ -214,7 +214,7 @@ struct IconColorSelectionBox<Item: IconColorSelectable>: View where Item.ID: Equ
                         HStack(spacing: 10) {
                             Spacer()
 
-                            Image(systemName: "slider.horizontal.3")
+                            Image(systemName: "pencil")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(AppColors.selectedNavigation)
                                 .frame(width: 34, height: 34)

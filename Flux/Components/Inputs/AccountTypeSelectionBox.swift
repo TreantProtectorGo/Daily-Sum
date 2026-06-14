@@ -8,7 +8,9 @@ struct AccountTypeSelectionBox: View {
     private let title: String
 
     @Query(sort: \AccountTypeDefinition.sortOrder) private var definitions: [AccountTypeDefinition]
+    @State private var showSelectionSheet = false
     @State private var showManagement = false
+    @State private var showManagementAfterSelectionDismisses = false
 
     init(title: String, selection: Binding<AccountTypeDefinition?>) {
         self.title = title
@@ -16,20 +18,53 @@ struct AccountTypeSelectionBox: View {
     }
 
     var body: some View {
-        IconColorSelectionBox(
-            title: title,
-            placeholderTitle: AppLocalization.string("account.type", defaultValue: "Account Type"),
-            placeholderIcon: "wallet.pass",
-            placeholderColor: .secondary,
-            selection: $selection,
-            items: definitions,
-            manageTitle: "Edit account types"
-        ) {
-            showManagement = true
+        Button {
+            showSelectionSheet = true
+        } label: {
+            HStack(spacing: 12) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                Spacer(minLength: 12)
+
+                IconColorCircle(
+                    icon: selection?.icon ?? "wallet.pass",
+                    color: selection?.color ?? .secondary,
+                    size: .small
+                )
+
+                Text(selection?.name ?? AppLocalization.string("account.type", defaultValue: "Account Type"))
+                    .font(.body)
+                    .foregroundStyle(selection == nil ? .secondary : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(selection?.name ?? AppLocalization.string("account.type", defaultValue: "Account Type"))
         .onAppear(perform: selectDefaultIfNeeded)
         .onChange(of: definitions.count) { _, _ in
             selectDefaultIfNeeded()
+        }
+        .sheet(
+            isPresented: $showSelectionSheet,
+            onDismiss: openManagementIfRequested
+        ) {
+            AccountTypeSelectionSheet(
+                selection: $selection,
+                definitions: definitions,
+                showManagementAfterDismiss: $showManagementAfterSelectionDismisses
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showManagement) {
             AccountTypeDefinitionManagementSheet(selection: $selection)
@@ -39,6 +74,60 @@ struct AccountTypeSelectionBox: View {
     private func selectDefaultIfNeeded() {
         guard selection == nil else { return }
         selection = definitions.first
+    }
+
+    private func openManagementIfRequested() {
+        guard showManagementAfterSelectionDismisses else { return }
+        showManagementAfterSelectionDismisses = false
+        showManagement = true
+    }
+}
+
+private struct AccountTypeSelectionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var selection: AccountTypeDefinition?
+    let definitions: [AccountTypeDefinition]
+    @Binding var showManagementAfterDismiss: Bool
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 94))], spacing: 16) {
+                    ForEach(definitions) { definition in
+                        IconTitleGridItem(
+                            title: definition.name,
+                            tintColor: definition.color,
+                            isSelected: selection?.id == definition.id
+                        ) {
+                            IconColorCircle(
+                                icon: definition.icon,
+                                color: definition.color,
+                                size: .medium
+                            )
+                        } onSelect: {
+                            selection = definition
+                            dismiss()
+                        }
+                    }
+                }
+                .padding()
+            }
+            .scrollIndicators(.hidden)
+            .navigationTitle(AppLocalization.string("account.type", defaultValue: "Account Type"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    IconToolbarButton(
+                        systemName: "pencil",
+                        accessibilityLabel: "Edit account types"
+                    ) {
+                        showManagementAfterDismiss = true
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

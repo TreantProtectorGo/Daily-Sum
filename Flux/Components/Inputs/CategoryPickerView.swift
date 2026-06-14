@@ -229,7 +229,7 @@ private struct CategorySelectionSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     IconToolbarButton(
-                        systemName: "slider.horizontal.3",
+                        systemName: "pencil",
                         accessibilityLabel: "Edit categories"
                     ) {
                         showManagement = true
