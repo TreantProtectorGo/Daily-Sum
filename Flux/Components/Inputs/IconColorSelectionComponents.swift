@@ -40,6 +40,18 @@ struct IconColorCircle: View {
     }
 }
 
+struct IconToolbarGlyph: View {
+    let systemName: String
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .frame(width: 34, height: 34)
+            .contentShape(.circle)
+    }
+}
+
 struct IconToolbarButton: View {
     let systemName: String
     let accessibilityLabel: String
@@ -60,13 +72,71 @@ struct IconToolbarButton: View {
 
     var body: some View {
         Button(role: role, action: action) {
-            Image(systemName: systemName)
-                .font(.headline.weight(.semibold))
-                .frame(width: 34, height: 34)
-                .contentShape(.circle)
+            IconToolbarGlyph(systemName: systemName)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+struct IconTitleGridItem<Icon: View>: View {
+    let title: String
+    let subtitle: String?
+    let tintColor: Color
+    let isSelected: Bool
+    let icon: Icon
+    let onSelect: () -> Void
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        tintColor: Color,
+        isSelected: Bool,
+        @ViewBuilder icon: () -> Icon,
+        onSelect: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.tintColor = tintColor
+        self.isSelected = isSelected
+        self.icon = icon()
+        self.onSelect = onSelect
+    }
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(spacing: 8) {
+                icon
+                    .overlay {
+                        Circle()
+                            .stroke(tintColor, lineWidth: isSelected ? 3 : 0)
+                            .padding(-6)
+                    }
+
+                VStack(spacing: 2) {
+                    Text(title)
+                        .font(.caption.weight(isSelected ? .semibold : .regular))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .minimumScaleFactor(0.78)
+
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .foregroundStyle(.tertiary)
+                            .minimumScaleFactor(0.72)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .frame(minWidth: 76, minHeight: subtitle == nil ? 78 : 96)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -442,16 +512,12 @@ struct IconColorItemEditorSheet: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(
+                        systemName: "checkmark",
+                        accessibilityLabel: saveTitle
+                    ) {
                         save()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.headline.weight(.semibold))
-                            .frame(width: 34, height: 34)
-                            .contentShape(.circle)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(saveTitle)
                     .disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }

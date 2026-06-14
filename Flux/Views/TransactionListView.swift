@@ -43,8 +43,9 @@ struct TransactionListView: View {
                 Button {
                     showFilters = true
                 } label: {
-                    Image(systemName: "line.3.horizontal.decrease")
+                    IconToolbarGlyph(systemName: "line.3.horizontal.decrease")
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(AppLocalization.string("action.filters", defaultValue: "Filters"))
             }
 
@@ -52,8 +53,9 @@ struct TransactionListView: View {
                 NavigationLink {
                     SettingsView(autoPopWhenTabSwitch: true)
                 } label: {
-                    Image(systemName: "gear")
+                    IconToolbarGlyph(systemName: "gear")
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
             }
         }
@@ -595,22 +597,16 @@ struct TransactionFiltersSheet: View {
                 }
 
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: "Close") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Close")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: AppLocalization.string("action.apply", defaultValue: "Apply")) {
                         viewModel.applyFilters()
                         dismiss()
-                    } label: {
-                        Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.apply", defaultValue: "Apply"))
                 }
                 
                 ToolbarItem(placement: .bottomBar) {

@@ -43,21 +43,15 @@ struct AccountEntrySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: "Close") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Close")
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: "Apply") {
                         saveAccount()
-                    } label: {
-                        Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel("Apply")
                     .disabled(!isFormValid || isSaving)
                 }
             }

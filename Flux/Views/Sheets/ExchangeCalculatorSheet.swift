@@ -26,12 +26,9 @@ struct ExchangeCalculatorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: "Close") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Close")
                 }
             }
             .task {

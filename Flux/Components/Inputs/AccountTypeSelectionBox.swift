@@ -106,12 +106,12 @@ private struct AccountTypeDefinitionManagementSheet: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(
+                        systemName: "plus",
+                        accessibilityLabel: AppLocalization.string("action.add", defaultValue: "Add")
+                    ) {
                         editorMode = .create
-                    } label: {
-                        Image(systemName: "plus")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.add", defaultValue: "Add"))
                 }
             }
             .sheet(item: $editorMode) { mode in

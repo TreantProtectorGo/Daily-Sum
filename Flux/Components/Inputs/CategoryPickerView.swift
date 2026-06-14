@@ -318,12 +318,12 @@ private struct CategoryManagementSheet: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(
+                        systemName: "plus",
+                        accessibilityLabel: AppLocalization.string("action.add", defaultValue: "Add")
+                    ) {
                         editorMode = .create
-                    } label: {
-                        Image(systemName: "plus")
                     }
-                    .accessibilityLabel(AppLocalization.string("action.add", defaultValue: "Add"))
                 }
             }
             .sheet(item: $editorMode) { mode in
@@ -443,26 +443,15 @@ private struct CategoryGridItem: View {
     let onSelect: () -> Void
     
     var body: some View {
-        Button(action: onSelect) {
-            VStack(spacing: 8) {
-                CategoryIcon(category: category, size: .medium)
-                    .overlay {
-                        if isSelected {
-                            Circle()
-                                .stroke(category.color, lineWidth: 3)
-                                .padding(-6)
-                        }
-                    }
-                
-                Text(category.displayName)
-                    .font(.caption)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(minWidth: 70)
+        IconTitleGridItem(
+            title: category.displayName,
+            tintColor: category.color,
+            isSelected: isSelected
+        ) {
+            CategoryIcon(category: category, size: .medium)
+        } onSelect: {
+            onSelect()
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -473,33 +462,15 @@ private struct CategoryPlaceholderGridItem: View {
     let onSelect: () -> Void
 
     var body: some View {
-        Button(action: onSelect) {
-            VStack(spacing: 8) {
-                Circle()
-                    .fill(Color.secondary.opacity(0.2))
-                    .frame(width: 34, height: 34)
-                    .overlay {
-                        Image(systemName: icon)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .overlay {
-                        if isSelected {
-                            Circle()
-                                .stroke(Color.secondary, lineWidth: 2)
-                                .padding(-6)
-                        }
-                    }
-
-                Text(title)
-                    .font(.caption)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(minWidth: 70)
+        IconTitleGridItem(
+            title: title,
+            tintColor: .secondary,
+            isSelected: isSelected
+        ) {
+            IconColorCircle(icon: icon, color: .secondary, size: .medium)
+        } onSelect: {
+            onSelect()
         }
-        .buttonStyle(.plain)
     }
 }
 

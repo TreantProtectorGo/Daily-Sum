@@ -55,8 +55,9 @@ struct DashboardView: View {
                     NavigationLink {
                         SettingsView(autoPopWhenTabSwitch: true)
                     } label: {
-                        Image(systemName: "gear")
+                        IconToolbarGlyph(systemName: "gear")
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
                 }
             }

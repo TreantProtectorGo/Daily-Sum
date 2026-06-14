@@ -686,13 +686,9 @@ private struct ManagedBackupSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: AppLocalization.string("action.close", defaultValue: "Close")) {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
                     }
-                    .tint(AppColors.interactiveText)
-                    .accessibilityLabel(AppLocalization.string("action.close", defaultValue: "Close"))
                     .accessibilityIdentifier("settings.backup.close.button")
                 }
             }
@@ -953,12 +949,9 @@ private struct TravelCurrencySettingsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: "Finish") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "checkmark")
                     }
-                    .tint(AppColors.interactiveText)
                 }
             }
         }

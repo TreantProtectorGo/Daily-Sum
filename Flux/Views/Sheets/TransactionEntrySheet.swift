@@ -165,12 +165,9 @@ struct TransactionEntrySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: "Close") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Close")
                 }
                 
                 if TransactionEntryTypeEditing.canEditType(existingTransaction: existingTransaction) {
@@ -181,14 +178,11 @@ struct TransactionEntrySheet: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button {
+                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: "Apply") {
                         Task {
                             await saveTransaction()
                         }
-                    } label: {
-                        Image(systemName: "checkmark")
                     }
-                    .accessibilityLabel("Apply")
                     .disabled(!isFormValid || isSaving)
                 }
             }

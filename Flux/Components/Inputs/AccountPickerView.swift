@@ -93,20 +93,22 @@ private struct AccountSelectionSheet: View {
 
     var body: some View {
         NavigationStack {
-            List(accounts) { account in
-                AccountPickerRow(
-                    account: account,
-                    isSelected: selectedAccount?.id == account.id,
-                    showBalance: showBalance
-                ) {
-                    selectedAccount = account
-                    dismiss()
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 94))], spacing: 16) {
+                    ForEach(accounts) { account in
+                        AccountGridItem(
+                            account: account,
+                            isSelected: selectedAccount?.id == account.id,
+                            showBalance: showBalance
+                        ) {
+                            selectedAccount = account
+                            dismiss()
+                        }
+                    }
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                .padding()
             }
-            .listStyle(.plain)
+            .scrollIndicators(.hidden)
             .accessibilityIdentifier("transaction.accountPicker.sheet")
             .navigationTitle(AppLocalization.string("account.select", defaultValue: "Select Account"))
             .navigationBarTitleDisplayMode(.inline)
@@ -114,46 +116,35 @@ private struct AccountSelectionSheet: View {
     }
 }
 
-private struct AccountPickerRow: View {
+private struct AccountGridItem: View {
     let account: Account
     let isSelected: Bool
     let showBalance: Bool
     let onSelect: () -> Void
-    
+
+    private var subtitle: String {
+        guard showBalance else { return account.resolvedTypeName }
+        return CurrencyFormatter.shared.format(
+            account.currentBalance,
+            currencyCode: account.currencyCode
+        )
+    }
+
     var body: some View {
-        Button(action: onSelect) {
-            HStack {
-                AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type, size: .small)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(account.name)
-                        .font(.subheadline)
-                        .fontWeight(isSelected ? .semibold : .regular)
-                    
-                    Text(account.resolvedTypeName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                
-                if showBalance {
-                    Text(CurrencyFormatter.shared.format(account.currentBalance, currencyCode: account.currencyCode))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.blue)
-                }
-            }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
-            .background(isSelected ? Color.blue.opacity(0.08) : Color.secondary.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+        IconTitleGridItem(
+            title: account.name,
+            subtitle: subtitle,
+            tintColor: account.resolvedTypeColor,
+            isSelected: isSelected
+        ) {
+            AccountTypeDefinitionIcon(
+                definition: account.typeDefinition,
+                fallback: account.type,
+                size: .medium
+            )
+        } onSelect: {
+            onSelect()
         }
-        .buttonStyle(.plain)
     }
 }
 
