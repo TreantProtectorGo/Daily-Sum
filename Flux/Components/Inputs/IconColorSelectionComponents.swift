@@ -13,12 +13,30 @@ struct IconColorCircle: View {
     }
 
     var body: some View {
-        Image(systemName: icon)
+        Image(systemName: SFSymbolCatalog.filledVariant(icon))
             .font(size.iconFont)
-            .foregroundStyle(color)
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(IconColorCircleStyle.glyphColor(for: color))
             .frame(width: size.dimension, height: size.dimension)
-            .background(color.opacity(0.15))
+            .background(color)
             .clipShape(Circle())
+    }
+}
+
+enum IconColorCircleStyle {
+    static func glyphColor(for color: Color) -> Color {
+        let uiColor = UIColor(color)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        guard uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return .white
+        }
+
+        let luminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+        return luminance > 0.68 ? Color(uiColor: .darkGray) : .white
     }
 }
 
@@ -215,6 +233,14 @@ enum SFSymbolCatalog {
 
     static var selectable: [String] {
         all.filter(isValid)
+    }
+
+    static func filledVariant(_ symbol: String) -> String {
+        let trimmed = symbol.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasSuffix(".fill") else { return trimmed }
+
+        let candidate = "\(trimmed).fill"
+        return isValid(candidate) ? candidate : trimmed
     }
 
     private static func unique(_ symbols: [String]) -> [String] {
@@ -438,14 +464,19 @@ private struct SymbolCircleButton: View {
                 Circle()
                     .fill(
                         isSelected
-                            ? tintColor.opacity(0.14)
+                            ? tintColor
                             : Color(uiColor: .tertiarySystemGroupedBackground)
                     )
                     .frame(width: 40, height: 40)
 
-                Image(systemName: symbol)
+                Image(systemName: SFSymbolCatalog.filledVariant(symbol))
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(isSelected ? tintColor : Color(uiColor: .darkGray))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(
+                        isSelected
+                            ? IconColorCircleStyle.glyphColor(for: tintColor)
+                            : Color(uiColor: .darkGray)
+                    )
                     .frame(width: 28, height: 28)
                     .minimumScaleFactor(0.78)
             }
