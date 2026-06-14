@@ -645,12 +645,10 @@ private struct ManagedBackupSheet: View {
                                 Button(role: .destructive) {
                                     viewModel.deleteManagedBackup(backup)
                                 } label: {
-                                    Label(
-                                        AppLocalization.string("action.delete", defaultValue: "Delete"),
-                                        systemImage: "trash"
-                                    )
+                                    Image(systemName: "trash")
                                 }
                                 .accessibilityIdentifier("settings.backup.delete.button")
+                                .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
                                 .tint(.red)
                             }
                         }

@@ -607,12 +607,10 @@ struct ReportsView: View {
                     Button(role: .destructive) {
                         Task { try? await viewModel.deleteBudget(budget) }
                     } label: {
-                        Label(
-                            AppLocalization.string("action.delete", defaultValue: "Delete"),
-                            systemImage: "trash"
-                        )
+                        Image(systemName: "trash")
                     }
                     .tint(.red)
+                    .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
                 }
             }
         } header: {

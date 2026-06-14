@@ -282,7 +282,13 @@ private struct CategoryManagementSheet: View {
                                 Text(category.displayName)
                                     .font(.body.weight(selectedCategory?.id == category.id ? .semibold : .regular))
 
-                                Text("Total transactions: \(category.totalTransactionCount)")
+                                Text(
+                                    AppLocalization.formatted(
+                                        "Total transactions: %lld",
+                                        defaultValue: "Total transactions: %lld",
+                                        Int64(category.totalTransactionCount)
+                                    )
+                                )
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

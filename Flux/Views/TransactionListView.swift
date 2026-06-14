@@ -354,12 +354,10 @@ struct TransactionListView: View {
                 Button {
                     requestDelete(row, viewModel: viewModel)
                 } label: {
-                    Label(
-                        AppLocalization.string("action.delete", defaultValue: "Delete"),
-                        systemImage: "trash"
-                    )
+                    Image(systemName: "trash")
                 }
                 .tint(.red)
+                .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
             }
     }
 
