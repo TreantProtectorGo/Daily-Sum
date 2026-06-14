@@ -334,11 +334,7 @@ private struct AccountTypeDefinitionManagementSheet: View {
         var initialDraft: IconColorItemDraft {
             switch self {
             case .create:
-                return IconColorItemDraft(
-                    name: "",
-                    icon: "wallet.pass",
-                    colorHex: "#007AFF"
-                )
+                return .empty
             case .edit(let definition):
                 return IconColorItemDraft(
                     name: definition.name,

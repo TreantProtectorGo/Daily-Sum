@@ -129,8 +129,8 @@ struct IconColorItemDraft: Equatable {
 
     static let empty = IconColorItemDraft(
         name: "",
-        icon: "tag",
-        colorHex: "#808080"
+        icon: "",
+        colorHex: ""
     )
 }
 
@@ -285,7 +285,7 @@ struct IconColorItemEditorSheet: View {
                     ) {
                         save()
                     }
-                    .disabled(draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSave)
                 }
             }
             .alert(AppLocalization.string("error.title", defaultValue: "Error"), isPresented: $showError) {
@@ -298,6 +298,12 @@ struct IconColorItemEditorSheet: View {
 
     private var selectedColor: Color {
         Color(hex: draft.colorHex) ?? .secondary
+    }
+
+    private var canSave: Bool {
+        !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && SFSymbolCatalog.isValid(draft.icon)
+            && Color(hex: draft.colorHex) != nil
     }
 
     private var nameField: some View {

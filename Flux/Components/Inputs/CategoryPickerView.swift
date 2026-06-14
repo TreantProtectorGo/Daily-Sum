@@ -421,11 +421,7 @@ private struct CategoryManagementSheet: View {
         var initialDraft: IconColorItemDraft {
             switch self {
             case .create:
-                return IconColorItemDraft(
-                    name: "",
-                    icon: "tag",
-                    colorHex: "#808080"
-                )
+                return .empty
             case .edit(let category):
                 return IconColorItemDraft(
                     name: category.displayName,
