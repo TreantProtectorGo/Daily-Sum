@@ -44,11 +44,21 @@ struct IconToolbarGlyph: View {
     let systemName: String
 
     var body: some View {
-        Image(systemName: systemName)
+        glyph
             .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
             .frame(width: 34, height: 34)
             .contentShape(.circle)
+    }
+
+    @ViewBuilder
+    private var glyph: some View {
+        if systemName == "checkmark" {
+            Image(systemName: systemName)
+                .foregroundStyle(.tint)
+        } else {
+            Image(systemName: systemName)
+                .foregroundStyle(.primary)
+        }
     }
 }
 
