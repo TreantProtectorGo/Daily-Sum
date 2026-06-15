@@ -229,6 +229,81 @@ struct IconManagementGridItem<Icon: View>: View {
     }
 }
 
+struct IconManagementListRow<Icon: View>: View {
+    let title: String
+    let countText: String
+    let countAccessibilityLabel: String
+    let tintColor: Color
+    let isSelected: Bool
+    let icon: Icon
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    init(
+        title: String,
+        countText: String,
+        countAccessibilityLabel: String,
+        tintColor: Color,
+        isSelected: Bool,
+        @ViewBuilder icon: () -> Icon,
+        onEdit: @escaping () -> Void,
+        onDelete: @escaping () -> Void
+    ) {
+        self.title = title
+        self.countText = countText
+        self.countAccessibilityLabel = countAccessibilityLabel
+        self.tintColor = tintColor
+        self.isSelected = isSelected
+        self.icon = icon()
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+    }
+
+    var body: some View {
+        Button(action: onEdit) {
+            HStack(spacing: 12) {
+                icon
+                    .overlay {
+                        Circle()
+                            .stroke(tintColor, lineWidth: isSelected ? 3 : 0)
+                            .padding(-5)
+                    }
+
+                Text(title)
+                    .font(.body.weight(isSelected ? .semibold : .regular))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .layoutPriority(1)
+
+                Spacer(minLength: 12)
+
+                Text(countText)
+                    .font(.body)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(countAccessibilityLabel)")
+        .accessibilityHint("Edit")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+            }
+            .tint(.red)
+            .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
+        }
+    }
+}
+
 struct IconColorItemDraft: Equatable {
     var name: String
     var icon: String

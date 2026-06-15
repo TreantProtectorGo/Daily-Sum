@@ -254,6 +254,7 @@ private struct CategoryManagementSheet: View {
     let mode: CategoryPickerMode
 
     @Query(sort: \Category.nameKey) private var allCategories: [Category]
+    @Query private var transactions: [Transaction]
 
     @State private var editorMode: EditorMode?
     @State private var deleteCandidate: Category?
@@ -273,15 +274,17 @@ private struct CategoryManagementSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: managementGridColumns, spacing: 20) {
+            List {
+                Section {
                     ForEach(categories) { category in
-                        IconManagementGridItem(
+                        IconManagementListRow(
                             title: category.displayName,
+                            countText: "\(usageCount(for: category))",
+                            countAccessibilityLabel: transactionCountText(for: category),
                             tintColor: category.color,
                             isSelected: selectedCategory?.id == category.id
                         ) {
-                            IconColorCircle(icon: category.icon, color: category.color, size: .medium)
+                            IconColorCircle(icon: category.icon, color: category.color, size: .small)
                         } onEdit: {
                             editorMode = .edit(category)
                         } onDelete: {
@@ -289,10 +292,9 @@ private struct CategoryManagementSheet: View {
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 18)
             }
-            .scrollIndicators(.hidden)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Categories")
             .navigationBarTitleDisplayMode(.inline)
@@ -351,13 +353,6 @@ private struct CategoryManagementSheet: View {
         }
     }
 
-    private var managementGridColumns: [GridItem] {
-        Array(
-            repeating: GridItem(.flexible(minimum: 64, maximum: 112), spacing: 14, alignment: .top),
-            count: 4
-        )
-    }
-
     private func save(_ draft: IconColorItemDraft, mode: EditorMode) throws {
         let service = CategoryService(context: modelContext)
         switch mode {
@@ -377,6 +372,15 @@ private struct CategoryManagementSheet: View {
                 colorHex: draft.colorHex
             )
         }
+    }
+
+    private func usageCount(for category: Category) -> Int {
+        transactions.filter { $0.category?.id == category.id }.count
+    }
+
+    private func transactionCountText(for category: Category) -> String {
+        let count = usageCount(for: category)
+        return count == 1 ? "1 transaction" : "\(count) transactions"
     }
 
     private func delete(_ category: Category) {

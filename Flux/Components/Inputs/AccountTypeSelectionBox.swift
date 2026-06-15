@@ -148,16 +148,17 @@ private struct AccountTypeDefinitionManagementSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: managementGridColumns, spacing: 20) {
+            List {
+                Section {
                     ForEach(definitions) { definition in
-                        IconManagementGridItem(
+                        IconManagementListRow(
                             title: definition.name,
-                            subtitle: accountCountText(for: definition),
+                            countText: "\(usageCount(for: definition))",
+                            countAccessibilityLabel: accountCountText(for: definition),
                             tintColor: definition.color,
                             isSelected: selection?.id == definition.id
                         ) {
-                            IconColorCircle(icon: definition.icon, color: definition.color, size: .medium)
+                            IconColorCircle(icon: definition.icon, color: definition.color, size: .small)
                         } onEdit: {
                             editorMode = .edit(definition)
                         } onDelete: {
@@ -165,10 +166,9 @@ private struct AccountTypeDefinitionManagementSheet: View {
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 18)
             }
-            .scrollIndicators(.hidden)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Account Types")
             .navigationBarTitleDisplayMode(.inline)
@@ -236,13 +236,6 @@ private struct AccountTypeDefinitionManagementSheet: View {
                 Text(errorMessage)
             }
         }
-    }
-
-    private var managementGridColumns: [GridItem] {
-        Array(
-            repeating: GridItem(.flexible(minimum: 64, maximum: 112), spacing: 14, alignment: .top),
-            count: 4
-        )
     }
 
     private func save(_ draft: IconColorItemDraft, mode: EditorMode) throws {
