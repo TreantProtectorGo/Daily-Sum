@@ -26,13 +26,26 @@ enum ExchangeRateProviderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidRequest:
-            return "Unable to build exchange rate request."
+            return AppLocalization.string(
+                "exchangeRate.error.invalidRequest",
+                defaultValue: "Unable to build exchange rate request."
+            )
         case .invalidResponse:
-            return "Exchange rate provider returned an invalid response."
+            return AppLocalization.string(
+                "exchangeRate.error.invalidResponse",
+                defaultValue: "Exchange rate provider returned an invalid response."
+            )
         case .invalidDateFormat:
-            return "Exchange rate provider returned an unexpected date format."
+            return AppLocalization.string(
+                "exchangeRate.error.invalidDateFormat",
+                defaultValue: "Exchange rate provider returned an unexpected date format."
+            )
         case .httpFailure(let statusCode):
-            return "Exchange rate request failed with status code \(statusCode)."
+            return AppLocalization.formatted(
+                "exchangeRate.error.httpFailure",
+                defaultValue: "Exchange rate request failed with status code %lld.",
+                Int64(statusCode)
+            )
         }
     }
 }

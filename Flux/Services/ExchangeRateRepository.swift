@@ -15,7 +15,12 @@ final class ExchangeRateRepository {
         var errorDescription: String? {
             switch self {
             case .missingRatePair(let base, let quote):
-                return "No exchange rate available for \(base) to \(quote)."
+                return AppLocalization.formatted(
+                    "exchangeRate.error.missingRatePair",
+                    defaultValue: "No exchange rate available for %1$@ to %2$@.",
+                    base,
+                    quote
+                )
             }
         }
     }

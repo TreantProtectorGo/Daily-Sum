@@ -140,11 +140,20 @@ final class CategoryService {
         var errorDescription: String? {
             switch self {
             case .typeMismatch:
-                "Subcategory type must match parent type"
+                AppLocalization.string(
+                    "category.error.typeMismatch",
+                    defaultValue: "Subcategory type must match parent type"
+                )
             case .circularReference:
-                "Cannot make a category its own parent"
+                AppLocalization.string(
+                    "category.error.circularReference",
+                    defaultValue: "Cannot make a category its own parent"
+                )
             case .hasTransactions:
-                "Cannot change type of category with existing transactions"
+                AppLocalization.string(
+                    "category.error.hasTransactions",
+                    defaultValue: "Cannot change type of category with existing transactions"
+                )
             }
         }
     }

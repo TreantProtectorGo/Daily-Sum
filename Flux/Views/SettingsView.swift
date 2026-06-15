@@ -919,7 +919,7 @@ private struct TravelCurrencySettingsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: "Finish") {
+                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: AppLocalization.string("action.finish", defaultValue: "Finish")) {
                         dismiss()
                     }
                 }

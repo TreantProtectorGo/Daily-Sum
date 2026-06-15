@@ -165,7 +165,7 @@ struct TransactionEntrySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    IconToolbarButton(systemName: "xmark", accessibilityLabel: "Close") {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: AppLocalization.string("action.close", defaultValue: "Close")) {
                         dismiss()
                     }
                 }
@@ -178,7 +178,7 @@ struct TransactionEntrySheet: View {
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: "Apply") {
+                    IconToolbarButton(systemName: "checkmark", accessibilityLabel: AppLocalization.string("action.apply", defaultValue: "Apply")) {
                         Task {
                             await saveTransaction()
                         }

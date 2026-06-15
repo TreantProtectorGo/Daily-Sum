@@ -14,17 +14,39 @@ extension BackupArchiveCodecError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedSchemaVersion(let schemaVersion):
-            return "This backup uses unsupported schema version \(schemaVersion)."
+            return AppLocalization.formatted(
+                "backup.error.unsupportedSchemaVersion",
+                defaultValue: "This backup uses unsupported schema version %lld.",
+                Int64(schemaVersion)
+            )
         case .missingRequiredSections(let sections):
-            return "This backup is missing required sections: \(sections.sorted().joined(separator: ", "))."
+            return AppLocalization.formatted(
+                "backup.error.missingRequiredSections",
+                defaultValue: "This backup is missing required sections: %@.",
+                sections.sorted().joined(separator: ", ")
+            )
         case .checksumMismatch:
-            return "This backup failed integrity verification."
+            return AppLocalization.string(
+                "backup.error.checksumMismatch",
+                defaultValue: "This backup failed integrity verification."
+            )
         case .duplicateRecordID(let entity, let id):
-            return "This backup contains duplicate \(entity) record ID \(id.uuidString)."
+            return AppLocalization.formatted(
+                "backup.error.duplicateRecordID",
+                defaultValue: "This backup contains duplicate %1$@ record ID %2$@.",
+                entity,
+                id.uuidString
+            )
         case .invalidArchiveFormat:
-            return "This backup file is invalid or corrupted."
+            return AppLocalization.string(
+                "backup.error.invalidArchiveFormat",
+                defaultValue: "This backup file is invalid or corrupted."
+            )
         case .recordCountMismatch:
-            return "This backup record count does not match its integrity metadata."
+            return AppLocalization.string(
+                "backup.error.recordCountMismatch",
+                defaultValue: "This backup record count does not match its integrity metadata."
+            )
         }
     }
 }

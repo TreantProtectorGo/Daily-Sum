@@ -607,7 +607,7 @@ struct TransactionFiltersSheet: View {
                 }
 
                 ToolbarItem(placement: .cancellationAction) {
-                    IconToolbarButton(systemName: "xmark", accessibilityLabel: "Close") {
+                    IconToolbarButton(systemName: "xmark", accessibilityLabel: AppLocalization.string("action.close", defaultValue: "Close")) {
                         dismiss()
                     }
                 }

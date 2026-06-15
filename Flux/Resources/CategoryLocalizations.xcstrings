@@ -88,7 +88,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "食飯"
+            "value" : "餐飲"
           }
         }
       }
@@ -427,7 +427,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自我增值"
+            "value" : "进修"
           }
         },
         "zh-Hant" : {
@@ -473,13 +473,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "兼职"
+            "value" : "自由职业"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "兼職"
+            "value" : "自由工作"
           }
         }
       }
@@ -519,13 +519,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "礼物"
+            "value" : "礼金"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "禮物"
+            "value" : "禮金"
           }
         }
       }
@@ -611,13 +611,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "二手变卖"
+            "value" : "二手出售"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "二手變賣"
+            "value" : "二手出售"
           }
         }
       }

@@ -12,7 +12,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
 
     var id: Self { self }
 
-    static func from(rawValue: String?) -> AppLanguage {
+    nonisolated static func from(rawValue: String?) -> AppLanguage {
         guard let rawValue else {
             return .system
         }
@@ -22,7 +22,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
         return language
     }
 
-    var localeIdentifier: String? {
+    nonisolated var localeIdentifier: String? {
         switch self {
         case .system:
             return nil
@@ -53,9 +53,9 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
 }
 
 enum AppLanguagePreference {
-    static let storageKey = kAppLanguageCode
+    nonisolated static let storageKey = kAppLanguageCode
 
-    static var language: AppLanguage {
+    nonisolated static var language: AppLanguage {
         get {
             AppLanguage.from(rawValue: UserDefaults.standard.string(forKey: storageKey))
         }

@@ -1,18 +1,18 @@
 import Foundation
 
 enum AppLocalization {
-    private static var selectedLanguage: AppLanguage {
+    nonisolated private static var selectedLanguage: AppLanguage {
         AppLanguagePreference.language
     }
 
-    static var locale: Locale {
+    nonisolated static var locale: Locale {
         if let localeIdentifier = selectedLanguage.localeIdentifier {
             return Locale(identifier: localeIdentifier)
         }
         return .autoupdatingCurrent
     }
 
-    private static var bundle: Bundle {
+    nonisolated private static var bundle: Bundle {
         guard let localeIdentifier = selectedLanguage.localeIdentifier else {
             return .main
         }
@@ -27,7 +27,7 @@ enum AppLocalization {
         return .main
     }
 
-    private static func localizationCandidates(for localeIdentifier: String) -> [String] {
+    nonisolated private static func localizationCandidates(for localeIdentifier: String) -> [String] {
         var candidates = [localeIdentifier]
         let separators = CharacterSet(charactersIn: "-_")
         let components = localeIdentifier.components(separatedBy: separators)
@@ -49,7 +49,7 @@ enum AppLocalization {
         return candidates.filter { seen.insert($0).inserted }
     }
 
-    static func string(
+    nonisolated static func string(
         _ key: String,
         defaultValue: String,
         table: String? = nil
@@ -57,11 +57,11 @@ enum AppLocalization {
         bundle.localizedString(forKey: key, value: defaultValue, table: table)
     }
 
-    static func string(_ key: String, table: String) -> String {
+    nonisolated static func string(_ key: String, table: String) -> String {
         bundle.localizedString(forKey: key, value: nil, table: table)
     }
 
-    static func formatted(
+    nonisolated static func formatted(
         _ key: String,
         defaultValue: String,
         table: String? = nil,
@@ -71,7 +71,7 @@ enum AppLocalization {
         return String(format: format, locale: locale, arguments: arguments)
     }
 
-    static func string(
+    nonisolated static func string(
         key: String,
         defaultValue: String,
         table: String? = nil
@@ -79,7 +79,7 @@ enum AppLocalization {
         string(key, defaultValue: defaultValue, table: table)
     }
 
-    static func string(
+    nonisolated static func string(
         key: String,
         table: String
     ) -> String {

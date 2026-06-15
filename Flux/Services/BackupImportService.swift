@@ -47,9 +47,20 @@ extension BackupImportServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .missingReferencedRecord(recordType, recordID, referencedType, referencedID):
-            return "Missing \(referencedType) record \(referencedID) referenced by \(recordType) record \(recordID)."
+            return AppLocalization.formatted(
+                "backup.error.missingReferencedRecord",
+                defaultValue: "Missing %1$@ record %2$@ referenced by %3$@ record %4$@.",
+                referencedType,
+                referencedID.uuidString,
+                recordType,
+                recordID.uuidString
+            )
         case let .unsupportedRestoreMode(mode):
-            return "Restore mode \(mode.rawValue) is not supported yet."
+            return AppLocalization.formatted(
+                "backup.error.unsupportedRestoreMode",
+                defaultValue: "Restore mode %@ is not supported yet.",
+                mode.rawValue
+            )
         }
     }
 }

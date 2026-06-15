@@ -240,9 +240,15 @@ final class BudgetService {
         var errorDescription: String? {
             switch self {
             case .incomeCategory:
-                "Budgets can only be created for expense categories"
+                AppLocalization.string(
+                    "budget.error.incomeCategory",
+                    defaultValue: "Budgets can only be created for expense categories"
+                )
             case .duplicateBudget:
-                "A budget already exists for this category or scope in the selected period"
+                AppLocalization.string(
+                    "budget.error.duplicateBudget",
+                    defaultValue: "A budget already exists for this category or scope in the selected period"
+                )
             }
         }
     }

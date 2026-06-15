@@ -105,9 +105,15 @@ final class AccountTypeDefinitionService {
         var errorDescription: String? {
             switch self {
             case .typeInUse:
-                return "This account type is used by one or more accounts."
+                return AppLocalization.string(
+                    "accountType.error.typeInUse",
+                    defaultValue: "This account type is used by one or more accounts."
+                )
             case .replacementMatchesDeletedType:
-                return "Choose a different replacement account type."
+                return AppLocalization.string(
+                    "accountType.error.replacementMatchesDeletedType",
+                    defaultValue: "Choose a different replacement account type."
+                )
             }
         }
     }
