@@ -316,6 +316,7 @@ struct IconColorItemDraft: Equatable {
     )
 }
 
+@MainActor
 enum SFSymbolCatalog {
     static let featured = unique([
         "banknote", "building.columns", "creditcard", "chart.line.uptrend.xyaxis",
