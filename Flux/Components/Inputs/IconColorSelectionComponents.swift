@@ -140,6 +140,85 @@ struct IconTitleGridItem<Icon: View>: View {
     }
 }
 
+struct IconManagementGridItem<Icon: View>: View {
+    let title: String
+    let subtitle: String?
+    let tintColor: Color
+    let isSelected: Bool
+    let icon: Icon
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        tintColor: Color,
+        isSelected: Bool,
+        @ViewBuilder icon: () -> Icon,
+        onEdit: @escaping () -> Void,
+        onDelete: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.tintColor = tintColor
+        self.isSelected = isSelected
+        self.icon = icon()
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Button(action: onEdit) {
+                VStack(spacing: 8) {
+                    icon
+                        .overlay {
+                            Circle()
+                                .stroke(tintColor, lineWidth: isSelected ? 3 : 0)
+                                .padding(-6)
+                        }
+
+                    VStack(spacing: 2) {
+                        Text(title)
+                            .font(.caption.weight(isSelected ? .semibold : .regular))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(isSelected ? .primary : .secondary)
+                            .minimumScaleFactor(0.72)
+
+                        if let subtitle, !subtitle.isEmpty {
+                            Text(subtitle)
+                                .font(.caption2)
+                                .lineLimit(1)
+                                .foregroundStyle(.tertiary)
+                                .minimumScaleFactor(0.68)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .frame(minHeight: subtitle == nil ? 92 : 108)
+                .frame(maxWidth: .infinity)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
+            .accessibilityHint("Edit")
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+
+            Button(action: onDelete) {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 24)
+                    .background(.red, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
+            .offset(x: 2, y: -2)
+        }
+    }
+}
+
 struct IconColorItemDraft: Equatable {
     var name: String
     var icon: String

@@ -261,58 +261,39 @@ private struct CategoryManagementSheet: View {
     @State private var showError = false
 
     private var categories: [Category] {
-        allCategories
-            .filter { $0.type == mode.categoryType }
-            .sorted {
-                $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
-            }
+        let filtered = allCategories.filter { $0.type == mode.categoryType }
+        let order = Dictionary(uniqueKeysWithValues: mode.preferredCategoryOrder.enumerated().map { ($0.element, $0.offset) })
+        return filtered.sorted { lhs, rhs in
+            let lhsRank = order[lhs.nameKey] ?? Int.max
+            let rhsRank = order[rhs.nameKey] ?? Int.max
+            if lhsRank != rhsRank { return lhsRank < rhsRank }
+            return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+        }
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(categories) { category in
-                    Button {
-                        editorMode = .edit(category)
-                    } label: {
-                        HStack(spacing: 12) {
-                            IconColorCircle(icon: category.icon, color: category.color, size: .small)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(category.displayName)
-                                    .font(.body.weight(selectedCategory?.id == category.id ? .semibold : .regular))
-
-                                Text(
-                                    AppLocalization.formatted(
-                                        "Total transactions: %lld",
-                                        defaultValue: "Total transactions: %lld",
-                                        Int64(category.totalTransactionCount)
-                                    )
-                                )
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            if selectedCategory?.id == category.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(AppColors.selectedNavigation)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions {
-                        Button(role: .destructive) {
+            ScrollView {
+                LazyVGrid(columns: managementGridColumns, spacing: 20) {
+                    ForEach(categories) { category in
+                        IconManagementGridItem(
+                            title: category.displayName,
+                            tintColor: category.color,
+                            isSelected: selectedCategory?.id == category.id
+                        ) {
+                            IconColorCircle(icon: category.icon, color: category.color, size: .medium)
+                        } onEdit: {
+                            editorMode = .edit(category)
+                        } onDelete: {
                             deleteCandidate = category
-                        } label: {
-                            Image(systemName: "trash")
                         }
-                        .tint(.red)
-                        .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
             }
+            .scrollIndicators(.hidden)
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Categories")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -368,6 +349,13 @@ private struct CategoryManagementSheet: View {
                 Text(errorMessage)
             }
         }
+    }
+
+    private var managementGridColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 64, maximum: 112), spacing: 14, alignment: .top),
+            count: 4
+        )
     }
 
     private func save(_ draft: IconColorItemDraft, mode: EditorMode) throws {

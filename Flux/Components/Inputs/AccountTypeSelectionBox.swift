@@ -148,42 +148,28 @@ private struct AccountTypeDefinitionManagementSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(definitions) { definition in
-                    Button {
-                        editorMode = .edit(definition)
-                    } label: {
-                        HStack(spacing: 12) {
-                            IconColorCircle(icon: definition.icon, color: definition.color, size: .small)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(definition.name)
-                                    .font(.body.weight(selection?.id == definition.id ? .semibold : .regular))
-                                Text("\(usageCount(for: definition)) accounts")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            if selection?.id == definition.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(AppColors.selectedNavigation)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .swipeActions {
-                        Button(role: .destructive) {
+            ScrollView {
+                LazyVGrid(columns: managementGridColumns, spacing: 20) {
+                    ForEach(definitions) { definition in
+                        IconManagementGridItem(
+                            title: definition.name,
+                            subtitle: accountCountText(for: definition),
+                            tintColor: definition.color,
+                            isSelected: selection?.id == definition.id
+                        ) {
+                            IconColorCircle(icon: definition.icon, color: definition.color, size: .medium)
+                        } onEdit: {
+                            editorMode = .edit(definition)
+                        } onDelete: {
                             deleteCandidate = definition
-                        } label: {
-                            Image(systemName: "trash")
                         }
-                        .tint(.red)
-                        .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
             }
+            .scrollIndicators(.hidden)
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Account Types")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -252,6 +238,13 @@ private struct AccountTypeDefinitionManagementSheet: View {
         }
     }
 
+    private var managementGridColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 64, maximum: 112), spacing: 14, alignment: .top),
+            count: 4
+        )
+    }
+
     private func save(_ draft: IconColorItemDraft, mode: EditorMode) throws {
         let service = AccountTypeDefinitionService(context: modelContext)
         switch mode {
@@ -304,6 +297,11 @@ private struct AccountTypeDefinitionManagementSheet: View {
 
     private func usageCount(for definition: AccountTypeDefinition) -> Int {
         accounts.filter { $0.typeDefinition?.id == definition.id }.count
+    }
+
+    private func accountCountText(for definition: AccountTypeDefinition) -> String {
+        let count = usageCount(for: definition)
+        return count == 1 ? "1 account" : "\(count) accounts"
     }
 
     private func show(_ error: Error) {
