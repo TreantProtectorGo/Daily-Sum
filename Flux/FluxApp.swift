@@ -182,7 +182,7 @@ struct LoadingView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .controlSize(.large)
-            Text("Loading...")
+            Text(AppLocalization.string("app.loading", defaultValue: "Loading..."))
                 .foregroundStyle(.secondary)
         }
     }
@@ -198,7 +198,7 @@ struct ErrorView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.largeTitle)
                 .foregroundStyle(.red)
-            Text("Failed to Initialize")
+            Text(AppLocalization.string("app.initializeFailed", defaultValue: "Failed to Initialize"))
                 .font(.headline)
             Text(error.localizedDescription)
                 .font(.caption)

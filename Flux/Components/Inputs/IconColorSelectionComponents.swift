@@ -212,7 +212,7 @@ struct IconManagementGridItem<Icon: View>: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
-            .accessibilityHint("Edit")
+            .accessibilityHint(AppLocalization.string("action.edit", defaultValue: "Edit"))
             .accessibilityAddTraits(isSelected ? .isSelected : [])
 
             Button(action: onDelete) {
@@ -292,7 +292,7 @@ struct IconManagementListRow<Icon: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(title), \(countAccessibilityLabel)")
-        .accessibilityHint("Edit")
+        .accessibilityHint(AppLocalization.string("action.edit", defaultValue: "Edit"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive, action: onDelete) {
@@ -432,7 +432,7 @@ struct IconColorItemEditorSheet: View {
 
     init(
         title: String,
-        saveTitle: String = "Apply",
+        saveTitle: String = AppLocalization.string("action.apply", defaultValue: "Apply"),
         initialDraft: IconColorItemDraft,
         onSave: @escaping (IconColorItemDraft) throws -> Void
     ) {
@@ -462,7 +462,7 @@ struct IconColorItemEditorSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     IconToolbarButton(
                         systemName: "xmark",
-                        accessibilityLabel: "Close"
+                        accessibilityLabel: AppLocalization.string("action.close", defaultValue: "Close")
                     ) {
                         dismiss()
                     }
@@ -497,7 +497,7 @@ struct IconColorItemEditorSheet: View {
     }
 
     private var nameField: some View {
-        TextField("Name", text: $draft.name)
+        TextField(AppLocalization.string("field.name", defaultValue: "Name"), text: $draft.name)
             .textInputAutocapitalization(.words)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -601,7 +601,7 @@ private struct ColorSwatchButton: View {
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Color")
+        .accessibilityLabel(AppLocalization.string("field.color", defaultValue: "Color"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -711,14 +711,18 @@ private struct SFSymbolPickerSheet: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("Choose Symbol")
+            .navigationTitle(AppLocalization.string("symbol.choose", defaultValue: "Choose Symbol"))
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search SF Symbols")
+            .searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: AppLocalization.string("symbol.search", defaultValue: "Search SF Symbols")
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     IconToolbarButton(
                         systemName: "xmark",
-                        accessibilityLabel: "Close"
+                        accessibilityLabel: AppLocalization.string("action.close", defaultValue: "Close")
                     ) {
                         dismiss()
                     }
@@ -727,7 +731,7 @@ private struct SFSymbolPickerSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     IconToolbarButton(
                         systemName: "checkmark",
-                        accessibilityLabel: "Finish"
+                        accessibilityLabel: AppLocalization.string("action.finish", defaultValue: "Finish")
                     ) {
                         dismiss()
                     }
@@ -751,12 +755,18 @@ private struct SFSymbolPickerSheet: View {
                     Image(systemName: "keyboard")
                         .foregroundStyle(.secondary)
 
-                    TextField("Enter any SF Symbol name", text: $manualSymbol)
+                    TextField(
+                        AppLocalization.string(
+                            "symbol.manual.placeholder",
+                            defaultValue: "Enter any SF Symbol name"
+                        ),
+                        text: $manualSymbol
+                    )
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .font(.body.monospaced())
 
-                    Button("Use") {
+                    Button(AppLocalization.string("action.use", defaultValue: "Use")) {
                         useManualSymbol()
                     }
                     .font(.subheadline.weight(.semibold))
@@ -766,7 +776,17 @@ private struct SFSymbolPickerSheet: View {
                 .padding(.vertical, 10)
                 .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                Text(manualSymbolIsInvalid ? "This SF Symbol is not available on this iOS version." : "Paste any Apple SF Symbol name here.")
+                Text(
+                    manualSymbolIsInvalid
+                        ? AppLocalization.string(
+                            "symbol.manual.invalid",
+                            defaultValue: "This SF Symbol is not available on this iOS version."
+                        )
+                        : AppLocalization.string(
+                            "symbol.manual.help",
+                            defaultValue: "Paste any Apple SF Symbol name here."
+                        )
+                )
                     .font(.caption)
                     .foregroundStyle(manualSymbolIsInvalid ? .red : .secondary)
             }

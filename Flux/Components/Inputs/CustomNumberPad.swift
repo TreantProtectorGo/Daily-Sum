@@ -375,14 +375,11 @@ struct CustomNumberPad: View {
         case .digit(let value):
             return "\(value)"
         case .decimalSeparator:
-            return AppLocalization.string(
-                "numberPad.decimalSeparator",
-                defaultValue: "Decimal separator"
-            )
+            return decimalSeparator
         case .backspace:
-            return AppLocalization.string("numberPad.backspace", defaultValue: "Delete")
+            return "⌫"
         case .operation(let operation):
-            return operation.accessibilityLabel
+            return operation.symbol
         case .confirm:
             return AppLocalization.string("action.confirm", defaultValue: "Confirm")
         }

@@ -26,21 +26,6 @@ enum BalanceTrendRange: String, CaseIterable, Identifiable {
         }
     }
 
-    var summaryTitle: String {
-        switch self {
-        case .week:
-            AppLocalization.string("balance.range.week", defaultValue: "1W")
-        case .oneMonth:
-            AppLocalization.string("balance.range.oneMonth", defaultValue: "1M")
-        case .threeMonths:
-            AppLocalization.string("balance.range.threeMonths", defaultValue: "3M")
-        case .oneYear:
-            AppLocalization.string("balance.range.oneYear", defaultValue: "1Y")
-        case .all:
-            AppLocalization.string("balance.range.all", defaultValue: "All")
-        }
-    }
-
     func startDate(now: Date, calendar: Calendar = .current) -> Date? {
         switch self {
         case .week:

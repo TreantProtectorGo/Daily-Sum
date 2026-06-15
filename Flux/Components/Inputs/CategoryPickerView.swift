@@ -230,7 +230,10 @@ private struct CategorySelectionSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     IconToolbarButton(
                         systemName: "pencil",
-                        accessibilityLabel: "Edit categories"
+                        accessibilityLabel: AppLocalization.string(
+                            "category.editList",
+                            defaultValue: "Edit categories"
+                        )
                     ) {
                         showManagement = true
                     }
@@ -296,13 +299,13 @@ private struct CategoryManagementSheet: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Categories")
+            .navigationTitle(AppLocalization.string("category.title", defaultValue: "Categories"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     IconToolbarButton(
                         systemName: "checkmark",
-                        accessibilityLabel: "Finish"
+                        accessibilityLabel: AppLocalization.string("action.finish", defaultValue: "Finish")
                     ) {
                         dismiss()
                     }
@@ -326,7 +329,10 @@ private struct CategoryManagementSheet: View {
                 }
             }
             .confirmationDialog(
-                "Delete Category?",
+                AppLocalization.string(
+                    "category.delete.confirm.title",
+                    defaultValue: "Delete Category?"
+                ),
                 isPresented: Binding(
                     get: { deleteCandidate != nil },
                     set: { if !$0 { deleteCandidate = nil } }
@@ -338,12 +344,23 @@ private struct CategoryManagementSheet: View {
                         delete(deleteCandidate)
                     }
 
-                    Button("Keep Category", role: .cancel) {
+                    Button(
+                        AppLocalization.string(
+                            "category.delete.keep",
+                            defaultValue: "Keep Category"
+                        ),
+                        role: .cancel
+                    ) {
                         self.deleteCandidate = nil
                     }
                 }
             } message: {
-                Text("Transactions using this category will keep the transaction and clear the category.")
+                Text(
+                    AppLocalization.string(
+                        "category.delete.confirm.message",
+                        defaultValue: "Transactions using this category will keep the transaction and clear the category."
+                    )
+                )
             }
             .alert(AppLocalization.string("error.title", defaultValue: "Error"), isPresented: $showError) {
                 Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
@@ -380,7 +397,8 @@ private struct CategoryManagementSheet: View {
 
     private func transactionCountText(for category: Category) -> String {
         let count = usageCount(for: category)
-        return count == 1 ? "1 transaction" : "\(count) transactions"
+        let key = count == 1 ? "transaction.count.one" : "transaction.count.other"
+        return AppLocalization.formatted(key, defaultValue: count == 1 ? "%lld transaction" : "%lld transactions", Int64(count))
     }
 
     private func delete(_ category: Category) {
@@ -412,9 +430,9 @@ private struct CategoryManagementSheet: View {
         var title: String {
             switch self {
             case .create:
-                return "New Category"
+                return AppLocalization.string("category.new", defaultValue: "New Category")
             case .edit:
-                return "Edit Category"
+                return AppLocalization.string("category.edit", defaultValue: "Edit Category")
             }
         }
 

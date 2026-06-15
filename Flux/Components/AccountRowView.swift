@@ -94,7 +94,13 @@ struct AccountSummaryCard: View {
                     HStack {
                         Image(systemName: "clock")
                             .font(.caption2)
-                        Text("\(recentTransactionCount) recent transactions")
+                        Text(
+                            AppLocalization.formatted(
+                                "account.recentTransactions",
+                                defaultValue: "%lld recent transactions",
+                                Int64(recentTransactionCount)
+                            )
+                        )
                             .font(.caption)
                     }
                     .foregroundStyle(.secondary)

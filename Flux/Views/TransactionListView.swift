@@ -142,7 +142,13 @@ struct TransactionListView: View {
                     }
                 }
 
-                Button("Keep Subscription", role: .cancel) {
+                Button(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledFuture.keep",
+                        defaultValue: "Keep Subscription"
+                    ),
+                    role: .cancel
+                ) {
                     pendingScheduledDeleteTransactionID = nil
                 }
             },
@@ -193,7 +199,13 @@ struct TransactionListView: View {
                     }
                 }
 
-                Button("Keep Transaction", role: .cancel) {
+                Button(
+                    AppLocalization.string(
+                        "transaction.deleteScheduledSource.keep",
+                        defaultValue: "Keep Transaction"
+                    ),
+                    role: .cancel
+                ) {
                     pendingSourceDeleteTransactionID = nil
                 }
             },

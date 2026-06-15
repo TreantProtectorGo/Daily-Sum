@@ -120,7 +120,10 @@ private struct AccountTypeSelectionSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     IconToolbarButton(
                         systemName: "pencil",
-                        accessibilityLabel: "Edit account types"
+                        accessibilityLabel: AppLocalization.string(
+                            "accountType.editList",
+                            defaultValue: "Edit account types"
+                        )
                     ) {
                         showManagementAfterDismiss = true
                         dismiss()
@@ -170,13 +173,13 @@ private struct AccountTypeDefinitionManagementSheet: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Account Types")
+            .navigationTitle(AppLocalization.string("accountType.title", defaultValue: "Account Types"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     IconToolbarButton(
                         systemName: "checkmark",
-                        accessibilityLabel: "Finish"
+                        accessibilityLabel: AppLocalization.string("action.finish", defaultValue: "Finish")
                     ) {
                         dismiss()
                     }
@@ -200,7 +203,10 @@ private struct AccountTypeDefinitionManagementSheet: View {
                 }
             }
             .confirmationDialog(
-                "Delete Account Type?",
+                AppLocalization.string(
+                    "accountType.delete.confirm.title",
+                    defaultValue: "Delete Account Type?"
+                ),
                 isPresented: Binding(
                     get: { deleteCandidate != nil },
                     set: { if !$0 { deleteCandidate = nil } }
@@ -215,19 +221,36 @@ private struct AccountTypeDefinitionManagementSheet: View {
                         }
                     } else {
                         ForEach(replacements) { replacement in
-                            Button("Move accounts to \(replacement.name)") {
+                            Button(
+                                AppLocalization.formatted(
+                                    "accountType.delete.moveAccounts",
+                                    defaultValue: "Move accounts to %@",
+                                    replacement.name
+                                )
+                            ) {
                                 reassignAndDelete(deleteCandidate, replacement: replacement)
                             }
                         }
                     }
 
-                    Button("Keep Account Type", role: .cancel) {
+                    Button(
+                        AppLocalization.string(
+                            "accountType.delete.keep",
+                            defaultValue: "Keep Account Type"
+                        ),
+                        role: .cancel
+                    ) {
                         self.deleteCandidate = nil
                     }
                 }
             } message: {
                 if let deleteCandidate, usageCount(for: deleteCandidate) > 0 {
-                    Text("Choose another type for existing accounts before deleting.")
+                    Text(
+                        AppLocalization.string(
+                            "accountType.delete.reassign.message",
+                            defaultValue: "Choose another type for existing accounts before deleting."
+                        )
+                    )
                 }
             }
             .alert(AppLocalization.string("error.title", defaultValue: "Error"), isPresented: $showError) {
@@ -294,7 +317,8 @@ private struct AccountTypeDefinitionManagementSheet: View {
 
     private func accountCountText(for definition: AccountTypeDefinition) -> String {
         let count = usageCount(for: definition)
-        return count == 1 ? "1 account" : "\(count) accounts"
+        let key = count == 1 ? "account.count.one" : "account.count.other"
+        return AppLocalization.formatted(key, defaultValue: count == 1 ? "%lld account" : "%lld accounts", Int64(count))
     }
 
     private func show(_ error: Error) {
@@ -318,9 +342,9 @@ private struct AccountTypeDefinitionManagementSheet: View {
         var title: String {
             switch self {
             case .create:
-                return "New Account Type"
+                return AppLocalization.string("accountType.new", defaultValue: "New Account Type")
             case .edit:
-                return "Edit Account Type"
+                return AppLocalization.string("accountType.edit", defaultValue: "Edit Account Type")
             }
         }
 

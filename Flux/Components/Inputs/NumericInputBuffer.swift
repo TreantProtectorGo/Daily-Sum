@@ -19,18 +19,6 @@ enum NumericExpressionOperator: String, CaseIterable {
         }
     }
 
-    var accessibilityLabel: String {
-        switch self {
-        case .add:
-            AppLocalization.string("numberPad.add", defaultValue: "Add")
-        case .subtract:
-            AppLocalization.string("numberPad.subtract", defaultValue: "Subtract")
-        case .multiply:
-            AppLocalization.string("numberPad.multiply", defaultValue: "Multiply")
-        case .divide:
-            AppLocalization.string("numberPad.divide", defaultValue: "Divide")
-        }
-    }
 }
 
 enum NumericExpressionMutationResult: Equatable {

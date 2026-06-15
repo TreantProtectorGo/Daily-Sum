@@ -33,6 +33,18 @@
             "state" : "new",
             "value" : "Flux"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flux"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flux"
+          }
         }
       }
     },
