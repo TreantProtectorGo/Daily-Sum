@@ -219,6 +219,14 @@ final class LocalizationTests: XCTestCase {
             "Delete this account?"
         )
         XCTAssertEqual(
+            localizedStringValue(key: "account.delete.confirm.action", locale: "en"),
+            "Delete Account"
+        )
+        XCTAssertEqual(
+            localizedStringValue(key: "account.delete.confirm.message", locale: "en"),
+            "Deleting an account removes all its transactions. This cannot be undone."
+        )
+        XCTAssertEqual(
             localizedStringValue(key: "dashboard.viewAllInReports", locale: "en"),
             "View all in Reports"
         )
@@ -429,6 +437,7 @@ final class LocalizationTests: XCTestCase {
                 "settings.backup.restore.result": "Restore Result",
                 "settings.backup.restore.confirm.title": "Restore Backup?",
                 "settings.backup.restore.confirm": "Confirm Restore",
+                "settings.backup.restore.confirm.action": "Restore Backup",
                 "settings.backup.restore.confirm.message": "Restore replaces current financial data and restores the preferences included in this backup.",
                 "settings.backup.summary": "%1$@, %2$lld accounts, %3$lld transactions",
                 "settings.backup.record.accounts.one": "%lld account",
@@ -468,6 +477,7 @@ final class LocalizationTests: XCTestCase {
                 "settings.backup.restore.result": "还原结果",
                 "settings.backup.restore.confirm.title": "要还原备份吗？",
                 "settings.backup.restore.confirm": "确认还原",
+                "settings.backup.restore.confirm.action": "还原备份",
                 "settings.backup.restore.confirm.message": "还原会取代目前的财务数据，并还原此备份内包含的偏好设定。",
                 "settings.backup.summary": "%1$@，%2$lld 个账户，%3$lld 笔交易",
                 "settings.backup.record.accounts.one": "%lld 个账户",
@@ -507,6 +517,7 @@ final class LocalizationTests: XCTestCase {
                 "settings.backup.restore.result": "還原結果",
                 "settings.backup.restore.confirm.title": "要還原備份嗎？",
                 "settings.backup.restore.confirm": "確認還原",
+                "settings.backup.restore.confirm.action": "還原備份",
                 "settings.backup.restore.confirm.message": "還原會取代目前的財務資料，並還原此備份內包含的偏好設定。",
                 "settings.backup.summary": "%1$@，%2$lld 個帳戶，%3$lld 筆交易",
                 "settings.backup.record.accounts.one": "%lld 個帳戶",

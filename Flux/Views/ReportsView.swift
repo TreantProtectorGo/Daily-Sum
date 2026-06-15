@@ -1087,16 +1087,8 @@ struct BudgetRowCard: View {
                 )
             }
         }
-        .confirmationDialog(
-            AppLocalization.string("budget.deleteConfirmation.title", defaultValue: "Delete Budget?"),
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button(AppLocalization.string("action.delete", defaultValue: "Delete"), role: .destructive) {
-                onDelete()
-            }
-        } message: {
-            Text(AppLocalization.string("budget.deleteConfirmation.message", defaultValue: "This action cannot be undone."))
+        .destructiveConfirmation(.budgetDelete, isPresented: $showDeleteConfirmation) {
+            onDelete()
         }
     }
 }

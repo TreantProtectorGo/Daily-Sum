@@ -68,16 +68,8 @@ struct AccountEntrySheet: View {
             }
         }
         .presentationDetents([.large])
-        .alert(
-            AppLocalization.string("account.delete.confirm.title", defaultValue: "Do you want to delete this Account?"),
-            isPresented: $showDeleteConfirmation,
-        ) {
-            Button(AppLocalization.string("action.confirm", defaultValue: "Confirm"), role: .destructive) {
-                deleteAccount()
-            }
-            Button("Keep Account", role: .cancel) { }
-        } message: {
-            Text(AppLocalization.string("account.delete.confirm.message", defaultValue: "You cannot undo this action."))
+        .destructiveConfirmation(.accountDelete, isPresented: $showDeleteConfirmation) {
+            deleteAccount()
         }
     }
     

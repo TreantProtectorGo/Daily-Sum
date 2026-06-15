@@ -76,23 +76,15 @@ struct SettingsView: View {
             // About
             aboutSection(viewModel: viewModel)
         }
-        .alert(
-            AppLocalization.string("settings.clearData.title", defaultValue: "Do you want to clear all data?"),
-            isPresented: $showClearDataConfirmation,
-        ) {
-            Button(AppLocalization.string("action.confirm", defaultValue: "Confirm"), role: .destructive) {
-                Task {
-                    do {
-                        try await viewModel.clearAllData()
-                    } catch {
-                        errorMessage = error.localizedDescription
-                        showError = true
-                    }
+        .destructiveConfirmation(.clearAllData, isPresented: $showClearDataConfirmation) {
+            Task {
+                do {
+                    try await viewModel.clearAllData()
+                } catch {
+                    errorMessage = error.localizedDescription
+                    showError = true
                 }
             }
-            Button("Keep Data", role: .cancel) { }
-        } message: {
-            Text(AppLocalization.string("settings.clearData.message", defaultValue: "You cannot undo this action."))
         }
         .alert(
             AppLocalization.string("error.title", defaultValue: "Error"),
@@ -693,32 +685,12 @@ private struct ManagedBackupSheet: View {
             .task {
                 viewModel.loadBackupFiles()
             }
-            .alert(
-                AppLocalization.string(
-                    "settings.backup.restore.confirm.title",
-                    defaultValue: "Restore Backup?"
-                ),
+            .destructiveConfirmation(
+                .restoreBackup,
                 isPresented: $showRestoreConfirmation,
+                destructiveAccessibilityIdentifier: "settings.backup.restore.confirm.button"
             ) {
-                Button("Keep Current Data", role: .cancel) { }
-
-                Button(
-                    AppLocalization.string(
-                        "settings.backup.restore.confirm",
-                        defaultValue: "Confirm Restore"
-                    ),
-                    role: .destructive
-                ) {
-                    applyPreparedRestore()
-                }
-                .accessibilityIdentifier("settings.backup.restore.confirm.button")
-            } message: {
-                Text(
-                    AppLocalization.string(
-                        "settings.backup.restore.confirm.message",
-                        defaultValue: "Restore replaces current financial data and restores the preferences included in this backup."
-                    )
-                )
+                applyPreparedRestore()
             }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),
