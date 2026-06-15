@@ -14,15 +14,15 @@ enum BalanceTrendRange: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .week:
-            "1W"
+            AppLocalization.string("balance.range.week", defaultValue: "1W")
         case .oneMonth:
-            "1M"
+            AppLocalization.string("balance.range.oneMonth", defaultValue: "1M")
         case .threeMonths:
-            "3M"
+            AppLocalization.string("balance.range.threeMonths", defaultValue: "3M")
         case .oneYear:
-            "1Y"
+            AppLocalization.string("balance.range.oneYear", defaultValue: "1Y")
         case .all:
-            "All"
+            AppLocalization.string("balance.range.all", defaultValue: "All")
         }
     }
 

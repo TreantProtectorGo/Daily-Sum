@@ -10,7 +10,7 @@ struct AccountRowView: View {
             AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(account.name)
+                Text(account.displayName)
                     .font(.headline)
                     .lineLimit(1)
                 
@@ -75,7 +75,7 @@ struct AccountSummaryCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type, size: .small)
-                    Text(account.name)
+                    Text(account.displayName)
                         .font(.headline)
                         .lineLimit(1)
                     Spacer()

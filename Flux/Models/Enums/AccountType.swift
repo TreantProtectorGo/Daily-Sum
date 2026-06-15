@@ -19,6 +19,19 @@ enum AccountType: String, Codable, CaseIterable {
             AppLocalization.string("account.type.investment", defaultValue: "Investment")
         }
     }
+
+    var defaultSeedName: String {
+        switch self {
+        case .cash:
+            "Cash"
+        case .bank:
+            "Bank Account"
+        case .creditCard:
+            "Credit Card"
+        case .investment:
+            "Investment"
+        }
+    }
     
     var defaultIcon: String {
         switch self {

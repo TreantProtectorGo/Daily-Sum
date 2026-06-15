@@ -71,7 +71,13 @@ final class Account {
     }
 
     var resolvedTypeName: String {
-        typeDefinition?.name ?? type.localizedName
+        typeDefinition?.displayName ?? type.localizedName
+    }
+
+    var displayName: String {
+        guard name == type.defaultSeedName else { return name }
+        guard typeDefinition?.isSystemDefault ?? true else { return name }
+        return type.localizedName
     }
 
     var resolvedTypeIcon: String {

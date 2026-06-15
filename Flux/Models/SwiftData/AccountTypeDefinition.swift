@@ -51,4 +51,9 @@ final class AccountTypeDefinition {
     var color: Color {
         Color(hex: colorHex) ?? .accentColor
     }
+
+    var displayName: String {
+        guard isSystemDefault, let legacyType else { return name }
+        return legacyType.localizedName
+    }
 }
