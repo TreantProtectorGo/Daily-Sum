@@ -127,6 +127,21 @@ enum TransactionEntryAccountSelection {
         })
     }
 
+    static func reconciledSelectedAccount(
+        _ selectedAccount: Account?,
+        availableAccounts: [Account]
+    ) -> Account? {
+        guard let selectedAccount else {
+            return nil
+        }
+
+        if availableAccounts.contains(where: { $0.id == selectedAccount.id }) {
+            return selectedAccount
+        }
+
+        return availableAccounts.first
+    }
+
     private static func uniqueAccounts(_ accounts: [Account]) -> [Account] {
         var seenAccountIDs = Set<UUID>()
         return accounts.filter { account in
@@ -168,6 +183,11 @@ struct TransactionEntrySheet: View {
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
+
+    @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
+    @AppStorage(TravelCurrencyPreference.sourceStorageKey) private var travelCurrencySource = TravelCurrencySource.automatic.rawValue
+    @AppStorage(TravelCurrencyPreference.detectedCurrencyStorageKey) private var detectedTravelCurrencyCode = ""
+    @AppStorage(TravelCurrencyPreference.manualCurrencyStorageKey) private var manualTravelCurrencyCode = ""
     
     @Query private var accounts: [Account]
     
@@ -251,6 +271,9 @@ struct TransactionEntrySheet: View {
             }
             .onChange(of: selectedAccount?.id) { _, _ in
                 applyTravelTransactionDefaultIfNeeded()
+            }
+            .onChange(of: travelInputCurrencyCode) { _, _ in
+                handleTravelInputCurrencyChange()
             }
             .task(id: travelPreviewRefreshKey) {
                 await refreshTravelPreviewIfNeeded()
@@ -652,12 +675,19 @@ struct TransactionEntrySheet: View {
     }
 
     private func reconcileSelectedAccountWithAvailableAccounts() {
-        guard let selectedAccount,
-              !availableAccounts.contains(where: { $0.id == selectedAccount.id }) else {
+        selectedAccount = TransactionEntryAccountSelection.reconciledSelectedAccount(
+            selectedAccount,
+            availableAccounts: availableAccounts
+        )
+    }
+
+    private func handleTravelInputCurrencyChange() {
+        guard existingTransaction == nil, isTravelTransaction else {
             return
         }
 
-        self.selectedAccount = availableAccounts.first
+        reconcileSelectedAccountWithAvailableAccounts()
+        travelPreview = nil
     }
 
     private func handleTravelTransactionToggleChange(_ newValue: Bool) {
@@ -720,10 +750,12 @@ struct TransactionEntrySheet: View {
 
     private var resolvedCurrentTravelCurrencyCode: String? {
         TravelCurrencyState.resolve(
-            defaultCurrencyCode: UserCurrencyPreference.resolvedCurrencyCode,
-            source: TravelCurrencyPreference.source,
-            detectedCurrencyCode: TravelCurrencyPreference.detectedCurrencyCode,
-            manualTravelCurrencyCode: TravelCurrencyPreference.manualCurrencyCode
+            defaultCurrencyCode: UserCurrencyPreference.resolvedDisplayCurrencyCode(
+                preferredCurrencyCode: preferredCurrencyCode
+            ),
+            source: TravelCurrencySource(rawValue: travelCurrencySource) ?? .automatic,
+            detectedCurrencyCode: detectedTravelCurrencyCode,
+            manualTravelCurrencyCode: manualTravelCurrencyCode
         )
         .currentTravelCurrencyCode
     }
