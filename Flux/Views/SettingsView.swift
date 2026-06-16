@@ -188,8 +188,8 @@ struct SettingsView: View {
                 HStack {
                     Text(
                         AppLocalization.string(
-                            "settings.exchangeRate.configuration",
-                            defaultValue: "Foreign Currency Mode"
+                            "settings.exchangeRate.travelSection",
+                            defaultValue: "Foreign Currency"
                         )
                     )
                     Spacer()
@@ -797,6 +797,22 @@ private struct TravelCurrencySettingsSheet: View {
         NavigationStack {
             Form {
                 Section {
+                    Toggle(
+                        AppLocalization.string(
+                            "settings.exchangeRate.configuration",
+                            defaultValue: "Foreign Currency Mode"
+                        ),
+                        isOn: Binding(
+                            get: { viewModel.isTravelCurrencyModeEnabled },
+                            set: { isEnabled in
+                                Task {
+                                    await viewModel.setTravelCurrencyModeEnabled(isEnabled)
+                                }
+                            }
+                        )
+                    )
+                    .tint(AppColors.interactiveText)
+
                     Picker(
                         AppLocalization.string(
                             "settings.exchangeRate.configuration",
@@ -828,6 +844,7 @@ private struct TravelCurrencySettingsSheet: View {
                         .tag(TravelCurrencySource.manual)
                     }
                     .tint(AppColors.interactiveText)
+                    .disabled(!viewModel.isTravelCurrencyModeEnabled)
 
                     HStack {
                         Text(
@@ -840,6 +857,7 @@ private struct TravelCurrencySettingsSheet: View {
                         Text(viewModel.detectedLocationCurrencyDisplayText)
                             .foregroundStyle(.secondary)
                     }
+                    .disabled(!viewModel.isTravelCurrencyModeEnabled)
 
                     if viewModel.travelCurrencySource == .automatic {
                         Button {
@@ -854,7 +872,12 @@ private struct TravelCurrencySettingsSheet: View {
                                 )
                             )
                         }
-                        .foregroundStyle(AppColors.interactiveText)
+                        .foregroundStyle(
+                            viewModel.isTravelCurrencyModeEnabled
+                                ? AppColors.interactiveText
+                                : .secondary
+                        )
+                        .disabled(!viewModel.isTravelCurrencyModeEnabled)
                     }
 
                     HStack {
@@ -874,6 +897,7 @@ private struct TravelCurrencySettingsSheet: View {
                         )
                             .foregroundStyle(.secondary)
                     }
+                    .disabled(!viewModel.isTravelCurrencyModeEnabled)
 
                     if viewModel.travelCurrencySource == .manual {
                         Picker(
@@ -900,12 +924,13 @@ private struct TravelCurrencySettingsSheet: View {
                             }
                         }
                         .tint(AppColors.interactiveText)
+                        .disabled(!viewModel.isTravelCurrencyModeEnabled)
                     }
                 } footer: {
                     Text(
                         AppLocalization.string(
                             "settings.exchangeRate.configuration.footer",
-                            defaultValue: "Automatic mode follows your current location. Manual mode stays active until you switch back."
+                            defaultValue: "When off, new transactions will not default to foreign currency. When on, Automatic follows your location; Manual uses your selected currency."
                         )
                     )
                 }

@@ -71,6 +71,7 @@ final class CloudSyncSettingsStore: CloudSyncSettingsStoring {
         BackupCrossDevicePreferences(
             preferredCurrencyCode: UserCurrencyPreference.currencyCode,
             appLanguage: AppLanguagePreference.language,
+            isTravelCurrencyModeEnabled: TravelCurrencyPreference.isEnabled,
             travelCurrencySource: TravelCurrencyPreference.source,
             detectedTravelCurrencyCode: TravelCurrencyPreference.detectedCurrencyCode,
             manualTravelCurrencyCode: TravelCurrencyPreference.manualCurrencyCode,
@@ -81,6 +82,7 @@ final class CloudSyncSettingsStore: CloudSyncSettingsStoring {
     func applyCrossDevicePreferences(_ preferences: BackupCrossDevicePreferences) {
         UserCurrencyPreference.currencyCode = preferences.preferredCurrencyCode
         AppLanguagePreference.language = preferences.appLanguage
+        TravelCurrencyPreference.isEnabled = preferences.isTravelCurrencyModeEnabled ?? true
         TravelCurrencyPreference.source = preferences.travelCurrencySource
         TravelCurrencyPreference.detectedCurrencyCode = preferences.detectedTravelCurrencyCode
         TravelCurrencyPreference.manualCurrencyCode = preferences.manualTravelCurrencyCode

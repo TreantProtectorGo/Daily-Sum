@@ -203,6 +203,7 @@ final class BackupExportService: BackupExportServicing {
             crossDevice: BackupCrossDevicePreferences(
                 preferredCurrencyCode: UserCurrencyPreference.currencyCode,
                 appLanguage: AppLanguagePreference.language,
+                isTravelCurrencyModeEnabled: TravelCurrencyPreference.isEnabled,
                 travelCurrencySource: TravelCurrencyPreference.source,
                 detectedTravelCurrencyCode: TravelCurrencyPreference.detectedCurrencyCode,
                 manualTravelCurrencyCode: TravelCurrencyPreference.manualCurrencyCode,

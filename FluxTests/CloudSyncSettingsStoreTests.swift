@@ -54,6 +54,7 @@ final class CloudSyncSettingsStoreTests: XCTestCase {
 
         let originalCurrencyCode = UserCurrencyPreference.currencyCode
         let originalLanguage = AppLanguagePreference.language
+        let originalTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         let originalTravelCurrencySource = TravelCurrencyPreference.source
         let originalDetectedCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         let originalManualCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -62,6 +63,7 @@ final class CloudSyncSettingsStoreTests: XCTestCase {
         defer {
             UserCurrencyPreference.currencyCode = originalCurrencyCode
             AppLanguagePreference.language = originalLanguage
+            TravelCurrencyPreference.isEnabled = originalTravelCurrencyModeEnabled
             TravelCurrencyPreference.source = originalTravelCurrencySource
             TravelCurrencyPreference.detectedCurrencyCode = originalDetectedCurrencyCode
             TravelCurrencyPreference.manualCurrencyCode = originalManualCurrencyCode
@@ -71,6 +73,7 @@ final class CloudSyncSettingsStoreTests: XCTestCase {
         let preferences = BackupCrossDevicePreferences(
             preferredCurrencyCode: "EUR",
             appLanguage: .traditionalChinese,
+            isTravelCurrencyModeEnabled: false,
             travelCurrencySource: .manual,
             detectedTravelCurrencyCode: "JPY",
             manualTravelCurrencyCode: "EUR",
@@ -91,6 +94,7 @@ final class CloudSyncSettingsStoreTests: XCTestCase {
 
         let originalCurrencyCode = UserCurrencyPreference.currencyCode
         let originalLanguage = AppLanguagePreference.language
+        let originalTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         let originalTravelCurrencySource = TravelCurrencyPreference.source
         let originalDetectedCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         let originalManualCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -99,6 +103,7 @@ final class CloudSyncSettingsStoreTests: XCTestCase {
         defer {
             UserCurrencyPreference.currencyCode = originalCurrencyCode
             AppLanguagePreference.language = originalLanguage
+            TravelCurrencyPreference.isEnabled = originalTravelCurrencyModeEnabled
             TravelCurrencyPreference.source = originalTravelCurrencySource
             TravelCurrencyPreference.detectedCurrencyCode = originalDetectedCurrencyCode
             TravelCurrencyPreference.manualCurrencyCode = originalManualCurrencyCode
@@ -108,6 +113,7 @@ final class CloudSyncSettingsStoreTests: XCTestCase {
         let preferences = BackupCrossDevicePreferences(
             preferredCurrencyCode: "EUR",
             appLanguage: .english,
+            isTravelCurrencyModeEnabled: false,
             travelCurrencySource: .manual,
             detectedTravelCurrencyCode: "USD",
             manualTravelCurrencyCode: "JPY",

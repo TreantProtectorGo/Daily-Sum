@@ -14,6 +14,19 @@ final class TravelCurrencyStateTests: XCTestCase {
         XCTAssertNil(state.currentTravelCurrencyCode)
     }
 
+    func testDisabledModeKeepsDetectedCurrencyButClearsCurrentTravelCurrency() {
+        let state = TravelCurrencyState.resolve(
+            defaultCurrencyCode: "USD",
+            isEnabled: false,
+            source: .automatic,
+            detectedCurrencyCode: "JPY",
+            manualTravelCurrencyCode: nil
+        )
+
+        XCTAssertEqual(state.detectedLocationCurrencyCode, "JPY")
+        XCTAssertNil(state.currentTravelCurrencyCode)
+    }
+
     func testManualSelectionSeedKeepsCurrentTravelCurrencyOnly() {
         XCTAssertNil(
             TravelCurrencyManualSelection.seededManualCurrencyCode(

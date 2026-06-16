@@ -14,6 +14,7 @@ private let kAutoPresentAccountAfterCategorySelection = "flux.autoPresentAccount
 private let kLastSuccessfulRateSyncDate = "flux.lastSuccessfulRateSyncDate"
 private let kLastFailedRateSyncAttemptDate = "flux.lastFailedRateSyncAttemptDate"
 private let kTravelCurrencySource = "flux.travelCurrencySource"
+private let kTravelCurrencyModeEnabled = "flux.travelCurrencyModeEnabled"
 private let kDetectedTravelCurrencyCode = "flux.detectedTravelCurrencyCode"
 private let kManualTravelCurrencyCode = "flux.manualTravelCurrencyCode"
 private let kReportsCategoryRowLimit = "flux.reports.categoryRowLimit"
@@ -133,8 +134,18 @@ enum TravelCurrencySource: String, CaseIterable, Identifiable, Codable {
 
 enum TravelCurrencyPreference {
     static let sourceStorageKey = kTravelCurrencySource
+    static let modeEnabledStorageKey = kTravelCurrencyModeEnabled
     static let detectedCurrencyStorageKey = kDetectedTravelCurrencyCode
     static let manualCurrencyStorageKey = kManualTravelCurrencyCode
+
+    static var isEnabled: Bool {
+        get {
+            UserDefaults.standard.object(forKey: modeEnabledStorageKey) as? Bool ?? true
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: modeEnabledStorageKey)
+        }
+    }
 
     static var source: TravelCurrencySource {
         get {
@@ -201,17 +212,25 @@ enum ReportsCategoryRowLimitPreference {
 
 enum TravelCurrencySettingSummaryFormatter {
     static func string(
+        isEnabled: Bool = true,
         source: TravelCurrencySource,
         currentTravelCurrencyCode: String?,
         manualTravelCurrencyCode: String?,
         defaultCurrencyCode: String
     ) -> String {
+        guard isEnabled else {
+            return AppLocalization.string(
+                "settings.exchangeRate.currentTravelCurrency.none",
+                defaultValue: "Inactive"
+            )
+        }
+
         switch source {
         case .automatic:
             if let currentTravelCurrencyCode {
                 return AppLocalization.string(
                     "settings.exchangeRate.configuration.summary.automatic",
-                    defaultValue: "Automatic (Current: %@)"
+                    defaultValue: "Automatic · %@"
                 )
                 .replacingOccurrences(of: "%@", with: currentTravelCurrencyCode)
             }
@@ -229,7 +248,7 @@ enum TravelCurrencySettingSummaryFormatter {
             }
             return AppLocalization.string(
                 "settings.exchangeRate.configuration.summary.manual",
-                defaultValue: "Manual: %@"
+                defaultValue: "Manual · %@"
             )
             .replacingOccurrences(of: "%@", with: manualCurrencyCode)
         }
@@ -313,6 +332,12 @@ final class SettingsViewModel {
     var travelCurrencySource: TravelCurrencySource {
         didSet {
             TravelCurrencyPreference.source = travelCurrencySource
+        }
+    }
+
+    var isTravelCurrencyModeEnabled: Bool {
+        didSet {
+            TravelCurrencyPreference.isEnabled = isTravelCurrencyModeEnabled
         }
     }
 
@@ -422,6 +447,7 @@ final class SettingsViewModel {
     private var resolvedTravelCurrencyState: ResolvedTravelCurrencyState {
         TravelCurrencyState.resolve(
             defaultCurrencyCode: defaultCurrencyCode,
+            isEnabled: isTravelCurrencyModeEnabled,
             source: travelCurrencySource,
             detectedCurrencyCode: detectedTravelCurrencyCode,
             manualTravelCurrencyCode: manualTravelCurrencyCode
@@ -457,6 +483,7 @@ final class SettingsViewModel {
 
     var travelCurrencySettingSummary: String {
         TravelCurrencySettingSummaryFormatter.string(
+            isEnabled: isTravelCurrencyModeEnabled,
             source: travelCurrencySource,
             currentTravelCurrencyCode: currentTravelCurrencyCode,
             manualTravelCurrencyCode: manualTravelCurrencyCode,
@@ -610,6 +637,7 @@ final class SettingsViewModel {
         self.appLanguage = AppLanguagePreference.language
         self.appTheme = AppThemePreference.theme
         self.appLaunchTab = AppLaunchTabPreference.defaultTab
+        self.isTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         self.travelCurrencySource = TravelCurrencyPreference.source
         self.detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         self.manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -817,6 +845,7 @@ final class SettingsViewModel {
         appLanguage = AppLanguagePreference.language
         appTheme = AppThemePreference.theme
         appLaunchTab = AppLaunchTabPreference.defaultTab
+        isTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         travelCurrencySource = TravelCurrencyPreference.source
         detectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         manualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -916,16 +945,27 @@ final class SettingsViewModel {
         }
     }
 
+    func setTravelCurrencyModeEnabled(_ isEnabled: Bool) async {
+        isTravelCurrencyModeEnabled = isEnabled
+        guard isEnabled else { return }
+
+        await refreshTravelCurrencyState()
+    }
+
     func setManualTravelCurrencyCode(_ currencyCode: String?) {
         manualTravelCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(currencyCode)
     }
 
     func requestTravelCurrencyLocationUpdate() async {
+        guard isTravelCurrencyModeEnabled else { return }
+
         _ = await travelCurrencyLocationService.requestAuthorizationIfNeeded()
         await refreshTravelCurrencyState()
     }
 
     func refreshTravelCurrencyState() async {
+        guard isTravelCurrencyModeEnabled else { return }
+
         let refresher = TravelCurrencyPreferenceRefresher(
             locationService: travelCurrencyLocationService
         )

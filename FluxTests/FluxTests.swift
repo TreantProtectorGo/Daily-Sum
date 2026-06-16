@@ -15,6 +15,7 @@ final class FluxTests: XCTestCase {
     private static let showUpcomingScheduledMigrationKey =
         "flux.showUpcomingScheduledTransactions.defaultVisibleMigrationCompleted"
     private var originalPreferredCurrencyCode: String?
+    private var originalTravelCurrencyModeEnabled: Bool?
     private var originalTravelCurrencySource: String?
     private var originalDetectedTravelCurrencyCode: String?
     private var originalManualTravelCurrencyCode: String?
@@ -30,6 +31,9 @@ final class FluxTests: XCTestCase {
         originalPreferredCurrencyCode = UserDefaults.standard.string(
             forKey: UserCurrencyPreference.storageKey
         )
+        originalTravelCurrencyModeEnabled = UserDefaults.standard.object(
+            forKey: TravelCurrencyPreference.modeEnabledStorageKey
+        ) as? Bool
         originalTravelCurrencySource = UserDefaults.standard.string(
             forKey: TravelCurrencyPreference.sourceStorageKey
         )
@@ -55,6 +59,16 @@ final class FluxTests: XCTestCase {
             originalPreferredCurrencyCode,
             forKey: UserCurrencyPreference.storageKey
         )
+        if let originalTravelCurrencyModeEnabled {
+            UserDefaults.standard.set(
+                originalTravelCurrencyModeEnabled,
+                forKey: TravelCurrencyPreference.modeEnabledStorageKey
+            )
+        } else {
+            UserDefaults.standard.removeObject(
+                forKey: TravelCurrencyPreference.modeEnabledStorageKey
+            )
+        }
         if let originalTravelCurrencySource {
             UserDefaults.standard.set(
                 originalTravelCurrencySource,
@@ -120,6 +134,17 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(TravelCurrencyPreference.source, .automatic)
     }
 
+    func testTravelCurrencyPreferenceDefaultsEnabledAndPersistsModeToggle() {
+        UserDefaults.standard.removeObject(forKey: TravelCurrencyPreference.modeEnabledStorageKey)
+        XCTAssertTrue(TravelCurrencyPreference.isEnabled)
+
+        TravelCurrencyPreference.isEnabled = false
+        XCTAssertFalse(TravelCurrencyPreference.isEnabled)
+
+        TravelCurrencyPreference.isEnabled = true
+        XCTAssertTrue(TravelCurrencyPreference.isEnabled)
+    }
+
     func testTravelCurrencyPreferencePersistsDetectedAndManualCurrencyCodes() {
         TravelCurrencyPreference.detectedCurrencyCode = "KRW"
         TravelCurrencyPreference.manualCurrencyCode = "JPY"
@@ -139,12 +164,13 @@ final class FluxTests: XCTestCase {
 
         XCTAssertEqual(
             TravelCurrencySettingSummaryFormatter.string(
+                isEnabled: true,
                 source: .automatic,
                 currentTravelCurrencyCode: "KRW",
                 manualTravelCurrencyCode: nil,
                 defaultCurrencyCode: "USD"
             ),
-            "Automatic (Current: KRW)"
+            "Automatic · KRW"
         )
     }
 
@@ -156,12 +182,13 @@ final class FluxTests: XCTestCase {
 
         XCTAssertEqual(
             TravelCurrencySettingSummaryFormatter.string(
+                isEnabled: true,
                 source: .manual,
                 currentTravelCurrencyCode: "JPY",
                 manualTravelCurrencyCode: "JPY",
                 defaultCurrencyCode: "USD"
             ),
-            "Manual: JPY"
+            "Manual · JPY"
         )
     }
 
@@ -173,12 +200,31 @@ final class FluxTests: XCTestCase {
 
         XCTAssertEqual(
             TravelCurrencySettingSummaryFormatter.string(
+                isEnabled: true,
                 source: .manual,
                 currentTravelCurrencyCode: nil,
                 manualTravelCurrencyCode: nil,
                 defaultCurrencyCode: "USD"
             ),
             "Manual (Not Set)"
+        )
+    }
+
+    @MainActor
+    func testTravelCurrencySettingsSummaryUsesInactiveWhenModeDisabled() throws {
+        let originalLanguage = AppLanguagePreference.language
+        defer { AppLanguagePreference.language = originalLanguage }
+        AppLanguagePreference.language = .english
+
+        XCTAssertEqual(
+            TravelCurrencySettingSummaryFormatter.string(
+                isEnabled: false,
+                source: .automatic,
+                currentTravelCurrencyCode: "JPY",
+                manualTravelCurrencyCode: nil,
+                defaultCurrencyCode: "USD"
+            ),
+            "Inactive"
         )
     }
 

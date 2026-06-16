@@ -10,6 +10,10 @@ struct TravelCurrencyPreferenceRefresher {
 
     @discardableResult
     func refreshDetectedTravelCurrency() async -> String? {
+        guard TravelCurrencyPreference.isEnabled else {
+            return TravelCurrencyPreference.detectedCurrencyCode
+        }
+
         guard locationService.authorizationStatus() == .authorized else {
             return TravelCurrencyPreference.detectedCurrencyCode
         }

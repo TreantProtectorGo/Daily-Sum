@@ -6496,19 +6496,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatic mode follows your current location. Manual mode stays active until you switch back."
+            "value" : "When off, new transactions will not default to foreign currency. When on, Automatic follows your location; Manual uses your selected currency."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动模式会根据当前位置更新外币；手动模式会持续生效，直到你切回自动。"
+            "value" : "关闭后，新交易不会默认使用外币。开启后，自动模式会跟随你的位置；手动模式会使用你所选的货币。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自動模式會按目前位置更新外幣；手動模式會持續生效，直至你切回自動。"
+            "value" : "關閉後，新交易不會預設使用外幣。開啟後，自動模式會跟隨你的位置；手動模式會使用你所選的貨幣。"
           }
         }
       }
@@ -6542,19 +6542,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Automatic (Current: %@)"
+            "value" : "Automatic · %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动（目前为 %@）"
+            "value" : "自动 · %@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自動（目前為 %@）"
+            "value" : "自動 · %@"
           }
         }
       }
@@ -6565,19 +6565,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Manual: %@"
+            "value" : "Manual · %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "手动：%@"
+            "value" : "手动 · %@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "手動：%@"
+            "value" : "手動 · %@"
           }
         }
       }

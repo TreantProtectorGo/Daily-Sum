@@ -38,24 +38,40 @@ final class SettingsViewModelTravelCurrencyTests: XCTestCase {
     }
 
     private var container: ModelContainer!
+    private var originalTravelCurrencyModeEnabled: Bool?
     private var originalTravelCurrencySource: TravelCurrencySource?
     private var originalDetectedTravelCurrencyCode: String?
     private var originalManualTravelCurrencyCode: String?
 
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
+        originalTravelCurrencyModeEnabled = UserDefaults.standard.object(
+            forKey: TravelCurrencyPreference.modeEnabledStorageKey
+        ) as? Bool
         originalTravelCurrencySource = TravelCurrencyPreference.source
         originalDetectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         originalManualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
+        TravelCurrencyPreference.isEnabled = true
         TravelCurrencyPreference.source = .automatic
         TravelCurrencyPreference.detectedCurrencyCode = nil
         TravelCurrencyPreference.manualCurrencyCode = nil
     }
 
     override func tearDown() async throws {
+        if let originalTravelCurrencyModeEnabled {
+            UserDefaults.standard.set(
+                originalTravelCurrencyModeEnabled,
+                forKey: TravelCurrencyPreference.modeEnabledStorageKey
+            )
+        } else {
+            UserDefaults.standard.removeObject(
+                forKey: TravelCurrencyPreference.modeEnabledStorageKey
+            )
+        }
         TravelCurrencyPreference.source = originalTravelCurrencySource ?? .automatic
         TravelCurrencyPreference.detectedCurrencyCode = originalDetectedTravelCurrencyCode
         TravelCurrencyPreference.manualCurrencyCode = originalManualTravelCurrencyCode
+        originalTravelCurrencyModeEnabled = nil
         originalTravelCurrencySource = nil
         originalDetectedTravelCurrencyCode = nil
         originalManualTravelCurrencyCode = nil
@@ -94,6 +110,70 @@ final class SettingsViewModelTravelCurrencyTests: XCTestCase {
         await viewModel.requestTravelCurrencyLocationUpdate()
 
         XCTAssertEqual(locationService.requestAuthorizationCallCount, 1)
+        XCTAssertEqual(locationService.detectLocalCurrencyCallCount, 1)
+        XCTAssertEqual(viewModel.detectedLocationCurrencyCode, "CNY")
+    }
+
+    func testRequestTravelCurrencyLocationUpdateDoesNothingWhenModeDisabled() async throws {
+        TravelCurrencyPreference.isEnabled = false
+        TravelCurrencyPreference.detectedCurrencyCode = "JPY"
+        let locationService = MockLocationService(
+            authorizationStatusValue: .notDetermined,
+            requestAuthorizationResult: .authorized,
+            detectedCurrency: .CNY
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            travelCurrencyLocationService: locationService
+        )
+
+        await viewModel.requestTravelCurrencyLocationUpdate()
+
+        XCTAssertEqual(locationService.requestAuthorizationCallCount, 0)
+        XCTAssertEqual(locationService.detectLocalCurrencyCallCount, 0)
+        XCTAssertEqual(viewModel.detectedLocationCurrencyCode, "JPY")
+        XCTAssertNil(viewModel.currentTravelCurrencyCode)
+    }
+
+    func testDisabledTravelCurrencyModeKeepsCurrentCurrencyInactive() async throws {
+        TravelCurrencyPreference.isEnabled = false
+        TravelCurrencyPreference.source = .automatic
+        TravelCurrencyPreference.detectedCurrencyCode = "JPY"
+        let locationService = MockLocationService(
+            authorizationStatusValue: .authorized,
+            requestAuthorizationResult: .authorized,
+            detectedCurrency: .CNY
+        )
+
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            travelCurrencyLocationService: locationService
+        )
+        await viewModel.loadSettings()
+
+        XCTAssertFalse(viewModel.isTravelCurrencyModeEnabled)
+        XCTAssertEqual(locationService.detectLocalCurrencyCallCount, 0)
+        XCTAssertNil(viewModel.currentTravelCurrencyCode)
+        XCTAssertEqual(viewModel.travelCurrencySettingSummary, "Inactive")
+    }
+
+    func testReenablingTravelCurrencyModeRefreshesDetectedCurrency() async throws {
+        TravelCurrencyPreference.isEnabled = false
+        TravelCurrencyPreference.source = .automatic
+        TravelCurrencyPreference.detectedCurrencyCode = nil
+        let locationService = MockLocationService(
+            authorizationStatusValue: .authorized,
+            requestAuthorizationResult: .authorized,
+            detectedCurrency: .CNY
+        )
+        let viewModel = SettingsViewModel(
+            modelContext: container.mainContext,
+            travelCurrencyLocationService: locationService
+        )
+
+        await viewModel.setTravelCurrencyModeEnabled(true)
+
+        XCTAssertTrue(viewModel.isTravelCurrencyModeEnabled)
         XCTAssertEqual(locationService.detectLocalCurrencyCallCount, 1)
         XCTAssertEqual(viewModel.detectedLocationCurrencyCode, "CNY")
     }

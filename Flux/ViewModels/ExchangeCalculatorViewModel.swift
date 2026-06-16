@@ -10,6 +10,7 @@ final class ExchangeCalculatorViewModel {
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     private let modelContext: ModelContext
     private let preferredCurrencyCode: String
+    private let isTravelCurrencyModeEnabled: Bool
     private let travelCurrencySource: TravelCurrencySource
     private let manualTravelCurrencyCode: String?
     private let debounceDuration: Duration
@@ -36,6 +37,7 @@ final class ExchangeCalculatorViewModel {
         locationService: (any TravelCurrencyLocationServicing)? = nil,
         exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
         preferredCurrencyCode: String? = nil,
+        isTravelCurrencyModeEnabled: Bool? = nil,
         travelCurrencySource: TravelCurrencySource? = nil,
         manualTravelCurrencyCode: String? = nil,
         debounceDuration: Duration = .milliseconds(300)
@@ -50,6 +52,8 @@ final class ExchangeCalculatorViewModel {
         self.preferredCurrencyCode = UserCurrencyPreference.resolvedDisplayCurrencyCode(
             preferredCurrencyCode: resolvedPreferredCurrencyCode
         )
+        self.isTravelCurrencyModeEnabled = isTravelCurrencyModeEnabled
+            ?? TravelCurrencyPreference.isEnabled
         self.travelCurrencySource = travelCurrencySource
             ?? TravelCurrencyPreference.source
         self.manualTravelCurrencyCode = manualTravelCurrencyCode
@@ -89,7 +93,8 @@ final class ExchangeCalculatorViewModel {
         fromCurrencyCode = preferredCurrencyCode
 
         let detectedCurrencyCode: String?
-        if locationService.authorizationStatus() == .authorized,
+        if isTravelCurrencyModeEnabled,
+           locationService.authorizationStatus() == .authorized,
            let detected = await locationService.detectLocalCurrency() {
             detectedCurrencyCode = detected.rawValue
         } else {
@@ -98,6 +103,7 @@ final class ExchangeCalculatorViewModel {
 
         let resolvedTravelCurrencyState = TravelCurrencyState.resolve(
             defaultCurrencyCode: fromCurrencyCode,
+            isEnabled: isTravelCurrencyModeEnabled,
             source: travelCurrencySource,
             detectedCurrencyCode: detectedCurrencyCode,
             manualTravelCurrencyCode: manualTravelCurrencyCode

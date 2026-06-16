@@ -30,15 +30,20 @@ final class TravelCurrencyPreferenceRefresherTests: XCTestCase {
         }
     }
 
+    private var originalTravelCurrencyModeEnabled: Bool?
     private var originalDetectedTravelCurrencyCode: String?
 
     override func setUp() async throws {
+        originalTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         originalDetectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
+        TravelCurrencyPreference.isEnabled = true
         TravelCurrencyPreference.detectedCurrencyCode = nil
     }
 
     override func tearDown() async throws {
+        TravelCurrencyPreference.isEnabled = originalTravelCurrencyModeEnabled ?? true
         TravelCurrencyPreference.detectedCurrencyCode = originalDetectedTravelCurrencyCode
+        originalTravelCurrencyModeEnabled = nil
         originalDetectedTravelCurrencyCode = nil
     }
 
@@ -59,6 +64,21 @@ final class TravelCurrencyPreferenceRefresherTests: XCTestCase {
         TravelCurrencyPreference.detectedCurrencyCode = "CNY"
         let locationService = MockLocationService(
             authorizationStatusValue: .denied,
+            detectedCurrency: .HKD
+        )
+        let refresher = TravelCurrencyPreferenceRefresher(locationService: locationService)
+
+        await refresher.refreshDetectedTravelCurrency()
+
+        XCTAssertEqual(TravelCurrencyPreference.detectedCurrencyCode, "CNY")
+        XCTAssertEqual(locationService.detectLocalCurrencyCallCount, 0)
+    }
+
+    func testRefreshDoesNotUpdateDetectedCurrencyWhenModeIsDisabled() async {
+        TravelCurrencyPreference.isEnabled = false
+        TravelCurrencyPreference.detectedCurrencyCode = "CNY"
+        let locationService = MockLocationService(
+            authorizationStatusValue: .authorized,
             detectedCurrency: .HKD
         )
         let refresher = TravelCurrencyPreferenceRefresher(locationService: locationService)

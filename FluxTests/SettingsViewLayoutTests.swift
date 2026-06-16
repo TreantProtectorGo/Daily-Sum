@@ -6,6 +6,7 @@ final class SettingsViewLayoutTests: XCTestCase {
 
         XCTAssertFalse(source.contains("exchangeRateSection(viewModel: viewModel)"))
         XCTAssertTrue(source.contains("defaultCurrencyMenu(viewModel: viewModel)"))
+        XCTAssertTrue(source.contains("settings.exchangeRate.travelSection"))
         XCTAssertTrue(source.contains("settings.exchangeRate.configuration"))
         XCTAssertTrue(source.contains("settings.exchangeRate.openCalculator"))
     }

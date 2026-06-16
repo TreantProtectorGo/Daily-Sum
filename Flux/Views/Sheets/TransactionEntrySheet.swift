@@ -185,6 +185,7 @@ struct TransactionEntrySheet: View {
     @State private var errorMessage = ""
 
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
+    @AppStorage(TravelCurrencyPreference.modeEnabledStorageKey) private var isTravelCurrencyModeEnabled = true
     @AppStorage(TravelCurrencyPreference.sourceStorageKey) private var travelCurrencySource = TravelCurrencySource.automatic.rawValue
     @AppStorage(TravelCurrencyPreference.detectedCurrencyStorageKey) private var detectedTravelCurrencyCode = ""
     @AppStorage(TravelCurrencyPreference.manualCurrencyStorageKey) private var manualTravelCurrencyCode = ""
@@ -753,6 +754,7 @@ struct TransactionEntrySheet: View {
             defaultCurrencyCode: UserCurrencyPreference.resolvedDisplayCurrencyCode(
                 preferredCurrencyCode: preferredCurrencyCode
             ),
+            isEnabled: isTravelCurrencyModeEnabled,
             source: TravelCurrencySource(rawValue: travelCurrencySource) ?? .automatic,
             detectedCurrencyCode: detectedTravelCurrencyCode,
             manualTravelCurrencyCode: manualTravelCurrencyCode

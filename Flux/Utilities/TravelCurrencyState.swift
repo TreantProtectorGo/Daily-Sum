@@ -17,6 +17,7 @@ enum TravelCurrencyState {
 
     static func resolve(
         defaultCurrencyCode: String,
+        isEnabled: Bool = true,
         source: TravelCurrencySource,
         detectedCurrencyCode: String?,
         manualTravelCurrencyCode: String?
@@ -24,6 +25,13 @@ enum TravelCurrencyState {
         let normalizedDefaultCurrencyCode = normalizedCurrencyCode(defaultCurrencyCode)
         let normalizedDetectedCurrencyCode = normalizedCurrencyCode(detectedCurrencyCode)
         let normalizedManualTravelCurrencyCode = normalizedCurrencyCode(manualTravelCurrencyCode)
+
+        guard isEnabled else {
+            return ResolvedTravelCurrencyState(
+                detectedLocationCurrencyCode: normalizedDetectedCurrencyCode,
+                currentTravelCurrencyCode: nil
+            )
+        }
 
         let automaticTravelCurrencyCode: String?
         if source == .automatic,

@@ -8,6 +8,7 @@ final class BackupExportServiceTests: XCTestCase {
     private var context: ModelContext!
     private var originalCurrencyCode: String!
     private var originalAppLanguage: AppLanguage!
+    private var originalTravelCurrencyModeEnabled: Bool!
     private var originalTravelSource: TravelCurrencySource!
     private var originalDetectedTravelCurrencyCode: String?
     private var originalManualTravelCurrencyCode: String?
@@ -23,6 +24,7 @@ final class BackupExportServiceTests: XCTestCase {
 
         originalCurrencyCode = UserCurrencyPreference.currencyCode
         originalAppLanguage = AppLanguagePreference.language
+        originalTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         originalTravelSource = TravelCurrencyPreference.source
         originalDetectedTravelCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         originalManualTravelCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -37,6 +39,7 @@ final class BackupExportServiceTests: XCTestCase {
     override func tearDown() async throws {
         UserCurrencyPreference.currencyCode = originalCurrencyCode
         AppLanguagePreference.language = originalAppLanguage
+        TravelCurrencyPreference.isEnabled = originalTravelCurrencyModeEnabled
         TravelCurrencyPreference.source = originalTravelSource
         TravelCurrencyPreference.detectedCurrencyCode = originalDetectedTravelCurrencyCode
         TravelCurrencyPreference.manualCurrencyCode = originalManualTravelCurrencyCode
@@ -70,6 +73,7 @@ final class BackupExportServiceTests: XCTestCase {
         let expectedTravelSource: TravelCurrencySource = .manual
 
         XCTAssertEqual(archive.preferences.crossDevice.appLanguage, expectedLanguage)
+        XCTAssertEqual(archive.preferences.crossDevice.isTravelCurrencyModeEnabled, false)
         XCTAssertEqual(archive.preferences.crossDevice.travelCurrencySource, expectedTravelSource)
         XCTAssertEqual(archive.preferences.deviceLocal.defaultTransactionAccountId, seedAccountID)
         XCTAssertEqual(archive.integrityMetadata.recordCounts.accounts, 1)
@@ -136,6 +140,7 @@ final class BackupExportServiceTests: XCTestCase {
         let preferredTravelSource: TravelCurrencySource = .manual
 
         AppLanguagePreference.language = preferredLanguage
+        TravelCurrencyPreference.isEnabled = false
         TravelCurrencyPreference.source = preferredTravelSource
         TravelCurrencyPreference.detectedCurrencyCode = "HKD"
         TravelCurrencyPreference.manualCurrencyCode = "JPY"

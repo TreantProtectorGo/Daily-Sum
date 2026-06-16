@@ -206,6 +206,7 @@ final class BackupArchiveCodecTests: XCTestCase {
                 crossDevice: BackupCrossDevicePreferences(
                     preferredCurrencyCode: "USD",
                     appLanguage: .english,
+                    isTravelCurrencyModeEnabled: false,
                     travelCurrencySource: .manual,
                     detectedTravelCurrencyCode: "HKD",
                     manualTravelCurrencyCode: "JPY",
@@ -244,6 +245,7 @@ final class BackupArchiveCodecTests: XCTestCase {
         XCTAssertNotNil(json["schemaVersion"])
         XCTAssertNotNil(json["financialData"])
         XCTAssertEqual(crossDevice["appLanguage"] as? String, AppLanguage.english.rawValue)
+        XCTAssertEqual(crossDevice["isTravelCurrencyModeEnabled"] as? Bool, false)
         XCTAssertEqual(crossDevice["travelCurrencySource"] as? String, TravelCurrencySource.manual.rawValue)
         XCTAssertNil(crossDevice["showUpcomingScheduledTransactions"])
     }
@@ -382,6 +384,7 @@ final class BackupArchiveCodecTests: XCTestCase {
             crossDevice: BackupCrossDevicePreferences(
                 preferredCurrencyCode: "HKD",
                 appLanguage: .traditionalChinese,
+                isTravelCurrencyModeEnabled: false,
                 travelCurrencySource: .automatic,
                 detectedTravelCurrencyCode: "JPY",
                 manualTravelCurrencyCode: nil,

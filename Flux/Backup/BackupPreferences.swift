@@ -8,6 +8,7 @@ struct BackupPreferences: Codable, Equatable {
 struct BackupCrossDevicePreferences: Codable, Equatable {
     var preferredCurrencyCode: String
     var appLanguage: AppLanguage
+    var isTravelCurrencyModeEnabled: Bool?
     var travelCurrencySource: TravelCurrencySource
     var detectedTravelCurrencyCode: String?
     var manualTravelCurrencyCode: String?

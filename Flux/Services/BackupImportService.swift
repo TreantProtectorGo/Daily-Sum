@@ -1191,6 +1191,7 @@ final class BackupImportService: BackupImportServicing {
     private func applyCrossDevicePreferences(_ preferences: BackupCrossDevicePreferences) {
         UserCurrencyPreference.currencyCode = preferences.preferredCurrencyCode
         AppLanguagePreference.language = preferences.appLanguage
+        TravelCurrencyPreference.isEnabled = preferences.isTravelCurrencyModeEnabled ?? true
         TravelCurrencyPreference.source = preferences.travelCurrencySource
         TravelCurrencyPreference.detectedCurrencyCode = preferences.detectedTravelCurrencyCode
         TravelCurrencyPreference.manualCurrencyCode = preferences.manualTravelCurrencyCode

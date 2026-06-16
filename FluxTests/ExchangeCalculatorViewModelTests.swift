@@ -50,6 +50,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
         var authorizationStatusValue: TravelLocationAuthorizationStatus
         var requestAuthorizationResult: TravelLocationAuthorizationStatus
         var detectedCurrency: SupportedCurrency?
+        private(set) var detectLocalCurrencyCallCount = 0
 
         init(
             authorizationStatusValue: TravelLocationAuthorizationStatus,
@@ -70,7 +71,8 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
         }
 
         func detectLocalCurrency() async -> SupportedCurrency? {
-            detectedCurrency
+            detectLocalCurrencyCallCount += 1
+            return detectedCurrency
         }
     }
 
@@ -169,6 +171,38 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.fromCurrencyCode, "USD")
         XCTAssertEqual(viewModel.toCurrencyCode, "TWD")
+    }
+
+    func testInitializeDefaultsDoesNotDetectLocalCurrencyWhenTravelCurrencyModeDisabled() async throws {
+        let conversionService = MockConversionService(
+            nextResult: .success(
+                CurrencyConversionQuote(
+                    convertedAmount: 1,
+                    rate: 1,
+                    effectiveDate: Date(timeIntervalSince1970: 1_739_571_200),
+                    provider: "mock-rates"
+                )
+            )
+        )
+        let locationService = MockLocationService(
+            authorizationStatusValue: .authorized,
+            requestAuthorizationResult: .authorized,
+            detectedCurrency: .HKD
+        )
+        let viewModel = ExchangeCalculatorViewModel(
+            modelContext: context,
+            conversionService: conversionService,
+            locationService: locationService,
+            preferredCurrencyCode: "EUR",
+            isTravelCurrencyModeEnabled: false,
+            travelCurrencySource: .automatic
+        )
+
+        await viewModel.initializeDefaults()
+
+        XCTAssertEqual(locationService.detectLocalCurrencyCallCount, 0)
+        XCTAssertEqual(viewModel.fromCurrencyCode, "EUR")
+        XCTAssertEqual(viewModel.toCurrencyCode, "USD")
     }
 
     func testInitializeDefaultsFallsBackToUSDWhenLocationUnavailable() async throws {

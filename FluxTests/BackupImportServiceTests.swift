@@ -121,6 +121,7 @@ final class BackupImportServiceTests: XCTestCase {
             TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection
         let originalCurrencyCode = UserCurrencyPreference.currencyCode
         let originalLanguage = AppLanguagePreference.language
+        let originalTravelCurrencyModeEnabled = TravelCurrencyPreference.isEnabled
         let originalTravelCurrencySource = TravelCurrencyPreference.source
         let originalDetectedCurrencyCode = TravelCurrencyPreference.detectedCurrencyCode
         let originalManualCurrencyCode = TravelCurrencyPreference.manualCurrencyCode
@@ -134,6 +135,7 @@ final class BackupImportServiceTests: XCTestCase {
         TransactionEntryFlowPreference.autoPresentAccountAfterCategorySelection = true
         UserCurrencyPreference.currencyCode = "HKD"
         AppLanguagePreference.language = .simplifiedChinese
+        TravelCurrencyPreference.isEnabled = true
         TravelCurrencyPreference.source = .manual
         TravelCurrencyPreference.detectedCurrencyCode = "HKD"
         TravelCurrencyPreference.manualCurrencyCode = "JPY"
@@ -147,6 +149,7 @@ final class BackupImportServiceTests: XCTestCase {
                 originalAutoPresentAccountAfterCategorySelection
             UserCurrencyPreference.currencyCode = originalCurrencyCode
             AppLanguagePreference.language = originalLanguage
+            TravelCurrencyPreference.isEnabled = originalTravelCurrencyModeEnabled
             TravelCurrencyPreference.source = originalTravelCurrencySource
             TravelCurrencyPreference.detectedCurrencyCode = originalDetectedCurrencyCode
             TravelCurrencyPreference.manualCurrencyCode = originalManualCurrencyCode
@@ -173,6 +176,7 @@ final class BackupImportServiceTests: XCTestCase {
         ])
         XCTAssertEqual(UserCurrencyPreference.currencyCode, "USD")
         XCTAssertEqual(AppLanguagePreference.language, .english)
+        XCTAssertFalse(TravelCurrencyPreference.isEnabled)
         XCTAssertEqual(TravelCurrencyPreference.source, .automatic)
         XCTAssertEqual(ReportsCategoryRowLimitPreference.rowLimit, 5)
         XCTAssertEqual(
@@ -494,6 +498,7 @@ final class BackupImportServiceTests: XCTestCase {
                 crossDevice: BackupCrossDevicePreferences(
                     preferredCurrencyCode: "USD",
                     appLanguage: .english,
+                    isTravelCurrencyModeEnabled: false,
                     travelCurrencySource: .automatic,
                     detectedTravelCurrencyCode: nil,
                     manualTravelCurrencyCode: nil,
