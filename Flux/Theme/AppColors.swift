@@ -9,6 +9,21 @@ enum AppColors {
     /// Primary Flux brand color, backed by the AccentColor asset for platform tinting.
     static let primary = Color.accentColor
 
+    /// Foreground color for text and icons placed on top of the primary brand color.
+    static var onPrimary: Color {
+        #if os(iOS)
+        Color(UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                UIColor.black
+            } else {
+                UIColor.white
+            }
+        })
+        #else
+        Color.white
+        #endif
+    }
+
     /// Secondary brand accent for selected states, chart emphasis, and subtle highlights.
     static let secondaryAccent = Color(red: 0.0, green: 0.58, blue: 0.52)
 
@@ -20,13 +35,13 @@ enum AppColors {
         #if os(iOS)
         Color(UIColor { traits in
             if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.23, green: 0.62, blue: 0.60, alpha: 1.0)
+                UIColor(red: 0.85, green: 0.51, blue: 0.38, alpha: 1.0)
             } else {
-                UIColor(red: 0.00, green: 0.40, blue: 0.38, alpha: 1.0)
+                UIColor(red: 0.66, green: 0.30, blue: 0.19, alpha: 1.0)
             }
         })
         #else
-        secondaryAccent
+        primary
         #endif
     }
 
@@ -35,13 +50,13 @@ enum AppColors {
         #if os(iOS)
         Color(UIColor { traits in
             if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.25, green: 0.70, blue: 0.66, alpha: 1.0)
+                UIColor(red: 0.85, green: 0.51, blue: 0.38, alpha: 1.0)
             } else {
-                UIColor(red: 0.00, green: 0.45, blue: 0.43, alpha: 1.0)
+                UIColor(red: 0.66, green: 0.30, blue: 0.19, alpha: 1.0)
             }
         })
         #else
-        secondaryAccent
+        primary
         #endif
     }
 
@@ -50,13 +65,13 @@ enum AppColors {
         #if os(iOS)
         Color(UIColor { traits in
             if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.22, green: 0.53, blue: 0.51, alpha: 1.0)
+                UIColor(red: 0.79, green: 0.48, blue: 0.36, alpha: 1.0)
             } else {
-                UIColor(red: 0.00, green: 0.42, blue: 0.39, alpha: 1.0)
+                UIColor(red: 0.56, green: 0.25, blue: 0.16, alpha: 1.0)
             }
         })
         #else
-        secondaryAccent
+        primary
         #endif
     }
 
