@@ -1057,6 +1057,21 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(try typeService.fetch().map(\.id), [bank.id])
     }
 
+    func testAccountTypeDefinitionServiceReordersDefinitions() async throws {
+        let service = AccountTypeDefinitionService(context: context)
+
+        let cash = try service.create(name: "Cash", icon: "banknote", colorHex: "#34C759")
+        let bank = try service.create(name: "Bank", icon: "building.columns", colorHex: "#0A84FF")
+        let card = try service.create(name: "Card", icon: "creditcard", colorHex: "#FF9500")
+
+        try service.reorder([card, cash, bank])
+
+        XCTAssertEqual(try service.fetch().map(\.id), [card.id, cash.id, bank.id])
+        XCTAssertEqual(card.sortOrder, 0)
+        XCTAssertEqual(cash.sortOrder, 1)
+        XCTAssertEqual(bank.sortOrder, 2)
+    }
+
     func testCategoryDeleteNullifiesTransactionCategory() async throws {
         let categoryService = CategoryService(context: context)
         let accountService = AccountService(context: context)
@@ -1104,6 +1119,39 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(category.displayName, "Cafe")
         XCTAssertEqual(category.icon, "mug.fill")
         XCTAssertEqual(category.colorHex, "#8B4513")
+    }
+
+    func testCategoryServiceCreatesAtEndAndReordersWithinType() async throws {
+        let service = CategoryService(context: context)
+
+        let groceries = try service.create(
+            name: "Groceries",
+            icon: "cart.fill",
+            colorHex: "#30D158",
+            type: .expense
+        )
+        let dining = try service.create(
+            name: "Dining",
+            icon: "fork.knife",
+            colorHex: "#FFB300",
+            type: .expense
+        )
+        let salary = try service.create(
+            name: "Salary",
+            icon: "banknote",
+            colorHex: "#34C759",
+            type: .income
+        )
+
+        XCTAssertEqual(try service.fetchTopLevel(type: .expense).map(\.id), [groceries.id, dining.id])
+        XCTAssertEqual(salary.sortOrder, 0)
+
+        try service.reorder([dining, groceries], type: .expense)
+
+        XCTAssertEqual(try service.fetchTopLevel(type: .expense).map(\.id), [dining.id, groceries.id])
+        XCTAssertEqual(dining.sortOrder, 0)
+        XCTAssertEqual(groceries.sortOrder, 1)
+        XCTAssertEqual(try service.fetchTopLevel(type: .income).map(\.id), [salary.id])
     }
 
     func testCategoryServiceHierarchy() async throws {

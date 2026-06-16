@@ -130,8 +130,8 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme.dark": "深色",
                     "settings.options": "选项",
                     "settings.startup": "启动",
-                    "settings.defaultLaunchPage": "默认开启页面",
-                    "settings.defaultLaunchPage.footer": "选择启动 Flux 时开启的分页。"
+                    "settings.defaultLaunchPage": "默认页面",
+                    "settings.defaultLaunchPage.footer": "选择启动 Flux 时打开的标签页。"
                 ]
             ),
             (
@@ -143,7 +143,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.theme.dark": "深色",
                     "settings.options": "選項",
                     "settings.startup": "啟動",
-                    "settings.defaultLaunchPage": "預設開啟頁面",
+                    "settings.defaultLaunchPage": "預設頁面",
                     "settings.defaultLaunchPage.footer": "選擇啟動 Flux 時開啟的分頁。"
                 ]
             )
@@ -261,7 +261,7 @@ final class LocalizationTests: XCTestCase {
                 key: "settings.reminders.notDetermined",
                 locale: "zh-Hant"
             ),
-            "未啟用"
+            "尚未要求"
         )
         XCTAssertEqual(
             localizedStringValue(
@@ -346,14 +346,14 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.configuration.automatic": "自动",
                 "settings.exchangeRate.configuration.manual": "手动",
                 "settings.exchangeRate.configuration.summary.manual.unset": "手动（未设定）",
-                "settings.exchangeRate.configuration.footer": "自动模式会根据你目前的位置更新外币。手动模式会持续生效，直到你切回自动。",
-                "settings.exchangeRate.detectedCurrency": "定位货币",
-                "settings.exchangeRate.detectedCurrency.none": "未侦测到",
+                "settings.exchangeRate.configuration.footer": "自动模式会根据当前位置更新外币；手动模式会持续生效，直到你切回自动。",
+                "settings.exchangeRate.detectedCurrency": "检测到的货币",
+                "settings.exchangeRate.detectedCurrency.none": "未检测到",
                 "settings.exchangeRate.locationNotEnabled": "未启用定位",
                 "settings.exchangeRate.currentTravelCurrency": "目前外币",
                 "settings.exchangeRate.currentTravelCurrency.none": "未启用",
-                "settings.exchangeRate.manualTravelCurrency": "选择的外币",
-                "settings.exchangeRate.manualTravelCurrency.placeholder": "请选择货币",
+                "settings.exchangeRate.manualTravelCurrency": "所选外币",
+                "settings.exchangeRate.manualTravelCurrency.placeholder": "选择货币",
                 "settings.exchangeRate.manualTravelCurrency.auto": "使用定位货币",
                 "settings.exchangeRate.refreshLocation": "使用定位更新",
                 "settings.exchangeRate.openCalculator": "汇率计算器",
@@ -363,8 +363,8 @@ final class LocalizationTests: XCTestCase {
                 "transaction.travel.modeHelper": "外币模式已开启，金额会以 %@ 输入",
                 "filter.advanced": "进阶筛选",
                 "filter.travelTransactions": "仅显示外币交易",
-                "filter.showUpcomingScheduled": "显示即将到来的订阅交易",
-                "account.error.travelCurrencyChangeUnsupported": "此账户已有外币交易。请改为建立新账户，而不是直接更改币别。"
+                "filter.showUpcomingScheduled": "显示即将到期的订阅交易",
+                "account.error.travelCurrencyChangeUnsupported": "此账户已有外币交易。请新建账户，不要直接更改币种。"
             ],
             "zh-Hant": [
                 "settings.exchangeRate.travelSection": "外幣",
@@ -372,14 +372,14 @@ final class LocalizationTests: XCTestCase {
                 "settings.exchangeRate.configuration.automatic": "自動",
                 "settings.exchangeRate.configuration.manual": "手動",
                 "settings.exchangeRate.configuration.summary.manual.unset": "手動（未設定）",
-                "settings.exchangeRate.configuration.footer": "自動模式會根據你目前的位置更新外幣。手動模式會持續生效，直到你切回自動。",
-                "settings.exchangeRate.detectedCurrency": "定位貨幣",
+                "settings.exchangeRate.configuration.footer": "自動模式會按目前位置更新外幣；手動模式會持續生效，直至你切回自動。",
+                "settings.exchangeRate.detectedCurrency": "偵測到的貨幣",
                 "settings.exchangeRate.detectedCurrency.none": "未偵測到",
                 "settings.exchangeRate.locationNotEnabled": "未啟用定位",
                 "settings.exchangeRate.currentTravelCurrency": "目前外幣",
                 "settings.exchangeRate.currentTravelCurrency.none": "未啟用",
-                "settings.exchangeRate.manualTravelCurrency": "選擇的外幣",
-                "settings.exchangeRate.manualTravelCurrency.placeholder": "請選擇貨幣",
+                "settings.exchangeRate.manualTravelCurrency": "所選外幣",
+                "settings.exchangeRate.manualTravelCurrency.placeholder": "選擇貨幣",
                 "settings.exchangeRate.manualTravelCurrency.auto": "使用定位貨幣",
                 "settings.exchangeRate.refreshLocation": "使用定位更新",
                 "settings.exchangeRate.openCalculator": "匯率計算器",
@@ -389,8 +389,8 @@ final class LocalizationTests: XCTestCase {
                 "transaction.travel.modeHelper": "外幣模式已開啟，金額會以 %@ 輸入",
                 "filter.advanced": "進階篩選",
                 "filter.travelTransactions": "僅顯示外幣交易",
-                "filter.showUpcomingScheduled": "顯示即將到來的訂閱交易",
-                "account.error.travelCurrencyChangeUnsupported": "此帳戶已有外幣交易。請改為建立新帳戶，而不是直接更改幣別。"
+                "filter.showUpcomingScheduled": "顯示即將到期的訂閱交易",
+                "account.error.travelCurrencyChangeUnsupported": "此帳戶已有外幣交易。請另建新帳戶，勿直接更改貨幣。"
             ]
         ]
 
@@ -454,10 +454,10 @@ final class LocalizationTests: XCTestCase {
                 "settings.cloudSync.enable": "启用 iCloud 同步",
                 "settings.cloudSync.status.on": "开启",
                 "settings.cloudSync.status.off": "关闭",
-                "settings.cloudSync.status.needsAttention": "需要处理",
-                "settings.cloudSync.message.on": "所作更改，均会透过 iCloud 同步。",
+                "settings.cloudSync.status.needsAttention": "待处理",
+                "settings.cloudSync.message.on": "更改会通过 iCloud 同步。",
                 "settings.cloudSync.message.off": "同步目前已关闭。",
-                "settings.cloudSync.message.signInRequired": "请先在“设置”中登入 iCloud，然后返回这里启用同步。",
+                "settings.cloudSync.message.signInRequired": "请先在“设置”中登录 iCloud，然后返回此处启用同步。",
                 "settings.backup.action": "备份",
                 "settings.backup.automatic": "自动备份",
                 "settings.backup.automatic.never": "永不",
@@ -468,24 +468,24 @@ final class LocalizationTests: XCTestCase {
                 "settings.backup.retention.noLimit": "无限制",
                 "settings.backup.location.iCloudDrive": "iCloud Drive",
                 "settings.backup.location.thisDevice": "此设备",
-                "settings.backup.restore.behavior": "可建立 iCloud Drive 备份，也可从现有备份还原。",
+                "settings.backup.restore.behavior": "可创建 iCloud Drive 备份，也可从现有备份恢复。恢复会取代当前财务数据，并恢复备份包含的偏好设置。",
                 "settings.backup.title": "备份",
                 "settings.backup.export": "立即备份",
                 "settings.backup.footer": "可用时备份会储存到 iCloud Drive，否则会储存在此装置。",
                 "settings.backup.list.title": "备份记录",
                 "settings.backup.list.empty.message": "点一下「立即备份」建立第一个备份。",
-                "settings.backup.restore.result": "还原结果",
-                "settings.backup.restore.confirm.title": "要还原备份吗？",
-                "settings.backup.restore.confirm": "确认还原",
-                "settings.backup.restore.confirm.action": "还原备份",
-                "settings.backup.restore.confirm.message": "还原会取代目前的财务数据，并还原此备份内包含的偏好设定。",
+                "settings.backup.restore.result": "恢复结果",
+                "settings.backup.restore.confirm.title": "要恢复备份吗？",
+                "settings.backup.restore.confirm": "确认恢复",
+                "settings.backup.restore.confirm.action": "恢复备份",
+                "settings.backup.restore.confirm.message": "恢复会取代当前财务数据，并恢复此备份包含的偏好设置。",
                 "settings.backup.summary": "%1$@，%2$lld 个账户，%3$lld 笔交易",
                 "settings.backup.record.accounts.one": "%lld 个账户",
                 "settings.backup.record.accounts.other": "%lld 个账户",
                 "settings.backup.record.summary": "%1$@，%2$@，%3$@，%4$@",
                 "settings.backup.record.transactions.one": "%lld 笔交易",
                 "settings.backup.record.transactions.other": "%lld 笔交易",
-                "settings.backup.import.summary": "已汇入 %1$lld，已更新 %2$lld，已略过 %3$lld，失败 %4$lld"
+                "settings.backup.import.summary": "已导入 %1$lld，已更新 %2$lld，已跳过 %3$lld，失败 %4$lld"
             ],
             "zh-Hant": [
                 "action.close": "關閉",
@@ -494,10 +494,10 @@ final class LocalizationTests: XCTestCase {
                 "settings.cloudSync.enable": "啟用 iCloud 同步",
                 "settings.cloudSync.status.on": "開啟",
                 "settings.cloudSync.status.off": "關閉",
-                "settings.cloudSync.status.needsAttention": "需要處理",
-                "settings.cloudSync.message.on": "所作更改，均會透過 iCloud 同步。",
+                "settings.cloudSync.status.needsAttention": "待處理",
+                "settings.cloudSync.message.on": "更改會透過 iCloud 同步。",
                 "settings.cloudSync.message.off": "同步目前已關閉。",
-                "settings.cloudSync.message.signInRequired": "請先在「設定」中登入 iCloud，然後返回這裡啟用同步。",
+                "settings.cloudSync.message.signInRequired": "請先在「設定」登入 iCloud，再返回此處啟用同步。",
                 "settings.backup.action": "備份",
                 "settings.backup.automatic": "自動備份",
                 "settings.backup.automatic.never": "永不",
@@ -508,7 +508,7 @@ final class LocalizationTests: XCTestCase {
                 "settings.backup.retention.noLimit": "無限制",
                 "settings.backup.location.iCloudDrive": "iCloud Drive",
                 "settings.backup.location.thisDevice": "此裝置",
-                "settings.backup.restore.behavior": "可建立 iCloud Drive 備份，亦可由現有備份還原。",
+                "settings.backup.restore.behavior": "可建立 iCloud Drive 備份，亦可從現有備份還原。還原會取代目前財務資料，並還原備份包含的偏好設定。",
                 "settings.backup.title": "備份",
                 "settings.backup.export": "立即備份",
                 "settings.backup.footer": "可用時備份會儲存到 iCloud Drive，否則會儲存在此裝置。",
@@ -518,7 +518,7 @@ final class LocalizationTests: XCTestCase {
                 "settings.backup.restore.confirm.title": "要還原備份嗎？",
                 "settings.backup.restore.confirm": "確認還原",
                 "settings.backup.restore.confirm.action": "還原備份",
-                "settings.backup.restore.confirm.message": "還原會取代目前的財務資料，並還原此備份內包含的偏好設定。",
+                "settings.backup.restore.confirm.message": "還原會取代目前財務資料，並還原此備份包含的偏好設定。",
                 "settings.backup.summary": "%1$@，%2$lld 個帳戶，%3$lld 筆交易",
                 "settings.backup.record.accounts.one": "%lld 個帳戶",
                 "settings.backup.record.accounts.other": "%lld 個帳戶",
@@ -627,7 +627,7 @@ final class LocalizationTests: XCTestCase {
 
         let cases: [(AppLanguage, String)] = [
             (.english, "Food has reached 80% of its budget."),
-            (.simplifiedChinese, "Food 已达到预算的 80%。"),
+            (.simplifiedChinese, "Food 已使用 80% 预算。"),
             (.traditionalChinese, "Food 已用八成預算。")
         ]
 
@@ -748,7 +748,7 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             AppLocalization.string(key: "category.expense.dining", table: "CategoryLocalizations"),
-            "食飯"
+            "餐飲"
         )
     }
 
@@ -782,11 +782,11 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             localizedStringValue(key: "reports.expensesByCategory", locale: "zh-Hans"),
-            "按类别划分的支出"
+            "分类支出"
         )
         XCTAssertEqual(
             localizedStringValue(key: "reports.expensesByCategory", locale: "zh-Hant"),
-            "按類別劃分的支出"
+            "類別支出"
         )
     }
 
@@ -808,7 +808,7 @@ final class LocalizationTests: XCTestCase {
         AppLanguagePreference.language = .simplifiedChinese
         XCTAssertEqual(
             AppLocalization.string(key: "category.expense.upskilling", table: "CategoryLocalizations"),
-            "自我增值"
+            "进修"
         )
     }
 

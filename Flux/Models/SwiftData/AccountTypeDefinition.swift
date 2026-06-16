@@ -53,7 +53,7 @@ final class AccountTypeDefinition {
     }
 
     var displayName: String {
-        guard isSystemDefault, let legacyType else { return name }
+        guard isSystemDefault, let legacyType, name == legacyType.defaultSeedName else { return name }
         return legacyType.localizedName
     }
 }

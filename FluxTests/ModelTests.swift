@@ -6,13 +6,20 @@ import SwiftData
 final class ModelTests: XCTestCase {
     var container: ModelContainer!
     var context: ModelContext!
+    var originalAppLanguage: AppLanguage?
     
     override func setUp() async throws {
         container = try ModelContainerConfiguration.createTestContainer()
         context = container.mainContext
+        originalAppLanguage = AppLanguagePreference.language
+        AppLanguagePreference.language = .english
     }
     
     override func tearDown() async throws {
+        if let originalAppLanguage {
+            AppLanguagePreference.language = originalAppLanguage
+        }
+        originalAppLanguage = nil
         container = nil
         context = nil
     }
@@ -62,6 +69,67 @@ final class ModelTests: XCTestCase {
     }
     
     // MARK: - Account Tests
+
+    func testDefaultAccountDisplayNameFollowsSelectedLanguageWithoutChangingPersistedName() throws {
+        AppLanguagePreference.language = .simplifiedChinese
+        let typeDefinition = AccountTypeDefinition(
+            name: AccountType.bank.defaultSeedName,
+            icon: AccountType.bank.defaultIcon,
+            colorHex: "#0A84FF",
+            isSystemDefault: true,
+            legacyType: .bank
+        )
+        let account = Account(
+            name: AccountType.bank.defaultSeedName,
+            type: .bank,
+            currencyCode: "USD",
+            typeDefinition: typeDefinition
+        )
+
+        XCTAssertEqual(account.displayName, "银行账户")
+        XCTAssertEqual(
+            account.persistedName(fromEditedDisplayName: account.displayName),
+            "Bank Account"
+        )
+    }
+
+    func testDefaultAccountEditedNamePersistsCustomName() throws {
+        AppLanguagePreference.language = .traditionalChinese
+        let account = Account(
+            name: AccountType.creditCard.defaultSeedName,
+            type: .creditCard,
+            currencyCode: "HKD"
+        )
+
+        XCTAssertEqual(account.displayName, "信用卡")
+        XCTAssertEqual(
+            account.persistedName(fromEditedDisplayName: "Visa 主卡"),
+            "Visa 主卡"
+        )
+    }
+
+    func testDefaultAccountTypeChangePersistsNewDefaultSeedName() throws {
+        AppLanguagePreference.language = .traditionalChinese
+        let bankDefinition = AccountTypeDefinition(
+            name: AccountType.bank.defaultSeedName,
+            icon: AccountType.bank.defaultIcon,
+            colorHex: "#0A84FF",
+            isSystemDefault: true,
+            legacyType: .bank
+        )
+        let bankDisplayName = Account.defaultDisplayName(for: .bank, typeDefinition: bankDefinition)
+
+        XCTAssertEqual(bankDisplayName, "銀行帳戶")
+        XCTAssertEqual(
+            Account.persistedName(
+                fromEditedDisplayName: bankDisplayName,
+                matchingDefaultDisplayName: bankDisplayName,
+                targetType: .bank,
+                targetTypeDefinition: bankDefinition
+            ),
+            "Bank Account"
+        )
+    }
     
     func testAccountBalance() throws {
         let account = Account(

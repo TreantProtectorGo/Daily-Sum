@@ -101,16 +101,14 @@ struct CategoryPickerView: View {
     let presentationTrigger: Int
     let onSelectionCompleted: ((Category?) -> Void)?
     
-    @Query(sort: \Category.nameKey) private var allCategories: [Category]
+    @Query(sort: \Category.sortOrder) private var allCategories: [Category]
     @State private var showCategorySheet = false
     
     private var categories: [Category] {
-        let filtered = allCategories.filter { $0.type == mode.categoryType }
-        let order = Dictionary(uniqueKeysWithValues: mode.preferredCategoryOrder.enumerated().map { ($0.element, $0.offset) })
-        return filtered.sorted { lhs, rhs in
-            let lhsRank = order[lhs.nameKey] ?? Int.max
-            let rhsRank = order[rhs.nameKey] ?? Int.max
-            if lhsRank != rhsRank { return lhsRank < rhsRank }
+        allCategories.filter { $0.type == mode.categoryType }.sorted { lhs, rhs in
+            if lhs.sortOrder != rhs.sortOrder {
+                return lhs.sortOrder < rhs.sortOrder
+            }
             return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
         }
     }
@@ -256,7 +254,7 @@ private struct CategoryManagementSheet: View {
     @Binding var selectedCategory: Category?
     let mode: CategoryPickerMode
 
-    @Query(sort: \Category.nameKey) private var allCategories: [Category]
+    @Query(sort: \Category.sortOrder) private var allCategories: [Category]
     @Query private var transactions: [Transaction]
 
     @State private var editorMode: EditorMode?
@@ -265,12 +263,10 @@ private struct CategoryManagementSheet: View {
     @State private var showError = false
 
     private var categories: [Category] {
-        let filtered = allCategories.filter { $0.type == mode.categoryType }
-        let order = Dictionary(uniqueKeysWithValues: mode.preferredCategoryOrder.enumerated().map { ($0.element, $0.offset) })
-        return filtered.sorted { lhs, rhs in
-            let lhsRank = order[lhs.nameKey] ?? Int.max
-            let rhsRank = order[rhs.nameKey] ?? Int.max
-            if lhsRank != rhsRank { return lhsRank < rhsRank }
+        allCategories.filter { $0.type == mode.categoryType }.sorted { lhs, rhs in
+            if lhs.sortOrder != rhs.sortOrder {
+                return lhs.sortOrder < rhs.sortOrder
+            }
             return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
         }
     }
@@ -292,6 +288,11 @@ private struct CategoryManagementSheet: View {
                             editorMode = .edit(category)
                         } onDelete: {
                             deleteCandidate = category
+                        }
+                        .draggable(category.id.uuidString)
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let draggedID = items.first else { return false }
+                            return moveCategory(draggedID, to: category)
                         }
                     }
                 }
@@ -367,6 +368,33 @@ private struct CategoryManagementSheet: View {
             } message: {
                 Text(errorMessage)
             }
+        }
+    }
+
+    private func moveCategory(_ draggedID: String, to target: Category) -> Bool {
+        guard let draggedUUID = UUID(uuidString: draggedID),
+              draggedUUID != target.id,
+              let sourceIndex = categories.firstIndex(where: { $0.id == draggedUUID }),
+              let targetIndex = categories.firstIndex(where: { $0.id == target.id }) else {
+            return false
+        }
+
+        var reorderedCategories = categories
+        reorderedCategories.move(
+            fromOffsets: IndexSet(integer: sourceIndex),
+            toOffset: targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
+        )
+
+        do {
+            try CategoryService(context: modelContext).reorder(
+                reorderedCategories,
+                type: mode.categoryType
+            )
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            return false
         }
     }
 

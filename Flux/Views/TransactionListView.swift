@@ -520,7 +520,7 @@ struct TransactionFiltersSheet: View {
                             .tag(nil as Account?)
                         
                         ForEach(accounts) { account in
-                            Text(account.name)
+                            Text(account.displayName)
                                 .tag(account as Account?)
                         }
                     }

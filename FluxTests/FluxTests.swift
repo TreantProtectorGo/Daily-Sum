@@ -21,8 +21,12 @@ final class FluxTests: XCTestCase {
     private var originalShowUpcomingScheduled: Bool?
     private var originalShowUpcomingScheduledMigration: Bool?
     private var originalAutoPresentAccountAfterCategorySelection: Any?
+    private var originalAppLanguage: AppLanguage?
 
     override func setUpWithError() throws {
+        originalAppLanguage = AppLanguagePreference.language
+        AppLanguagePreference.language = .english
+
         originalPreferredCurrencyCode = UserDefaults.standard.string(
             forKey: UserCurrencyPreference.storageKey
         )
@@ -101,6 +105,11 @@ final class FluxTests: XCTestCase {
                 forKey: "flux.autoPresentAccountAfterCategorySelection"
             )
         }
+
+        if let originalAppLanguage {
+            AppLanguagePreference.language = originalAppLanguage
+        }
+        originalAppLanguage = nil
     }
 
     func testTravelCurrencyPreferencePersistsSource() {

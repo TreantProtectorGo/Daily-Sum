@@ -29,6 +29,35 @@ final class IconManagementLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("minHeight: 68"))
     }
 
+    func testManagementListsSupportReordering() throws {
+        let accountTypeSource = try sourceFile(
+            "Components",
+            "Inputs",
+            "AccountTypeSelectionBox.swift"
+        )
+        let categorySource = try sourceFile(
+            "Components",
+            "Inputs",
+            "CategoryPickerView.swift"
+        )
+
+        XCTAssertTrue(accountTypeSource.contains(".draggable"))
+        XCTAssertTrue(accountTypeSource.contains(".dropDestination"))
+        XCTAssertTrue(accountTypeSource.contains("AccountTypeDefinitionService(context: modelContext).reorder"))
+        XCTAssertFalse(accountTypeSource.contains("arrow.up.arrow.down"))
+        XCTAssertFalse(accountTypeSource.contains("reorderMode"))
+        XCTAssertFalse(accountTypeSource.contains(".environment(\\.editMode"))
+        XCTAssertFalse(accountTypeSource.contains(".onMove(perform: moveDefinitions)"))
+
+        XCTAssertTrue(categorySource.contains(".draggable"))
+        XCTAssertTrue(categorySource.contains(".dropDestination"))
+        XCTAssertTrue(categorySource.contains("CategoryService(context: modelContext).reorder"))
+        XCTAssertFalse(categorySource.contains("arrow.up.arrow.down"))
+        XCTAssertFalse(categorySource.contains("reorderMode"))
+        XCTAssertFalse(categorySource.contains(".environment(\\.editMode"))
+        XCTAssertFalse(categorySource.contains(".onMove(perform: moveCategories)"))
+    }
+
     func testManagementListRowUsesDefaultListSizing() throws {
         let source = try sourceFile(
             "Components",

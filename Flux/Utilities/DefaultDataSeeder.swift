@@ -76,6 +76,7 @@ struct DefaultDataSeeder {
         }
 
         try backfillAccountTypeDefinitions()
+        try backfillCategorySortOrders()
 
         #if DEBUG
         if transactionCount == 0 {
@@ -108,24 +109,26 @@ struct DefaultDataSeeder {
     // MARK: - Category Seeding
     
     private func seedCategories() throws {
-        for (key, icon, color) in expenseCategoryDefinitions {
+        for (index, item) in expenseCategorySeedOrder.enumerated() {
             let category = Category(
-                nameKey: key,
-                icon: icon,
-                colorHex: color,
+                nameKey: item.key,
+                icon: item.icon,
+                colorHex: item.color,
                 type: .expense,
-                isSystemDefault: true
+                isSystemDefault: true,
+                sortOrder: index
             )
             context.insert(category)
         }
         
-        for (key, icon, color) in incomeCategoryDefinitions {
+        for (index, item) in incomeCategorySeedOrder.enumerated() {
             let category = Category(
-                nameKey: key,
-                icon: icon,
-                colorHex: color,
+                nameKey: item.key,
+                icon: item.icon,
+                colorHex: item.color,
                 type: .income,
-                isSystemDefault: true
+                isSystemDefault: true,
+                sortOrder: index
             )
             context.insert(category)
         }
@@ -179,6 +182,85 @@ struct DefaultDataSeeder {
             account.icon = definition.icon
             account.colorHex = definition.colorHex
         }
+    }
+
+    private func backfillCategorySortOrders() throws {
+        let categories = try context.fetch(FetchDescriptor<Category>())
+
+        for type in TransactionType.allCases {
+            var typeCategories = categories.filter { $0.type == type }
+            let orders = typeCategories.map(\.sortOrder)
+            guard Set(orders).count != orders.count else {
+                continue
+            }
+
+            let preferredOrder = categorySortRank(for: type)
+            typeCategories.sort { lhs, rhs in
+                let lhsRank = preferredOrder[lhs.nameKey] ?? Int.max
+                let rhsRank = preferredOrder[rhs.nameKey] ?? Int.max
+                if lhsRank != rhsRank { return lhsRank < rhsRank }
+                if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
+                return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+            }
+
+            for (index, category) in typeCategories.enumerated() {
+                category.sortOrder = index
+            }
+        }
+    }
+
+    private var expenseCategorySeedOrder: [(key: String, icon: String, color: String)] {
+        let lookup = Dictionary(uniqueKeysWithValues: expenseCategoryDefinitions.map { ($0.key, $0) })
+        return expensePreferredCategoryKeys.compactMap { lookup[$0] }
+    }
+
+    private var incomeCategorySeedOrder: [(key: String, icon: String, color: String)] {
+        let lookup = Dictionary(uniqueKeysWithValues: incomeCategoryDefinitions.map { ($0.key, $0) })
+        return incomePreferredCategoryKeys.compactMap { lookup[$0] }
+    }
+
+    private func categorySortRank(for type: TransactionType) -> [String: Int] {
+        let keys = type == .expense ? expensePreferredCategoryKeys : incomePreferredCategoryKeys
+        return Dictionary(uniqueKeysWithValues: keys.enumerated().map { ($0.element, $0.offset) })
+    }
+
+    private var expensePreferredCategoryKeys: [String] {
+        [
+            "category.expense.food",
+            "category.expense.groceries",
+            "category.expense.dining",
+            "category.expense.coffee",
+            "category.expense.home",
+            "category.expense.housing",
+            "category.expense.bills",
+            "category.expense.insurance",
+            "category.expense.tax",
+            "category.expense.transport",
+            "category.expense.travel",
+            "category.expense.health",
+            "category.expense.personalCare",
+            "category.expense.pet",
+            "category.expense.education",
+            "category.expense.upskilling",
+            "category.expense.shopping",
+            "category.expense.entertainment",
+            "category.expense.subscriptions",
+            "category.expense.gifts"
+        ]
+    }
+
+    private var incomePreferredCategoryKeys: [String] {
+        [
+            "category.income.salary",
+            "category.income.bonus",
+            "category.income.freelance",
+            "category.income.secondHandSale",
+            "category.income.interest",
+            "category.income.investment",
+            "category.income.governmentSubsidy",
+            "category.income.gift",
+            "category.income.refund"
+        ]
     }
 
     private func accountTypeDefinitionsByLegacyType() throws -> [AccountType: AccountTypeDefinition] {

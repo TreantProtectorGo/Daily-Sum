@@ -22,6 +22,9 @@ final class Category {
     
     /// Whether this is a system-provided default category
     var isSystemDefault: Bool = false
+
+    /// User-defined display order within the same category type.
+    var sortOrder: Int = 0
     
     /// Parent category for subcategories (nil for top-level categories)
     @Relationship(deleteRule: .nullify)
@@ -46,6 +49,7 @@ final class Category {
         colorHex: String,
         type: TransactionType,
         isSystemDefault: Bool = false,
+        sortOrder: Int = 0,
         parentCategory: Category? = nil
     ) {
         self.id = id
@@ -54,6 +58,7 @@ final class Category {
         self.colorHex = colorHex
         self.type = type
         self.isSystemDefault = isSystemDefault
+        self.sortOrder = sortOrder
         self.parentCategory = parentCategory
         self.subcategories = []
         self.transactions = []

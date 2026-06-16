@@ -13,6 +13,7 @@ struct AccountEntrySheet: View {
     @State private var name: String = ""
     @State private var accountType: AccountType = .cash
     @State private var accountTypeDefinition: AccountTypeDefinition?
+    @State private var defaultDisplayNameInNameField: String?
     @State private var selectedCurrency: SupportedCurrency = UserCurrencyPreference.supportedCurrency
     @State private var initialBalance: Decimal = 0
     
@@ -87,6 +88,12 @@ struct AccountEntrySheet: View {
                 title: AppLocalization.string("account.type", defaultValue: "Account Type"),
                 selection: $accountTypeDefinition
             )
+            .onChange(of: accountTypeDefinition?.id) { _, _ in
+                updateDefaultNameForSelectedTypeIfNeeded()
+            }
+            .onChange(of: accountType) { _, _ in
+                updateDefaultNameForSelectedTypeIfNeeded()
+            }
 
             currencyPicker
 
@@ -136,7 +143,8 @@ struct AccountEntrySheet: View {
     private func loadExistingAccount() {
         guard let account = existingAccount else { return }
         
-        name = account.name
+        name = account.displayName
+        defaultDisplayNameInNameField = account.usesLocalizedDefaultName ? account.displayName : nil
         accountType = account.type
         accountTypeDefinition = account.typeDefinition
         if let currency = SupportedCurrency(rawValue: account.currencyCode) {
@@ -158,7 +166,12 @@ struct AccountEntrySheet: View {
                 
                 try service.update(
                     existing,
-                    name: name.trimmingCharacters(in: .whitespaces),
+                    name: Account.persistedName(
+                        fromEditedDisplayName: name,
+                        matchingDefaultDisplayName: defaultDisplayNameInNameField,
+                        targetType: accountType,
+                        targetTypeDefinition: accountTypeDefinition
+                    ),
                     type: accountTypeDefinition == nil ? accountType : nil,
                     typeDefinition: accountTypeDefinition,
                     currencyCode: selectedCurrency.rawValue
@@ -197,7 +210,24 @@ struct AccountEntrySheet: View {
         
         isSaving = false
     }
-    
+
+    private func updateDefaultNameForSelectedTypeIfNeeded() {
+        guard let defaultDisplayNameInNameField else { return }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        guard trimmedName == defaultDisplayNameInNameField.trimmingCharacters(in: .whitespaces) else {
+            self.defaultDisplayNameInNameField = nil
+            return
+        }
+
+        let updatedDisplayName = Account.defaultDisplayName(
+            for: accountType,
+            typeDefinition: accountTypeDefinition
+        )
+        name = updatedDisplayName
+        self.defaultDisplayNameInNameField = updatedDisplayName
+    }
+
     private func deleteAccount() {
         guard let existing = existingAccount else { return }
         

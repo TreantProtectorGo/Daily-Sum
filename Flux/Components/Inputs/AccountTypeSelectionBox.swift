@@ -34,7 +34,7 @@ struct AccountTypeSelectionBox: View {
                     size: .small
                 )
 
-                Text(selection?.name ?? AppLocalization.string("account.type", defaultValue: "Account Type"))
+                Text(selection?.displayName ?? AppLocalization.string("account.type", defaultValue: "Account Type"))
                     .font(.body)
                     .foregroundStyle(selection == nil ? .secondary : .primary)
                     .lineLimit(1)
@@ -49,7 +49,7 @@ struct AccountTypeSelectionBox: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
-        .accessibilityValue(selection?.name ?? AppLocalization.string("account.type", defaultValue: "Account Type"))
+        .accessibilityValue(selection?.displayName ?? AppLocalization.string("account.type", defaultValue: "Account Type"))
         .onAppear(perform: selectDefaultIfNeeded)
         .onChange(of: definitions.count) { _, _ in
             selectDefaultIfNeeded()
@@ -96,7 +96,7 @@ private struct AccountTypeSelectionSheet: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 94))], spacing: 16) {
                     ForEach(definitions) { definition in
                         IconTitleGridItem(
-                            title: definition.name,
+                            title: definition.displayName,
                             tintColor: definition.color,
                             isSelected: selection?.id == definition.id
                         ) {
@@ -155,7 +155,7 @@ private struct AccountTypeDefinitionManagementSheet: View {
                 Section {
                     ForEach(definitions) { definition in
                         IconManagementListRow(
-                            title: definition.name,
+                            title: definition.displayName,
                             countText: "\(usageCount(for: definition))",
                             countAccessibilityLabel: accountCountText(for: definition),
                             tintColor: definition.color,
@@ -166,6 +166,11 @@ private struct AccountTypeDefinitionManagementSheet: View {
                             editorMode = .edit(definition)
                         } onDelete: {
                             deleteCandidate = definition
+                        }
+                        .draggable(definition.id.uuidString)
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let draggedID = items.first else { return false }
+                            return moveDefinition(draggedID, to: definition)
                         }
                     }
                 }
@@ -225,7 +230,7 @@ private struct AccountTypeDefinitionManagementSheet: View {
                                 AppLocalization.formatted(
                                     "accountType.delete.moveAccounts",
                                     defaultValue: "Move accounts to %@",
-                                    replacement.name
+                                    replacement.displayName
                                 )
                             ) {
                                 reassignAndDelete(deleteCandidate, replacement: replacement)
@@ -258,6 +263,29 @@ private struct AccountTypeDefinitionManagementSheet: View {
             } message: {
                 Text(errorMessage)
             }
+        }
+    }
+
+    private func moveDefinition(_ draggedID: String, to target: AccountTypeDefinition) -> Bool {
+        guard let draggedUUID = UUID(uuidString: draggedID),
+              draggedUUID != target.id,
+              let sourceIndex = definitions.firstIndex(where: { $0.id == draggedUUID }),
+              let targetIndex = definitions.firstIndex(where: { $0.id == target.id }) else {
+            return false
+        }
+
+        var reorderedDefinitions = definitions
+        reorderedDefinitions.move(
+            fromOffsets: IndexSet(integer: sourceIndex),
+            toOffset: targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
+        )
+
+        do {
+            try AccountTypeDefinitionService(context: modelContext).reorder(reorderedDefinitions)
+            return true
+        } catch {
+            show(error)
+            return false
         }
     }
 

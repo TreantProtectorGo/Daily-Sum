@@ -74,10 +74,49 @@ final class Account {
         typeDefinition?.displayName ?? type.localizedName
     }
 
+    var usesLocalizedDefaultName: Bool {
+        name == type.defaultSeedName && (typeDefinition?.isSystemDefault ?? true)
+    }
+
     var displayName: String {
-        guard name == type.defaultSeedName else { return name }
-        guard typeDefinition?.isSystemDefault ?? true else { return name }
-        return type.localizedName
+        guard usesLocalizedDefaultName else { return name }
+        return Self.defaultDisplayName(for: type, typeDefinition: typeDefinition)
+    }
+
+    func persistedName(fromEditedDisplayName editedName: String) -> String {
+        Self.persistedName(
+            fromEditedDisplayName: editedName,
+            matchingDefaultDisplayName: usesLocalizedDefaultName ? displayName : nil,
+            targetType: type,
+            targetTypeDefinition: typeDefinition
+        )
+    }
+
+    static func defaultDisplayName(for type: AccountType, typeDefinition: AccountTypeDefinition?) -> String {
+        typeDefinition?.displayName ?? type.localizedName
+    }
+
+    static func persistedName(
+        fromEditedDisplayName editedName: String,
+        matchingDefaultDisplayName defaultDisplayName: String?,
+        targetType: AccountType,
+        targetTypeDefinition: AccountTypeDefinition?
+    ) -> String {
+        let trimmedName = editedName.trimmingCharacters(in: .whitespaces)
+        guard let defaultDisplayName,
+              trimmedName == defaultDisplayName.trimmingCharacters(in: .whitespaces),
+              let defaultSeedName = defaultSeedName(for: targetType, typeDefinition: targetTypeDefinition)
+        else {
+            return trimmedName
+        }
+        return defaultSeedName
+    }
+
+    private static func defaultSeedName(for type: AccountType, typeDefinition: AccountTypeDefinition?) -> String? {
+        let resolvedType = typeDefinition?.legacyType ?? type
+        guard typeDefinition?.isSystemDefault ?? true else { return nil }
+        guard (typeDefinition?.name ?? resolvedType.defaultSeedName) == resolvedType.defaultSeedName else { return nil }
+        return resolvedType.defaultSeedName
     }
 
     var resolvedTypeIcon: String {

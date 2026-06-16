@@ -34,7 +34,7 @@ struct AccountPickerView: View {
                 if let account = selectedAccount {
                     AccountTypeDefinitionIcon(definition: account.typeDefinition, fallback: account.type, size: .small)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(account.name)
+                        Text(account.displayName)
                             .font(.body)
                         if showBalance {
                             Text(
@@ -132,7 +132,7 @@ private struct AccountGridItem: View {
 
     var body: some View {
         IconTitleGridItem(
-            title: account.name,
+            title: account.displayName,
             subtitle: subtitle,
             tintColor: account.resolvedTypeColor,
             isSelected: isSelected
@@ -161,7 +161,7 @@ struct InlineAccountPicker: View {
             ForEach(accounts) { account in
                 HStack {
                     Image(systemName: account.resolvedTypeIcon)
-                    Text(account.name)
+                    Text(account.displayName)
                 }
                 .tag(account as Account?)
             }

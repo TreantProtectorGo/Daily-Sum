@@ -133,7 +133,7 @@ struct SettingsView: View {
                     .tag(nil as UUID?)
                 
                 ForEach(accounts) { account in
-                    Text(account.name)
+                    Text(account.displayName)
                         .tag(account.id as UUID?)
                 }
             }

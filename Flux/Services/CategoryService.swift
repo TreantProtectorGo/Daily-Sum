@@ -33,6 +33,7 @@ final class CategoryService {
             colorHex: colorHex,
             type: type,
             isSystemDefault: false,
+            sortOrder: nextSortOrder(type: type, parentCategory: parentCategory),
             parentCategory: parentCategory
         )
         context.insert(category)
@@ -45,7 +46,10 @@ final class CategoryService {
     /// Fetches all categories of a specific type
     func fetch(type: TransactionType? = nil, includeSubcategories: Bool = true) throws -> [Category] {
         var descriptor = FetchDescriptor<Category>(
-            sortBy: [SortDescriptor(\.nameKey)]
+            sortBy: [
+                SortDescriptor(\.sortOrder),
+                SortDescriptor(\.nameKey)
+            ]
         )
         
         if !includeSubcategories {
@@ -76,7 +80,7 @@ final class CategoryService {
     
     /// Fetches subcategories of a parent
     func fetchSubcategories(of parent: Category) throws -> [Category] {
-        (parent.subcategories ?? []).sorted { $0.displayName < $1.displayName }
+        (parent.subcategories ?? []).sorted(by: categoryDisplayOrder)
     }
     
     // MARK: - Update
@@ -119,6 +123,16 @@ final class CategoryService {
         }
         
         category.parentCategory = parent
+        category.sortOrder = nextSortOrder(type: category.type, parentCategory: parent)
+        try context.save()
+    }
+
+    /// Persists a user-defined display order for categories of the given type.
+    func reorder(_ categories: [Category], type: TransactionType) throws {
+        for (index, category) in categories.filter({ $0.type == type }).enumerated() {
+            category.sortOrder = index
+        }
+
         try context.save()
     }
     
@@ -156,5 +170,22 @@ final class CategoryService {
                 )
             }
         }
+    }
+
+    private func nextSortOrder(type: TransactionType, parentCategory: Category?) -> Int {
+        let categories = (try? fetch(type: type, includeSubcategories: true)) ?? []
+        let siblingOrders = categories
+            .filter { category in
+                category.parentCategory?.id == parentCategory?.id
+            }
+            .map(\.sortOrder)
+        return (siblingOrders.max() ?? -1) + 1
+    }
+
+    private func categoryDisplayOrder(_ lhs: Category, _ rhs: Category) -> Bool {
+        if lhs.sortOrder != rhs.sortOrder {
+            return lhs.sortOrder < rhs.sortOrder
+        }
+        return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
     }
 }

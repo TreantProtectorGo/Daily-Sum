@@ -98,6 +98,14 @@ final class AccountTypeDefinitionService {
         try context.save()
     }
 
+    func reorder(_ definitions: [AccountTypeDefinition]) throws {
+        for (index, definition) in definitions.enumerated() {
+            definition.sortOrder = index
+        }
+
+        try context.save()
+    }
+
     enum AccountTypeDefinitionError: LocalizedError, Equatable {
         case typeInUse
         case replacementMatchesDeletedType
