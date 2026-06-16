@@ -799,8 +799,8 @@ private struct TravelCurrencySettingsSheet: View {
                 Section {
                     Toggle(
                         AppLocalization.string(
-                            "settings.exchangeRate.configuration",
-                            defaultValue: "Foreign Currency Mode"
+                            "settings.exchangeRate.configuration.toggle",
+                            defaultValue: "Enable Foreign Currency Mode"
                         ),
                         isOn: Binding(
                             get: { viewModel.isTravelCurrencyModeEnabled },
@@ -815,8 +815,8 @@ private struct TravelCurrencySettingsSheet: View {
 
                     Picker(
                         AppLocalization.string(
-                            "settings.exchangeRate.configuration",
-                            defaultValue: "Foreign Currency Mode"
+                            "settings.exchangeRate.configuration.mode",
+                            defaultValue: "Mode"
                         ),
                         selection: Binding(
                             get: { viewModel.travelCurrencySource },
@@ -937,8 +937,8 @@ private struct TravelCurrencySettingsSheet: View {
             }
             .navigationTitle(
                 AppLocalization.string(
-                    "settings.exchangeRate.configuration",
-                    defaultValue: "Foreign Currency Mode"
+                    "settings.exchangeRate.configuration.title",
+                    defaultValue: "Foreign Currency Settings"
                 )
             )
             .navigationBarTitleDisplayMode(.inline)
