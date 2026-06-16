@@ -45,6 +45,31 @@ final class TravelTransactionSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.exchangeRate, 0.0521)
     }
 
+    func testBuildSnapshotUsesIdentityRateWhenTravelAndAccountCurrenciesMatch() async throws {
+        let date = Date()
+
+        let snapshot = try await TravelTransactionSnapshots.buildSnapshot(
+            travelAmount: 88.88,
+            travelCurrencyCode: "CNY",
+            accountCurrencyCode: "CNY",
+            date: date,
+            conversionService: MockQuoteProvider(
+                convertedAmount: 0,
+                rate: 0,
+                effectiveDate: .distantPast,
+                provider: "unused"
+            )
+        )
+
+        XCTAssertEqual(snapshot.travelAmount, 88.88)
+        XCTAssertEqual(snapshot.travelCurrencyCode, "CNY")
+        XCTAssertEqual(snapshot.accountAmount, 88.88)
+        XCTAssertEqual(snapshot.accountCurrencyCode, "CNY")
+        XCTAssertEqual(snapshot.exchangeRate, 1)
+        XCTAssertEqual(snapshot.effectiveDate, date)
+        XCTAssertEqual(snapshot.provider, "identity")
+    }
+
     func testRecomputeLockedSnapshotUsesStoredRate() {
         let snapshot = TravelTransactionSnapshot(
             travelAmount: 3000,

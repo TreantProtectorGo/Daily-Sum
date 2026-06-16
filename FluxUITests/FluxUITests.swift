@@ -169,6 +169,61 @@ final class FluxUITests: XCTestCase {
     }
 
     @MainActor
+    func testTravelExpenseAccountPickerShowsDefaultAndTravelCurrencyAccountsOnly() throws {
+        let app = configuredApp([
+            "-FluxUITestFixture", "travelAccountPicker"
+        ])
+        app.launch()
+
+        let transactionsTab = app.tabBars.buttons["Transactions"]
+        XCTAssertTrue(
+            transactionsTab.waitForExistence(timeout: 10),
+            "Transactions tab should exist after launching the travel account picker fixture."
+        )
+        tapElement(transactionsTab)
+
+        let addButton = app.buttons["transactions.addButton"]
+        XCTAssertTrue(
+            addButton.waitForExistence(timeout: 10),
+            "Transaction add button should exist on the Transactions tab."
+        )
+        tapElement(addButton)
+
+        let accountPicker = app.buttons["transaction.accountPicker.trigger"].firstMatch
+        XCTAssertTrue(
+            accountPicker.waitForExistence(timeout: 10),
+            "Account picker trigger should exist in the Add Expense sheet."
+        )
+        tapElement(accountPicker)
+
+        let accountSheetTitle = app.navigationBars["Select Account"]
+        if !accountSheetTitle.waitForExistence(timeout: 2) {
+            tapElement(accountPicker)
+        }
+        XCTAssertTrue(
+            accountSheetTitle.waitForExistence(timeout: 10),
+            "Account picker sheet should open from the Add Expense sheet."
+        )
+
+        XCTAssertEqual(
+            app.buttons.matching(identifier: "transaction.accountPicker.option.11111111-1111-1111-1111-111111111111").count,
+            1
+        )
+        XCTAssertEqual(
+            app.buttons.matching(identifier: "transaction.accountPicker.option.22222222-2222-2222-2222-222222222222").count,
+            1
+        )
+        XCTAssertEqual(
+            app.buttons.matching(identifier: "transaction.accountPicker.option.44444444-4444-4444-4444-444444444444").count,
+            1
+        )
+        XCTAssertEqual(
+            app.buttons.matching(identifier: "transaction.accountPicker.option.33333333-3333-3333-3333-333333333333").count,
+            0
+        )
+    }
+
+    @MainActor
     func testIncomeCategoryPersistsWhenReopeningTransaction() throws {
         let app = configuredApp()
         app.launch()
@@ -235,6 +290,12 @@ final class FluxUITests: XCTestCase {
                 label
             )
         ).firstMatch
+    }
+
+    private func staticTextCount(in element: XCUIElement, label: String) -> Int {
+        element.staticTexts.matching(
+            NSPredicate(format: "label == %@", label)
+        ).count
     }
 
     private func scrollToElement(_ element: XCUIElement, in app: XCUIApplication) -> Bool {

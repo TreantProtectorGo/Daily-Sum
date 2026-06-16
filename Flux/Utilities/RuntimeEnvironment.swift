@@ -2,6 +2,7 @@ import Foundation
 
 enum RuntimeEnvironment {
     nonisolated private static let cloudSyncAvailabilityFlag = "-FluxCloudSyncAvailability"
+    nonisolated private static let uiTestFixtureFlag = "-FluxUITestFixture"
 
     nonisolated static var isRunningTests: Bool {
         let environment = ProcessInfo.processInfo.environment
@@ -26,5 +27,15 @@ enum RuntimeEnvironment {
         default:
             return nil
         }
+    }
+
+    nonisolated static var uiTestFixtureName: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flagIndex = arguments.firstIndex(of: uiTestFixtureFlag),
+              arguments.indices.contains(arguments.index(after: flagIndex)) else {
+            return nil
+        }
+
+        return arguments[arguments.index(after: flagIndex)]
     }
 }

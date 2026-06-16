@@ -145,6 +145,7 @@ private struct AccountGridItem: View {
         } onSelect: {
             onSelect()
         }
+        .accessibilityIdentifier("transaction.accountPicker.option.\(account.id.uuidString)")
     }
 }
 

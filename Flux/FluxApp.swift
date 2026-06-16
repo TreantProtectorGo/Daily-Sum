@@ -83,6 +83,19 @@ struct FluxApp: App {
     
     /// Initializes the app's data layer
     private func initializeApp() async {
+        do {
+            if let fixtureContainer = try UITestFixture.makeContainerIfRequested() {
+                containerGeneration += 1
+                container = fixtureContainer
+                isLoading = false
+                return
+            }
+        } catch {
+            loadError = error
+            isLoading = false
+            return
+        }
+
         if isRunningTests {
             isLoading = false
             return
