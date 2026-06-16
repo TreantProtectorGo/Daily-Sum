@@ -6456,13 +6456,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "外币设定"
+            "value" : "外币模式开关"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "外幣設定"
+            "value" : "外幣模式開關"
           }
         }
       }
@@ -6496,19 +6496,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When off, new transactions will not default to foreign currency. When on, Automatic follows your location; Manual uses your selected currency."
+            "value" : "When off, new transactions will not default to foreign currency.\nWhen on, Automatic follows your location; Manual uses your selected currency."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "关闭后，新交易不会默认使用外币。开启后，自动模式会跟随你的位置；手动模式会使用你所选的货币。"
+            "value" : "关闭后，新交易不会预设使用外币。 \n自动模式按所在地区设定货币；手动模式则沿用你选定的货币。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "關閉後，新交易不會預設使用外幣。開啟後，自動模式會跟隨你的位置；手動模式會使用你所選的貨幣。"
+            "value" : "關閉後，新交易不會預設使用外幣。\n自動模式按所在地區設定貨幣；手動模式則沿用你選定的貨幣。"
           }
         }
       }
