@@ -7,26 +7,24 @@ struct DefaultDataSeeder {
     let context: ModelContext
 
     private let expenseCategoryDefinitions: [(key: String, icon: String, color: String)] = [
-        ("category.expense.food", "carrot.fill", "#EF4444"),
-        ("category.expense.home", "house.circle.fill", "#06B6D4"),
+        ("category.expense.dining", "fork.knife", "#F59E0B"),
+        ("category.expense.groceries", "cart.fill", "#22C55E"),
         ("category.expense.transport", "car.fill", "#14B8A6"),
         ("category.expense.shopping", "bag.fill", "#06B6D4"),
-        ("category.expense.entertainment", "tv.fill", "#6366F1"),
         ("category.expense.bills", "doc.text.fill", "#64748B"),
-        ("category.expense.insurance", "shield.fill", "#A855F7"),
-        ("category.expense.tax", "building.columns.fill", "#F59E0B"),
-        ("category.expense.health", "heart.fill", "#EC4899"),
-        ("category.expense.education", "book.fill", "#3B82F6"),
-        ("category.expense.upskilling", "graduationcap.fill", "#06B6D4"),
-        ("category.expense.pet", "pawprint.fill", "#EF4444"),
-        ("category.expense.travel", "airplane", "#F59E0B"),
-        ("category.expense.groceries", "cart.fill", "#22C55E"),
-        ("category.expense.dining", "fork.knife", "#F59E0B"),
-        ("category.expense.coffee", "cup.and.saucer.fill", "#A16207"),
-        ("category.expense.subscriptions", "repeat", "#A855F7"),
         ("category.expense.housing", "building.2.fill", "#3B82F6"),
+        ("category.expense.subscriptions", "repeat", "#A855F7"),
+        ("category.expense.medical", "heart.fill", "#EC4899"),
+        ("category.expense.entertainment", "tv.fill", "#6366F1"),
         ("category.expense.personalCare", "shower.fill", "#F43F5E"),
-        ("category.expense.gifts", "gift.fill", "#EF4444")
+        ("category.expense.home", "house.circle.fill", "#06B6D4"),
+        ("category.expense.travel", "airplane", "#F59E0B"),
+        ("category.expense.education", "book.fill", "#3B82F6"),
+        ("category.expense.learning", "graduationcap.fill", "#06B6D4"),
+        ("category.expense.gifts", "gift.fill", "#EF4444"),
+        ("category.expense.pet", "pawprint.fill", "#EF4444"),
+        ("category.expense.insurance", "shield.fill", "#A855F7"),
+        ("category.expense.tax", "building.columns.fill", "#F59E0B")
     ]
 
     private let incomeCategoryDefinitions: [(key: String, icon: String, color: String)] = [
@@ -67,6 +65,7 @@ struct DefaultDataSeeder {
         if categoryCount == 0 {
             try seedCategories()
         }
+        try migrateRenamedDefaultExpenseCategories()
 
         if accountTypeDefinitionCount == 0 {
             try seedAccountTypeDefinitions()
@@ -134,6 +133,33 @@ struct DefaultDataSeeder {
                 sortOrder: index
             )
             context.insert(category)
+        }
+    }
+
+    private func migrateRenamedDefaultExpenseCategories() throws {
+        let categories = try context.fetch(FetchDescriptor<Category>())
+        let migrations: [(oldKeys: [String], newKey: String)] = [
+            (
+                oldKeys: ["category.expense.health", "Health", "健康"],
+                newKey: "category.expense.medical"
+            ),
+            (
+                oldKeys: ["category.expense.upskilling", "Upskilling", "进修", "進修"],
+                newKey: "category.expense.learning"
+            )
+        ]
+
+        for migration in migrations {
+            let hasNewDefault = categories.contains {
+                $0.type == .expense && $0.isSystemDefault && $0.nameKey == migration.newKey
+            }
+            guard !hasNewDefault else { continue }
+
+            for category in categories where category.type == .expense
+                && category.isSystemDefault
+                && migration.oldKeys.contains(category.nameKey) {
+                category.nameKey = migration.newKey
+            }
         }
     }
 
@@ -252,26 +278,24 @@ struct DefaultDataSeeder {
 
     private var expensePreferredCategoryKeys: [String] {
         [
-            "category.expense.food",
-            "category.expense.groceries",
             "category.expense.dining",
-            "category.expense.coffee",
-            "category.expense.home",
-            "category.expense.housing",
-            "category.expense.bills",
-            "category.expense.insurance",
-            "category.expense.tax",
+            "category.expense.groceries",
             "category.expense.transport",
-            "category.expense.travel",
-            "category.expense.health",
-            "category.expense.personalCare",
-            "category.expense.pet",
-            "category.expense.education",
-            "category.expense.upskilling",
             "category.expense.shopping",
-            "category.expense.entertainment",
+            "category.expense.bills",
+            "category.expense.housing",
             "category.expense.subscriptions",
-            "category.expense.gifts"
+            "category.expense.medical",
+            "category.expense.entertainment",
+            "category.expense.personalCare",
+            "category.expense.home",
+            "category.expense.travel",
+            "category.expense.education",
+            "category.expense.learning",
+            "category.expense.gifts",
+            "category.expense.pet",
+            "category.expense.insurance",
+            "category.expense.tax"
         ]
     }
 

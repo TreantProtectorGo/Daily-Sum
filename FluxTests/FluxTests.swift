@@ -1330,6 +1330,118 @@ final class FluxTests: XCTestCase {
     }
 
     @MainActor
+    func testDefaultDataSeederCreatesRequestedExpenseCategoryOrder() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+
+        try await seeder.seedIfNeeded()
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+            .filter { $0.type == .expense }
+            .sorted { $0.sortOrder < $1.sortOrder }
+
+        XCTAssertEqual(
+            categories.map(\.nameKey),
+            [
+                "category.expense.dining",
+                "category.expense.groceries",
+                "category.expense.transport",
+                "category.expense.shopping",
+                "category.expense.bills",
+                "category.expense.housing",
+                "category.expense.subscriptions",
+                "category.expense.medical",
+                "category.expense.entertainment",
+                "category.expense.personalCare",
+                "category.expense.home",
+                "category.expense.travel",
+                "category.expense.education",
+                "category.expense.learning",
+                "category.expense.gifts",
+                "category.expense.pet",
+                "category.expense.insurance",
+                "category.expense.tax"
+            ]
+        )
+        XCTAssertEqual(categories.map(\.sortOrder), Array(0..<18))
+        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.food" })
+        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.coffee" })
+        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.health" })
+        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.upskilling" })
+    }
+
+    @MainActor
+    func testDefaultDataSeederIsIdempotentForCategories() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+
+        try await seeder.seedIfNeeded()
+        let firstCategories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let firstIDs = Set(firstCategories.map(\.id))
+
+        try await seeder.seedIfNeeded()
+        let secondCategories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let secondIDs = Set(secondCategories.map(\.id))
+
+        XCTAssertEqual(firstCategories.count, secondCategories.count)
+        XCTAssertEqual(firstIDs, secondIDs)
+    }
+
+    @MainActor
+    func testDefaultDataSeederMigratesOnlySeededRenamedExpenseCategoriesWithoutResettingOrder() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let dining = Category(
+            nameKey: "category.expense.dining",
+            icon: "fork.knife",
+            colorHex: "#F59E0B",
+            type: .expense,
+            isSystemDefault: true,
+            sortOrder: 4
+        )
+        let health = Category(
+            nameKey: "category.expense.health",
+            icon: "heart.fill",
+            colorHex: "#EC4899",
+            type: .expense,
+            isSystemDefault: true,
+            sortOrder: 2
+        )
+        let upskilling = Category(
+            nameKey: "category.expense.upskilling",
+            icon: "graduationcap.fill",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true,
+            sortOrder: 1
+        )
+        let userHealth = Category(
+            nameKey: "category.expense.health",
+            icon: "star.fill",
+            colorHex: "#111111",
+            type: .expense,
+            isSystemDefault: false,
+            sortOrder: 0
+        )
+        context.insert(dining)
+        context.insert(health)
+        context.insert(upskilling)
+        context.insert(userHealth)
+        try context.save()
+
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+
+        XCTAssertEqual(health.nameKey, "category.expense.medical")
+        XCTAssertEqual(upskilling.nameKey, "category.expense.learning")
+        XCTAssertEqual(userHealth.nameKey, "category.expense.health")
+        XCTAssertEqual([userHealth, upskilling, health, dining].map(\.sortOrder), [0, 1, 2, 4])
+    }
+
+    @MainActor
     func testDefaultDataSeederCreatesDefaultAccountTypeDefinitionsAndBackfillsAccounts() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext

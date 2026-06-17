@@ -140,6 +140,8 @@ final class IconManagementLayoutTests: XCTestCase {
         XCTAssertTrue(accountTypeSource.contains("@Query(sort: \\AccountTypeDefinition.sortOrder)"))
         XCTAssertTrue(categorySource.contains("@Query(sort: \\Category.sortOrder)"))
         XCTAssertFalse(categorySource.contains("@Query(sort: \\Category.nameKey)"))
+        XCTAssertFalse(categorySource.contains("preferredCategoryOrder"))
+        XCTAssertFalse(categorySource.contains("category.expense.dining"))
     }
 
     func testNoVisibleReorderToolbarButton() throws {

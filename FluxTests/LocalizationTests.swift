@@ -4,6 +4,32 @@ import SwiftData
 @testable import Flux
 
 final class LocalizationTests: XCTestCase {
+    private let defaultExpenseCategoryKeys = [
+        "category.expense.dining",
+        "category.expense.groceries",
+        "category.expense.transport",
+        "category.expense.shopping",
+        "category.expense.bills",
+        "category.expense.housing",
+        "category.expense.subscriptions",
+        "category.expense.medical",
+        "category.expense.entertainment",
+        "category.expense.personalCare",
+        "category.expense.home",
+        "category.expense.travel",
+        "category.expense.education",
+        "category.expense.learning",
+        "category.expense.gifts",
+        "category.expense.pet",
+        "category.expense.insurance",
+        "category.expense.tax"
+    ]
+
+    private func expenseCategoryDisplayNames() -> [String] {
+        defaultExpenseCategoryKeys.map {
+            AppLocalization.string(key: $0, table: "CategoryLocalizations")
+        }
+    }
     
     // MARK: - Regional Settings Tests
     
@@ -193,30 +219,26 @@ final class LocalizationTests: XCTestCase {
         defer { AppLanguagePreference.language = originalLanguage }
 
         AppLanguagePreference.language = .english
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.food", table: "CategoryLocalizations"),
-            "Ingredients"
-        )
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.dining", table: "CategoryLocalizations"),
-            "Dining"
-        )
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.coffee", table: "CategoryLocalizations"),
-            "Drinks"
-        )
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.home", table: "CategoryLocalizations"),
-            "Household"
-        )
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.tax", table: "CategoryLocalizations"),
+        XCTAssertEqual(expenseCategoryDisplayNames(), [
+            "Dining",
+            "Groceries",
+            "Transport",
+            "Shopping",
+            "Bills",
+            "Housing",
+            "Subscriptions",
+            "Medical",
+            "Entertainment",
+            "Personal Care",
+            "Household",
+            "Travel",
+            "Education",
+            "Learning",
+            "Gifts",
+            "Pets",
+            "Insurance",
             "Taxes"
-        )
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.pet", table: "CategoryLocalizations"),
-            "Pets"
-        )
+        ])
         XCTAssertEqual(
             AppLocalization.string(key: "category.income.gift", table: "CategoryLocalizations"),
             "Gift"
@@ -764,14 +786,26 @@ final class LocalizationTests: XCTestCase {
         defer { AppLanguagePreference.language = originalLanguage }
 
         AppLanguagePreference.language = .traditionalChinese
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.coffee", table: "CategoryLocalizations"),
-            "飲品"
-        )
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.dining", table: "CategoryLocalizations"),
-            "餐飲"
-        )
+        XCTAssertEqual(expenseCategoryDisplayNames(), [
+            "餐飲",
+            "超市",
+            "交通",
+            "購物",
+            "賬單",
+            "住屋",
+            "訂閱",
+            "醫療",
+            "娛樂",
+            "個人護理",
+            "家居",
+            "旅遊",
+            "教育",
+            "進修",
+            "禮物",
+            "寵物",
+            "保險",
+            "稅務"
+        ])
     }
 
     func testReportsNetUsesFinancialWordingAcrossChineseLocalizations() {
@@ -828,38 +862,32 @@ final class LocalizationTests: XCTestCase {
         defer { AppLanguagePreference.language = originalLanguage }
 
         AppLanguagePreference.language = .simplifiedChinese
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.upskilling", table: "CategoryLocalizations"),
-            "进修"
-        )
-    }
-
-    func testCategoryLocalizationUsesSimplifiedChineseDrinkWording() {
-        let originalLanguage = AppLanguagePreference.language
-        defer { AppLanguagePreference.language = originalLanguage }
-
-        AppLanguagePreference.language = .simplifiedChinese
-        XCTAssertEqual(
-            AppLocalization.string(key: "category.expense.coffee", table: "CategoryLocalizations"),
-            "饮品"
-        )
+        XCTAssertEqual(expenseCategoryDisplayNames(), [
+            "餐饮",
+            "超市",
+            "交通",
+            "购物",
+            "账单",
+            "住房",
+            "订阅",
+            "医疗",
+            "娱乐",
+            "个人护理",
+            "家居",
+            "旅行",
+            "教育",
+            "学习",
+            "礼物",
+            "宠物",
+            "保险",
+            "税务"
+        ])
     }
 
     func testCategoryPickerPlaceholderVisibilityByMode() {
         XCTAssertFalse(CategoryPickerMode.transaction(.expense).showsPlaceholderOption)
         XCTAssertFalse(CategoryPickerMode.transaction(.income).showsPlaceholderOption)
         XCTAssertTrue(CategoryPickerMode.budgetExpense.showsPlaceholderOption)
-    }
-
-    func testCategoryPickerExpenseGroupingOrder() {
-        let order = CategoryPickerMode.transaction(.expense).preferredCategoryOrder
-        XCTAssertEqual(order.prefix(5), [
-            "category.expense.food",
-            "category.expense.groceries",
-            "category.expense.dining",
-            "category.expense.coffee",
-            "category.expense.home"
-        ])
     }
 
     func testAllSystemCategoryKeysResolveForAllAppLanguages() {
@@ -876,8 +904,10 @@ final class LocalizationTests: XCTestCase {
             "category.expense.insurance",
             "category.expense.tax",
             "category.expense.health",
+            "category.expense.medical",
             "category.expense.education",
             "category.expense.upskilling",
+            "category.expense.learning",
             "category.expense.pet",
             "category.expense.travel",
             "category.expense.groceries",
@@ -926,17 +956,19 @@ final class LocalizationTests: XCTestCase {
     }
 
     @MainActor
-    func testFoodAndDiningUseUpdatedIconMapping() async throws {
+    func testRenamedExpenseCategoriesUseExpectedIconMapping() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
         let seeder = DefaultDataSeeder(context: context)
         try await seeder.seedIfNeeded()
 
         let categories = try context.fetch(FetchDescriptor<Flux.Category>())
-        let food = categories.first { $0.nameKey == "category.expense.food" }
+        let medical = categories.first { $0.nameKey == "category.expense.medical" }
+        let learning = categories.first { $0.nameKey == "category.expense.learning" }
         let dining = categories.first { $0.nameKey == "category.expense.dining" }
 
-        XCTAssertEqual(food?.icon, "carrot.fill")
+        XCTAssertEqual(medical?.icon, "heart.fill")
+        XCTAssertEqual(learning?.icon, "graduationcap.fill")
         XCTAssertEqual(dining?.icon, "fork.knife")
     }
 }

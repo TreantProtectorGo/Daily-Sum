@@ -54,45 +54,6 @@ enum CategoryPickerMode {
         }
     }
 
-    var preferredCategoryOrder: [String] {
-        switch self {
-        case .transaction(.expense), .budgetExpense:
-            return [
-                "category.expense.food",
-                "category.expense.groceries",
-                "category.expense.dining",
-                "category.expense.coffee",
-                "category.expense.home",
-                "category.expense.housing",
-                "category.expense.bills",
-                "category.expense.insurance",
-                "category.expense.tax",
-                "category.expense.transport",
-                "category.expense.travel",
-                "category.expense.health",
-                "category.expense.personalCare",
-                "category.expense.pet",
-                "category.expense.education",
-                "category.expense.upskilling",
-                "category.expense.shopping",
-                "category.expense.entertainment",
-                "category.expense.subscriptions",
-                "category.expense.gifts"
-            ]
-        case .transaction(.income):
-            return [
-                "category.income.salary",
-                "category.income.bonus",
-                "category.income.freelance",
-                "category.income.secondHandSale",
-                "category.income.interest",
-                "category.income.investment",
-                "category.income.governmentSubsidy",
-                "category.income.gift",
-                "category.income.refund"
-            ]
-        }
-    }
 }
 
 struct CategoryPickerView: View {

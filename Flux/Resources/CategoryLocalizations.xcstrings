@@ -19,7 +19,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "帳單"
+            "value" : "賬單"
           }
         }
       }
@@ -59,13 +59,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "家用"
+            "value" : "家居"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "家用"
+            "value" : "家居"
           }
         }
       }
@@ -214,19 +214,42 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Health"
+            "value" : "Medical"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "健康"
+            "value" : "医疗"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "健康"
+            "value" : "醫療"
+          }
+        }
+      }
+    },
+    "category.expense.medical" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medical"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "医疗"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "醫療"
           }
         }
       }
@@ -358,13 +381,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "税项"
+            "value" : "税务"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "稅項"
+            "value" : "稅務"
           }
         }
       }
@@ -404,7 +427,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅游"
+            "value" : "旅行"
           }
         },
         "zh-Hant" : {
@@ -421,13 +444,36 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Upskilling"
+            "value" : "Learning"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "进修"
+            "value" : "学习"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "進修"
+          }
+        }
+      }
+    },
+    "category.expense.learning" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learning"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "学习"
           }
         },
         "zh-Hant" : {
