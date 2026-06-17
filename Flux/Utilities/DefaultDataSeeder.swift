@@ -45,6 +45,7 @@ struct DefaultDataSeeder {
         ("Cash", "banknote", "#34C759", .cash),
         ("Bank Account", "building.columns", "#0A84FF", .bank),
         ("Credit Card", "creditcard", "#FF9500", .creditCard),
+        ("E-wallet", "wallet.bifold", "#32ADE6", .eWallet),
         ("Investment", "chart.line.uptrend.xyaxis", "#AF52DE", .investment)
     ]
     
@@ -69,6 +70,8 @@ struct DefaultDataSeeder {
 
         if accountTypeDefinitionCount == 0 {
             try seedAccountTypeDefinitions()
+        } else {
+            try seedMissingDefaultAccountTypeDefinitions()
         }
         
         if accountCount == 0 {
@@ -138,6 +141,29 @@ struct DefaultDataSeeder {
 
     private func seedAccountTypeDefinitions() throws {
         for (index, item) in accountTypeDefinitions.enumerated() {
+            let definition = AccountTypeDefinition(
+                name: item.name,
+                icon: item.icon,
+                colorHex: item.color,
+                isSystemDefault: true,
+                sortOrder: index,
+                legacyType: item.legacyType
+            )
+            context.insert(definition)
+        }
+    }
+
+    private func seedMissingDefaultAccountTypeDefinitions() throws {
+        let definitions = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
+
+        for (index, item) in accountTypeDefinitions.enumerated() {
+            if let existingDefinition = definitions.first(where: { $0.legacyType == item.legacyType }) {
+                if existingDefinition.isSystemDefault {
+                    existingDefinition.sortOrder = index
+                }
+                continue
+            }
+
             let definition = AccountTypeDefinition(
                 name: item.name,
                 icon: item.icon,

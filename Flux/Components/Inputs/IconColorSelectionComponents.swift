@@ -320,15 +320,15 @@ struct IconColorItemDraft: Equatable {
 enum SFSymbolCatalog {
     static let featured = unique([
         "banknote", "building.columns", "creditcard", "chart.line.uptrend.xyaxis",
-        "wallet.pass", "tag", "cart.fill", "fork.knife", "cup.and.saucer.fill",
+        "wallet.bifold", "wallet.pass", "tag", "cart.fill", "fork.knife", "cup.and.saucer.fill",
         "house.fill", "car.fill", "gift.fill", "briefcase.fill", "percent"
     ])
 
     static let all = unique([
         // Finance
         "banknote", "banknote.fill", "building.columns", "building.columns.fill",
-        "creditcard", "creditcard.fill", "creditcard.and.123", "wallet.pass",
-        "wallet.pass.fill", "dollarsign", "dollarsign.circle", "dollarsign.circle.fill",
+        "creditcard", "creditcard.fill", "creditcard.and.123", "wallet.bifold",
+        "wallet.bifold.fill", "wallet.pass", "wallet.pass.fill", "dollarsign", "dollarsign.circle", "dollarsign.circle.fill",
         "centsign.circle", "sterlingsign.circle", "eurosign.circle", "yensign.circle",
         "bitcoinsign.circle", "percent", "percent.ar", "chart.line.uptrend.xyaxis",
         "chart.line.uptrend.xyaxis.circle", "chart.bar", "chart.bar.fill",

@@ -7,7 +7,7 @@ import SwiftUI
 final class AccountTypeDefinition {
     var id: UUID = UUID()
     var name: String = ""
-    var icon: String = "wallet.pass"
+    var icon: String = "wallet.bifold"
     var colorHex: String = "#007AFF"
     var isSystemDefault: Bool = false
     var sortOrder: Int = 0

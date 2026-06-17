@@ -144,6 +144,9 @@ enum AppColors {
     
     /// Color for credit card accounts
     static let accountCreditCard = Color.orange
+
+    /// Color for e-wallet accounts
+    static let accountEWallet = Color.teal
     
     /// Color for investment accounts
     static let accountInvestment = Color.purple

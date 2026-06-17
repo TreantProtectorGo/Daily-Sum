@@ -149,6 +149,7 @@ extension AccountType {
         case .cash: "banknote"
         case .bank: "building.columns"
         case .creditCard: "creditcard"
+        case .eWallet: "wallet.bifold"
         case .investment: "chart.line.uptrend.xyaxis"
         }
     }
@@ -158,6 +159,7 @@ extension AccountType {
         case .cash: AppColors.accountCash
         case .bank: AppColors.accountBank
         case .creditCard: AppColors.accountCreditCard
+        case .eWallet: AppColors.accountEWallet
         case .investment: AppColors.accountInvestment
         }
     }
@@ -193,6 +195,7 @@ extension AccountType {
             AccountTypeIcon(accountType: .cash)
             AccountTypeIcon(accountType: .bank)
             AccountTypeIcon(accountType: .creditCard)
+            AccountTypeIcon(accountType: .eWallet)
             AccountTypeIcon(accountType: .investment)
         }
     }

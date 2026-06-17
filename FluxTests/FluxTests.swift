@@ -1316,16 +1316,58 @@ final class FluxTests: XCTestCase {
         try await seeder.seedIfNeeded()
 
         let definitions = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
-        XCTAssertEqual(definitions.count, 4)
+        XCTAssertEqual(definitions.count, 5)
 
-        let names = Set(definitions.map(\.name))
-        XCTAssertTrue(names.contains("Cash"))
-        XCTAssertTrue(names.contains("Bank Account"))
-        XCTAssertTrue(names.contains("Credit Card"))
-        XCTAssertTrue(names.contains("Investment"))
+        let orderedNames = definitions.sorted { $0.sortOrder < $1.sortOrder }.map(\.name)
+        XCTAssertEqual(
+            orderedNames,
+            ["Cash", "Bank Account", "Credit Card", "E-wallet", "Investment"]
+        )
+
+        let cashDefinition = try XCTUnwrap(definitions.first { $0.name == "Cash" })
+        XCTAssertEqual(cashDefinition.icon, "banknote")
+
+        let eWalletDefinition = try XCTUnwrap(definitions.first { $0.name == "E-wallet" })
+        XCTAssertEqual(eWalletDefinition.icon, "wallet.bifold")
 
         XCTAssertEqual(legacyAccount.typeDefinition?.name, "Bank Account")
         XCTAssertEqual(legacyAccount.resolvedTypeName, "Bank Account")
+    }
+
+    @MainActor
+    func testDefaultDataSeederAddsMissingEWalletAccountTypeDefinition() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+
+        let existingDefaults: [(name: String, type: AccountType)] = [
+            ("Cash", .cash),
+            ("Bank Account", .bank),
+            ("Credit Card", .creditCard),
+            ("Investment", .investment)
+        ]
+
+        for (index, item) in existingDefaults.enumerated() {
+            context.insert(AccountTypeDefinition(
+                name: item.name,
+                icon: item.type.defaultIcon,
+                colorHex: "#007AFF",
+                isSystemDefault: true,
+                sortOrder: index,
+                legacyType: item.type
+            ))
+        }
+        try context.save()
+
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+
+        let definitions = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
+        let orderedNames = definitions.sorted { $0.sortOrder < $1.sortOrder }.map(\.name)
+        XCTAssertEqual(
+            orderedNames,
+            ["Cash", "Bank Account", "Credit Card", "E-wallet", "Investment"]
+        )
+        XCTAssertEqual(definitions.filter { $0.name == "E-wallet" }.count, 1)
     }
     
     @MainActor

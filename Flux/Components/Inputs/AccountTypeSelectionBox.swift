@@ -29,7 +29,7 @@ struct AccountTypeSelectionBox: View {
                 Spacer(minLength: 12)
 
                 IconColorCircle(
-                    icon: selection?.icon ?? "wallet.pass",
+                    icon: selection?.icon ?? "wallet.bifold",
                     color: selection?.color ?? .secondary,
                     size: .small
                 )

@@ -761,6 +761,29 @@
         }
       }
     },
+    "account.type.eWallet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-wallet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "电子钱包"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電子錢包"
+          }
+        }
+      }
+    },
     "account.type.investment" : {
       "extractionState" : "stale",
       "localizations" : {

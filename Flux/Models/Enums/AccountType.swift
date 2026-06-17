@@ -5,6 +5,7 @@ enum AccountType: String, Codable, CaseIterable {
     case cash
     case bank
     case creditCard
+    case eWallet
     case investment
     
     var localizedName: String {
@@ -15,6 +16,8 @@ enum AccountType: String, Codable, CaseIterable {
             AppLocalization.string("account.type.bank", defaultValue: "Bank Account")
         case .creditCard:
             AppLocalization.string("account.type.creditCard", defaultValue: "Credit Card")
+        case .eWallet:
+            AppLocalization.string("account.type.eWallet", defaultValue: "E-wallet")
         case .investment:
             AppLocalization.string("account.type.investment", defaultValue: "Investment")
         }
@@ -28,6 +31,8 @@ enum AccountType: String, Codable, CaseIterable {
             "Bank Account"
         case .creditCard:
             "Credit Card"
+        case .eWallet:
+            "E-wallet"
         case .investment:
             "Investment"
         }
@@ -38,6 +43,7 @@ enum AccountType: String, Codable, CaseIterable {
         case .cash: "banknote"
         case .bank: "building.columns"
         case .creditCard: "creditcard"
+        case .eWallet: "wallet.bifold"
         case .investment: "chart.line.uptrend.xyaxis"
         }
     }
