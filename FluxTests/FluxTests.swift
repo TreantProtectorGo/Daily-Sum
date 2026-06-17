@@ -1300,6 +1300,36 @@ final class FluxTests: XCTestCase {
     }
 
     @MainActor
+    func testDefaultDataSeederUsesEditableColorPaletteForDefaultIcons() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+
+        try await seeder.seedIfNeeded()
+
+        let editablePalette: Set<String> = [
+            "#22C55E", "#14B8A6", "#06B6D4", "#3B82F6", "#6366F1", "#A855F7",
+            "#EC4899", "#F43F5E", "#EF4444", "#F59E0B", "#A16207", "#64748B"
+        ]
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let accountTypes = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
+
+        for category in categories where category.isSystemDefault {
+            XCTAssertTrue(
+                editablePalette.contains(category.colorHex),
+                "\(category.nameKey) uses a color outside the editable palette"
+            )
+        }
+
+        for accountType in accountTypes where accountType.isSystemDefault {
+            XCTAssertTrue(
+                editablePalette.contains(accountType.colorHex),
+                "\(accountType.name) uses a color outside the editable palette"
+            )
+        }
+    }
+
+    @MainActor
     func testDefaultDataSeederCreatesDefaultAccountTypeDefinitionsAndBackfillsAccounts() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext

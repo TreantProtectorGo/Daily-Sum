@@ -7,46 +7,46 @@ struct DefaultDataSeeder {
     let context: ModelContext
 
     private let expenseCategoryDefinitions: [(key: String, icon: String, color: String)] = [
-        ("category.expense.food", "carrot.fill", "#FF6B6B"),
-        ("category.expense.home", "house.circle.fill", "#5DADE2"),
-        ("category.expense.transport", "car.fill", "#4ECDC4"),
-        ("category.expense.shopping", "bag.fill", "#45B7D1"),
-        ("category.expense.entertainment", "tv.fill", "#96CEB4"),
-        ("category.expense.bills", "doc.text.fill", "#FFEAA7"),
-        ("category.expense.insurance", "cross.case.fill", "#AF7AC5"),
-        ("category.expense.tax", "building.columns.fill", "#F5B041"),
-        ("category.expense.health", "heart.fill", "#DDA0DD"),
-        ("category.expense.education", "book.fill", "#98D8C8"),
-        ("category.expense.upskilling", "graduationcap.fill", "#73C6B6"),
-        ("category.expense.pet", "pawprint.fill", "#F1948A"),
-        ("category.expense.travel", "airplane", "#F7DC6F"),
-        ("category.expense.groceries", "cart.fill", "#82E0AA"),
-        ("category.expense.dining", "fork.knife", "#F8B500"),
-        ("category.expense.coffee", "cup.and.saucer.fill", "#6F4E37"),
-        ("category.expense.subscriptions", "repeat", "#9B59B6"),
-        ("category.expense.housing", "building.2.fill", "#3498DB"),
-        ("category.expense.personalCare", "shower.fill", "#E91E63"),
-        ("category.expense.gifts", "gift.fill", "#E74C3C")
+        ("category.expense.food", "carrot.fill", "#EF4444"),
+        ("category.expense.home", "house.circle.fill", "#06B6D4"),
+        ("category.expense.transport", "car.fill", "#14B8A6"),
+        ("category.expense.shopping", "bag.fill", "#06B6D4"),
+        ("category.expense.entertainment", "tv.fill", "#6366F1"),
+        ("category.expense.bills", "doc.text.fill", "#64748B"),
+        ("category.expense.insurance", "shield.fill", "#A855F7"),
+        ("category.expense.tax", "building.columns.fill", "#F59E0B"),
+        ("category.expense.health", "heart.fill", "#EC4899"),
+        ("category.expense.education", "book.fill", "#3B82F6"),
+        ("category.expense.upskilling", "graduationcap.fill", "#06B6D4"),
+        ("category.expense.pet", "pawprint.fill", "#EF4444"),
+        ("category.expense.travel", "airplane", "#F59E0B"),
+        ("category.expense.groceries", "cart.fill", "#22C55E"),
+        ("category.expense.dining", "fork.knife", "#F59E0B"),
+        ("category.expense.coffee", "cup.and.saucer.fill", "#A16207"),
+        ("category.expense.subscriptions", "repeat", "#A855F7"),
+        ("category.expense.housing", "building.2.fill", "#3B82F6"),
+        ("category.expense.personalCare", "shower.fill", "#F43F5E"),
+        ("category.expense.gifts", "gift.fill", "#EF4444")
     ]
 
     private let incomeCategoryDefinitions: [(key: String, icon: String, color: String)] = [
-        ("category.income.salary", "banknote.fill", "#27AE60"),
-        ("category.income.bonus", "sparkles", "#2ECC71"),
-        ("category.income.freelance", "laptopcomputer", "#3498DB"),
-        ("category.income.interest", "percent", "#16A085"),
-        ("category.income.governmentSubsidy", "building.2.crop.circle.fill", "#1ABC9C"),
-        ("category.income.secondHandSale", "tag.fill", "#5DADE2"),
-        ("category.income.investment", "chart.line.uptrend.xyaxis", "#9B59B6"),
-        ("category.income.gift", "gift.fill", "#E74C3C"),
-        ("category.income.refund", "arrow.counterclockwise.circle.fill", "#F39C12")
+        ("category.income.salary", "banknote.fill", "#22C55E"),
+        ("category.income.bonus", "sparkles", "#22C55E"),
+        ("category.income.freelance", "laptopcomputer", "#3B82F6"),
+        ("category.income.interest", "percent", "#06B6D4"),
+        ("category.income.governmentSubsidy", "building.2.crop.circle.fill", "#14B8A6"),
+        ("category.income.secondHandSale", "tag.fill", "#06B6D4"),
+        ("category.income.investment", "chart.line.uptrend.xyaxis", "#A855F7"),
+        ("category.income.gift", "gift.fill", "#EF4444"),
+        ("category.income.refund", "arrow.counterclockwise.circle.fill", "#F59E0B")
     ]
 
     private let accountTypeDefinitions: [(name: String, icon: String, color: String, legacyType: AccountType)] = [
-        ("Cash", "banknote", "#34C759", .cash),
-        ("Bank Account", "building.columns", "#0A84FF", .bank),
-        ("Credit Card", "creditcard", "#FF9500", .creditCard),
-        ("E-wallet", "wallet.bifold", "#32ADE6", .eWallet),
-        ("Investment", "chart.line.uptrend.xyaxis", "#AF52DE", .investment)
+        ("Cash", "banknote", "#22C55E", .cash),
+        ("Bank Account", "building.columns", "#3B82F6", .bank),
+        ("Credit Card", "creditcard", "#F59E0B", .creditCard),
+        ("E-wallet", "wallet.bifold", "#06B6D4", .eWallet),
+        ("Investment", "chart.line.uptrend.xyaxis", "#A855F7", .investment)
     ]
     
     /// Checks if seeding is needed and performs it

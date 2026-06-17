@@ -455,8 +455,8 @@ struct IconColorItemEditorSheet: View {
     @State private var showError = false
 
     private let colors = [
-        "#34C759", "#0A84FF", "#FF9500", "#AF52DE", "#FF3B30", "#5AC8FA",
-        "#30D158", "#FFD60A", "#BF5AF2", "#64D2FF", "#8E8E93", "#FF2D55"
+        "#22C55E", "#14B8A6", "#06B6D4", "#3B82F6", "#6366F1", "#A855F7",
+        "#EC4899", "#F43F5E", "#EF4444", "#F59E0B", "#A16207", "#64748B"
     ]
 
     init(
