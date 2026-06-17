@@ -349,13 +349,24 @@ enum SFSymbolCatalog {
         "lamp.table.fill", "lightbulb", "lightbulb.fill", "bolt", "bolt.fill",
         "drop", "drop.fill", "flame", "flame.fill", "wifi", "antenna.radiowaves.left.and.right",
         "phone", "phone.fill", "tv", "tv.fill", "washer", "washer.fill",
+        "refrigerator", "refrigerator.fill", "oven", "oven.fill", "microwave", "microwave.fill",
+        "dishwasher", "dishwasher.fill", "toilet", "toilet.fill", "shower", "shower.fill",
+        "bathtub", "bathtub.fill", "sink", "sink.fill", "chair", "chair.fill",
+        "table.furniture", "table.furniture.fill", "cabinet", "cabinet.fill",
+        "blinds.horizontal.closed", "window.vertical.closed",
 
         // Transport and travel
         "car", "car.fill", "fuelpump", "fuelpump.fill", "bus", "bus.fill",
-        "tram", "tram.fill", "train.side.front.car", "bicycle", "scooter",
+        "car.side", "car.side.fill", "car.front.waves.up", "car.front.waves.up.fill",
+        "bus.doubledecker", "bus.doubledecker.fill", "tram", "tram.fill",
+        "tram.fill.tunnel", "train.side.front.car", "train.side.middle.car",
+        "train.side.rear.car", "bicycle", "bicycle.circle", "scooter",
+        "motorcycle", "motorcycle.fill", "moped", "moped.fill",
         "airplane", "airplane.departure", "airplane.arrival", "ferry", "ferry.fill",
-        "figure.walk", "figure.run", "mappin", "mappin.circle", "map", "map.fill",
-        "location", "location.fill", "suitcase", "suitcase.fill",
+        "sailboat", "sailboat.fill", "water.waves", "fuelpump.circle",
+        "ev.charger", "ev.charger.fill", "parkingsign", "parkingsign.circle",
+        "figure.walk", "figure.run", "figure.wave", "mappin", "mappin.circle",
+        "map", "map.fill", "location", "location.fill", "suitcase", "suitcase.fill",
 
         // Work and income
         "briefcase", "briefcase.fill", "laptopcomputer", "desktopcomputer",
@@ -365,9 +376,18 @@ enum SFSymbolCatalog {
         "person.2.fill", "person.3", "person.3.fill", "graduationcap",
         "graduationcap.fill", "book", "book.fill", "books.vertical", "books.vertical.fill",
 
-        // Lifestyle and services
+        // Fitness and health
+        "dumbbell", "dumbbell.fill", "figure.strengthtraining.traditional",
+        "figure.strengthtraining.functional", "figure.core.training", "figure.yoga",
+        "figure.pool.swim", "figure.outdoor.cycle", "figure.hiking", "figure.dance",
+        "figure.mind.and.body", "figure.cooldown", "figure.flexibility",
         "heart", "heart.fill", "cross.case", "cross.case.fill", "pills",
         "pills.fill", "stethoscope", "bandage", "bandage.fill", "scissors",
+        "medical.thermometer", "facemask", "facemask.fill", "syringe", "syringe.fill",
+        "lungs", "lungs.fill", "brain.head.profile", "heart.text.square",
+        "heart.text.square.fill", "staroflife", "staroflife.fill",
+
+        // Lifestyle and services
         "comb", "paintbrush", "paintbrush.fill", "gamecontroller", "gamecontroller.fill",
         "music.note", "music.mic", "film", "film.fill", "popcorn", "popcorn.fill",
         "camera", "camera.fill", "pawprint", "pawprint.fill", "leaf", "leaf.fill",
@@ -387,9 +407,10 @@ enum SFSymbolCatalog {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return featured }
 
-        return all.filter { symbol in
+        let matches = all.filter { symbol in
             symbol.localizedStandardContains(trimmed)
         }
+        return uniqueRendered(matches.filter(isValid))
     }
 
     static func isValid(_ symbol: String) -> Bool {
@@ -397,7 +418,7 @@ enum SFSymbolCatalog {
     }
 
     static var selectable: [String] {
-        all.filter(isValid)
+        uniqueRendered(all.filter(isValid))
     }
 
     static func filledVariant(_ symbol: String) -> String {
@@ -411,6 +432,13 @@ enum SFSymbolCatalog {
     private static func unique(_ symbols: [String]) -> [String] {
         var seen = Set<String>()
         return symbols.filter { seen.insert($0).inserted }
+    }
+
+    private static func uniqueRendered(_ symbols: [String]) -> [String] {
+        var seen = Set<String>()
+        return symbols.filter { symbol in
+            seen.insert(filledVariant(symbol)).inserted
+        }
     }
 }
 

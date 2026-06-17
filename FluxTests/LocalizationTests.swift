@@ -42,6 +42,16 @@ final class LocalizationTests: XCTestCase {
         XCTAssertFalse(TransactionType.income.localizedName.isEmpty)
         XCTAssertFalse(TransactionType.expense.localizedName.isEmpty)
     }
+
+    @MainActor
+    func testSFSymbolCatalogSelectableIconsDoNotRenderDuplicates() {
+        let renderedSymbols = SFSymbolCatalog.selectable.map(SFSymbolCatalog.filledVariant)
+
+        XCTAssertEqual(
+            renderedSymbols.count,
+            Set(renderedSymbols).count
+        )
+    }
     
     func testAccountTypeLocalization() {
         for type in AccountType.allCases {
