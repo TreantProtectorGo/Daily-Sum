@@ -151,32 +151,22 @@ private struct AccountTypeDefinitionManagementSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(definitions) { definition in
-                        IconManagementListRow(
-                            title: definition.displayName,
-                            countText: "\(usageCount(for: definition))",
-                            countAccessibilityLabel: accountCountText(for: definition),
-                            tintColor: definition.color,
-                            isSelected: selection?.id == definition.id
-                        ) {
-                            IconColorCircle(icon: definition.icon, color: definition.color, size: .small)
-                        } onEdit: {
-                            editorMode = .edit(definition)
-                        } onDelete: {
-                            deleteCandidate = definition
-                        }
-                        .draggable(definition.id.uuidString)
-                        .dropDestination(for: String.self) { items, _ in
-                            guard let draggedID = items.first else { return false }
-                            return moveDefinition(draggedID, to: definition)
-                        }
-                    }
-                }
+            IconManagementReorderList(
+                items: definitions,
+                selectedID: selection?.id,
+                title: \.displayName,
+                countText: { definition in "\(usageCount(for: definition))" },
+                countAccessibilityLabel: accountCountText,
+                tintColor: \.color
+            ) { definition in
+                IconColorCircle(icon: definition.icon, color: definition.color, size: .small)
+            } onEdit: { definition in
+                editorMode = .edit(definition)
+            } onDelete: { definition in
+                deleteCandidate = definition
+            } onMove: { reorderedDefinitions in
+                moveDefinitions(reorderedDefinitions)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle(AppLocalization.string("accountType.title", defaultValue: "Account Types"))
             .navigationBarTitleDisplayMode(.inline)
@@ -266,26 +256,11 @@ private struct AccountTypeDefinitionManagementSheet: View {
         }
     }
 
-    private func moveDefinition(_ draggedID: String, to target: AccountTypeDefinition) -> Bool {
-        guard let draggedUUID = UUID(uuidString: draggedID),
-              draggedUUID != target.id,
-              let sourceIndex = definitions.firstIndex(where: { $0.id == draggedUUID }),
-              let targetIndex = definitions.firstIndex(where: { $0.id == target.id }) else {
-            return false
-        }
-
-        var reorderedDefinitions = definitions
-        reorderedDefinitions.move(
-            fromOffsets: IndexSet(integer: sourceIndex),
-            toOffset: targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
-        )
-
+    private func moveDefinitions(_ reorderedDefinitions: [AccountTypeDefinition]) {
         do {
             try AccountTypeDefinitionService(context: modelContext).reorder(reorderedDefinitions)
-            return true
         } catch {
             show(error)
-            return false
         }
     }
 

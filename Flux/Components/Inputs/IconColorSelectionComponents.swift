@@ -236,8 +236,6 @@ struct IconManagementListRow<Icon: View>: View {
     let tintColor: Color
     let isSelected: Bool
     let icon: Icon
-    let onEdit: () -> Void
-    let onDelete: () -> Void
 
     init(
         title: String,
@@ -245,9 +243,7 @@ struct IconManagementListRow<Icon: View>: View {
         countAccessibilityLabel: String,
         tintColor: Color,
         isSelected: Bool,
-        @ViewBuilder icon: () -> Icon,
-        onEdit: @escaping () -> Void,
-        onDelete: @escaping () -> Void
+        @ViewBuilder icon: () -> Icon
     ) {
         self.title = title
         self.countText = countText
@@ -255,51 +251,217 @@ struct IconManagementListRow<Icon: View>: View {
         self.tintColor = tintColor
         self.isSelected = isSelected
         self.icon = icon()
-        self.onEdit = onEdit
-        self.onDelete = onDelete
     }
 
     var body: some View {
-        Button(action: onEdit) {
-            HStack(spacing: 12) {
-                icon
-                    .overlay {
-                        Circle()
-                            .stroke(tintColor, lineWidth: isSelected ? 3 : 0)
-                            .padding(-5)
-                    }
+        HStack(spacing: 12) {
+            icon
+                .overlay {
+                    Circle()
+                        .stroke(tintColor, lineWidth: isSelected ? 3 : 0)
+                        .padding(-5)
+                }
 
-                Text(title)
-                    .font(.body.weight(isSelected ? .semibold : .regular))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-                    .layoutPriority(1)
+            Text(title)
+                .font(.body.weight(isSelected ? .semibold : .regular))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .layoutPriority(1)
 
-                Spacer(minLength: 12)
+            Spacer(minLength: 12)
 
-                Text(countText)
-                    .font(.body)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+            Text(countText)
+                .font(.body)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(.rect)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
         .accessibilityLabel("\(title), \(countAccessibilityLabel)")
         .accessibilityHint(AppLocalization.string("action.edit", defaultValue: "Edit"))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
+    }
+}
+
+enum IconManagementReorder {
+    static func reordered<Item>(
+        items: [Item],
+        sourceIndex: Int,
+        destinationIndex: Int
+    ) -> [Item] {
+        guard items.indices.contains(sourceIndex),
+              destinationIndex >= 0,
+              destinationIndex < items.count,
+              sourceIndex != destinationIndex else {
+            return items
+        }
+
+        var reorderedItems = items
+        let movedItem = reorderedItems.remove(at: sourceIndex)
+        let insertionIndex = min(destinationIndex, reorderedItems.count)
+        reorderedItems.insert(movedItem, at: insertionIndex)
+        return reorderedItems
+    }
+}
+
+struct IconManagementReorderList<Item: Identifiable, Icon: View>: UIViewRepresentable where Item.ID: Hashable {
+    let items: [Item]
+    let selectedID: Item.ID?
+    let title: (Item) -> String
+    let countText: (Item) -> String
+    let countAccessibilityLabel: (Item) -> String
+    let tintColor: (Item) -> Color
+    let icon: (Item) -> Icon
+    let onEdit: (Item) -> Void
+    let onDelete: (Item) -> Void
+    let onMove: ([Item]) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIView(context: Context) -> UITableView {
+        let tableView = UITableView(frame: .zero, style: .insetGrouped)
+        tableView.dataSource = context.coordinator
+        tableView.delegate = context.coordinator
+        tableView.dragDelegate = context.coordinator
+        tableView.dropDelegate = context.coordinator
+        tableView.dragInteractionEnabled = true
+        tableView.backgroundColor = .systemGroupedBackground
+        tableView.separatorInset = UIEdgeInsets(top: 0, left: 62, bottom: 0, right: 0)
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 52
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: Coordinator.cellIdentifier)
+        return tableView
+    }
+
+    func updateUIView(_ tableView: UITableView, context: Context) {
+        context.coordinator.parent = self
+        if !tableView.hasActiveDrag {
+            tableView.reloadData()
+        }
+    }
+
+    final class Coordinator: NSObject,
+        UITableViewDataSource,
+        UITableViewDelegate,
+        UITableViewDragDelegate,
+        UITableViewDropDelegate {
+
+        static var cellIdentifier: String { "IconManagementReorderCell" }
+
+        var parent: IconManagementReorderList
+
+        init(_ parent: IconManagementReorderList) {
+            self.parent = parent
+        }
+
+        func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+            parent.items.count
+        }
+
+        func tableView(
+            _ tableView: UITableView,
+            cellForRowAt indexPath: IndexPath
+        ) -> UITableViewCell {
+            let cell = tableView.dequeueReusableCell(
+                withIdentifier: Self.cellIdentifier,
+                for: indexPath
+            )
+            let item = parent.items[indexPath.row]
+
+            cell.contentConfiguration = UIHostingConfiguration {
+                IconManagementListRow(
+                    title: parent.title(item),
+                    countText: parent.countText(item),
+                    countAccessibilityLabel: parent.countAccessibilityLabel(item),
+                    tintColor: parent.tintColor(item),
+                    isSelected: parent.selectedID == item.id
+                ) {
+                    parent.icon(item)
+                }
+                .padding(.vertical, 4)
             }
-            .tint(.red)
-            .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
+            cell.selectionStyle = .default
+            cell.accessibilityIdentifier = "iconManagement.row.\(indexPath.row)"
+            return cell
+        }
+
+        func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+            tableView.deselectRow(at: indexPath, animated: true)
+            parent.onEdit(parent.items[indexPath.row])
+        }
+
+        func tableView(
+            _ tableView: UITableView,
+            trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath
+        ) -> UISwipeActionsConfiguration? {
+            let item = parent.items[indexPath.row]
+            let delete = UIContextualAction(style: .destructive, title: nil) { [weak self] _, _, completion in
+                self?.parent.onDelete(item)
+                completion(true)
+            }
+            delete.image = UIImage(systemName: "trash")
+            delete.backgroundColor = .systemRed
+
+            let configuration = UISwipeActionsConfiguration(actions: [delete])
+            configuration.performsFirstActionWithFullSwipe = false
+            return configuration
+        }
+
+        func tableView(
+            _ tableView: UITableView,
+            itemsForBeginning session: UIDragSession,
+            at indexPath: IndexPath
+        ) -> [UIDragItem] {
+            let itemID = parent.items[indexPath.row].id
+            let itemProvider = NSItemProvider(object: "\(itemID)" as NSString)
+            let dragItem = UIDragItem(itemProvider: itemProvider)
+            dragItem.localObject = itemID
+            return [dragItem]
+        }
+
+        func tableView(
+            _ tableView: UITableView,
+            dropSessionDidUpdate session: UIDropSession,
+            withDestinationIndexPath destinationIndexPath: IndexPath?
+        ) -> UITableViewDropProposal {
+            guard tableView.hasActiveDrag else {
+                return UITableViewDropProposal(operation: .cancel)
+            }
+            return UITableViewDropProposal(operation: .move, intent: .insertAtDestinationIndexPath)
+        }
+
+        func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) {
+            guard let draggedID = coordinator.items.first?.dragItem.localObject as? Item.ID,
+                  let sourceIndex = parent.items.firstIndex(where: { $0.id == draggedID }) else {
+                return
+            }
+
+            let destinationIndex = min(
+                coordinator.destinationIndexPath?.row ?? parent.items.index(before: parent.items.endIndex),
+                parent.items.index(before: parent.items.endIndex)
+            )
+            guard sourceIndex != destinationIndex else { return }
+
+            let reorderedItems = IconManagementReorder.reordered(
+                items: parent.items,
+                sourceIndex: sourceIndex,
+                destinationIndex: destinationIndex
+            )
+
+            tableView.performBatchUpdates {
+                tableView.moveRow(
+                    at: IndexPath(row: sourceIndex, section: 0),
+                    to: IndexPath(row: destinationIndex, section: 0)
+                )
+            }
+            parent.onMove(reorderedItems)
         }
     }
 }

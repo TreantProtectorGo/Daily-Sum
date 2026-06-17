@@ -273,32 +273,22 @@ private struct CategoryManagementSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    ForEach(categories) { category in
-                        IconManagementListRow(
-                            title: category.displayName,
-                            countText: "\(usageCount(for: category))",
-                            countAccessibilityLabel: transactionCountText(for: category),
-                            tintColor: category.color,
-                            isSelected: selectedCategory?.id == category.id
-                        ) {
-                            IconColorCircle(icon: category.icon, color: category.color, size: .small)
-                        } onEdit: {
-                            editorMode = .edit(category)
-                        } onDelete: {
-                            deleteCandidate = category
-                        }
-                        .draggable(category.id.uuidString)
-                        .dropDestination(for: String.self) { items, _ in
-                            guard let draggedID = items.first else { return false }
-                            return moveCategory(draggedID, to: category)
-                        }
-                    }
-                }
+            IconManagementReorderList(
+                items: categories,
+                selectedID: selectedCategory?.id,
+                title: \.displayName,
+                countText: { category in "\(usageCount(for: category))" },
+                countAccessibilityLabel: transactionCountText,
+                tintColor: \.color
+            ) { category in
+                IconColorCircle(icon: category.icon, color: category.color, size: .small)
+            } onEdit: { category in
+                editorMode = .edit(category)
+            } onDelete: { category in
+                deleteCandidate = category
+            } onMove: { reorderedCategories in
+                moveCategories(reorderedCategories)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle(AppLocalization.string("category.title", defaultValue: "Categories"))
             .navigationBarTitleDisplayMode(.inline)
@@ -371,30 +361,15 @@ private struct CategoryManagementSheet: View {
         }
     }
 
-    private func moveCategory(_ draggedID: String, to target: Category) -> Bool {
-        guard let draggedUUID = UUID(uuidString: draggedID),
-              draggedUUID != target.id,
-              let sourceIndex = categories.firstIndex(where: { $0.id == draggedUUID }),
-              let targetIndex = categories.firstIndex(where: { $0.id == target.id }) else {
-            return false
-        }
-
-        var reorderedCategories = categories
-        reorderedCategories.move(
-            fromOffsets: IndexSet(integer: sourceIndex),
-            toOffset: targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
-        )
-
+    private func moveCategories(_ reorderedCategories: [Category]) {
         do {
             try CategoryService(context: modelContext).reorder(
                 reorderedCategories,
                 type: mode.categoryType
             )
-            return true
         } catch {
             errorMessage = error.localizedDescription
             showError = true
-            return false
         }
     }
 
@@ -520,7 +495,7 @@ struct InlineCategoryPicker: View {
     @Binding var selectedCategory: Category?
     let transactionType: TransactionType
     
-    @Query(sort: \Category.nameKey) private var allCategories: [Category]
+    @Query(sort: \Category.sortOrder) private var allCategories: [Category]
     
     private var categories: [Category] {
         allCategories.filter { $0.type == transactionType }
