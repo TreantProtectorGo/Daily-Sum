@@ -19,6 +19,25 @@ final class TransactionEntryAccountSelectionTests: XCTestCase {
         XCTAssertEqual(availableAccounts.map(\.id), [defaultAccount.id, travelAccount.id])
     }
 
+    func testNewTravelTransactionAccountOptionsIncludeDefaultCurrencyAndTravelCurrencyAccountsOnly() {
+        let defaultAccount = Account(name: "HKD Default", type: .bank, currencyCode: "HKD")
+        let hkdAccount = Account(name: "HKD Wallet", type: .cash, currencyCode: "HKD")
+        let cnyAccount = Account(name: "CNY Wallet", type: .cash, currencyCode: "CNY")
+        let usdAccount = Account(name: "USD Wallet", type: .cash, currencyCode: "USD")
+
+        let availableAccounts = TransactionEntryAccountSelection.availableAccounts(
+            from: [defaultAccount, hkdAccount, cnyAccount, usdAccount],
+            existingTransaction: nil,
+            isTravelTransaction: true,
+            existingTravelSnapshot: nil,
+            travelInputCurrencyCode: "CNY",
+            defaultCurrencyCode: "HKD",
+            defaultAccountId: defaultAccount.id
+        )
+
+        XCTAssertEqual(availableAccounts.map(\.id), [defaultAccount.id, hkdAccount.id, cnyAccount.id])
+    }
+
     func testNewTravelTransactionAccountOptionsPreserveOriginalOrder() {
         let otherAccount = Account(name: "JPY Wallet", type: .cash, currencyCode: "JPY")
         let firstTravelAccount = Account(name: "CNY Wallet", type: .cash, currencyCode: "CNY")

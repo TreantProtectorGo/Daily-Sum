@@ -101,6 +101,7 @@ enum TransactionEntryAccountSelection {
         isTravelTransaction: Bool,
         existingTravelSnapshot: TravelTransactionSnapshot?,
         travelInputCurrencyCode: String?,
+        defaultCurrencyCode: String? = nil,
         defaultAccountId: UUID?
     ) -> [Account] {
         if let existingTravelSnapshot,
@@ -119,11 +120,18 @@ enum TransactionEntryAccountSelection {
               ) else {
             return uniqueAccounts(accounts)
         }
+        let normalizedDefaultCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(defaultCurrencyCode)
 
         return uniqueAccounts(accounts.filter { account in
-            account.id == defaultAccountId ||
-                TravelCurrencyState.normalizedCurrencyCode(account.currencyCode)
-                    == normalizedTravelCurrencyCode
+            let normalizedAccountCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+                account.currencyCode
+            )
+            return account.id == defaultAccountId ||
+                (
+                    normalizedDefaultCurrencyCode != nil &&
+                    normalizedAccountCurrencyCode == normalizedDefaultCurrencyCode
+                ) ||
+                normalizedAccountCurrencyCode == normalizedTravelCurrencyCode
         })
     }
 
@@ -513,6 +521,9 @@ struct TransactionEntrySheet: View {
             isTravelTransaction: isTravelTransaction,
             existingTravelSnapshot: existingTravelSnapshot,
             travelInputCurrencyCode: travelInputCurrencyCode,
+            defaultCurrencyCode: UserCurrencyPreference.resolvedDisplayCurrencyCode(
+                preferredCurrencyCode: preferredCurrencyCode
+            ),
             defaultAccountId: TransactionAccountPreference.defaultAccountId
         )
     }
