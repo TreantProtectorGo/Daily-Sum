@@ -956,19 +956,39 @@ final class LocalizationTests: XCTestCase {
     }
 
     @MainActor
-    func testRenamedExpenseCategoriesUseExpectedIconMapping() async throws {
+    func testDefaultExpenseCategoriesUseExpectedIconAndColorMapping() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
         let seeder = DefaultDataSeeder(context: context)
         try await seeder.seedIfNeeded()
 
         let categories = try context.fetch(FetchDescriptor<Flux.Category>())
-        let medical = categories.first { $0.nameKey == "category.expense.medical" }
-        let learning = categories.first { $0.nameKey == "category.expense.learning" }
-        let dining = categories.first { $0.nameKey == "category.expense.dining" }
+        let expectations: [String: (icon: String, colorHex: String)] = [
+            "category.expense.dining": ("fork.knife", "#F59E0B"),
+            "category.expense.groceries": ("cart.fill", "#22C55E"),
+            "category.expense.transport": ("tram.fill", "#14B8A6"),
+            "category.expense.shopping": ("bag.fill", "#06B6D4"),
+            "category.expense.bills": ("doc.text.fill", "#64748B"),
+            "category.expense.housing": ("building.2.fill", "#3B82F6"),
+            "category.expense.subscriptions": ("repeat", "#A855F7"),
+            "category.expense.medical": ("cross.case.fill", "#EC4899"),
+            "category.expense.entertainment": ("tv.fill", "#6366F1"),
+            "category.expense.personalCare": ("shower.fill", "#F43F5E"),
+            "category.expense.home": ("house.fill", "#06B6D4"),
+            "category.expense.travel": ("airplane", "#F59E0B"),
+            "category.expense.education": ("book.fill", "#3B82F6"),
+            "category.expense.learning": ("graduationcap.fill", "#14B8A6"),
+            "category.expense.gifts": ("gift.fill", "#EF4444"),
+            "category.expense.pet": ("pawprint.fill", "#A16207"),
+            "category.expense.insurance": ("shield.fill", "#A855F7"),
+            "category.expense.tax": ("building.columns.fill", "#F59E0B")
+        ]
 
-        XCTAssertEqual(medical?.icon, "heart.fill")
-        XCTAssertEqual(learning?.icon, "graduationcap.fill")
-        XCTAssertEqual(dining?.icon, "fork.knife")
+        for (key, expectation) in expectations {
+            let category = try XCTUnwrap(categories.first { $0.nameKey == key })
+            XCTAssertFalse(category.icon.contains("circle"), "\(key) should not use a circle icon")
+            XCTAssertEqual(category.icon, expectation.icon, "\(key) icon")
+            XCTAssertEqual(category.colorHex, expectation.colorHex, "\(key) color")
+        }
     }
 }
