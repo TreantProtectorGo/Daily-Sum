@@ -47,6 +47,12 @@ enum TransactionEntryTypeEditing {
     }
 }
 
+enum TransactionEntryInitialType {
+    static func resolved(_ requestedType: TransactionType?) -> TransactionType {
+        requestedType ?? .expense
+    }
+}
+
 enum TransactionEntryPresentation {
     static func navigationTitle(
         existingTransaction: Transaction?,
@@ -200,9 +206,16 @@ struct TransactionEntrySheet: View {
     
     @Query private var accounts: [Account]
     
-    init(transaction: Transaction? = nil, onSave: @escaping () -> Void) {
+    init(
+        transaction: Transaction? = nil,
+        initialType: TransactionType? = nil,
+        onSave: @escaping () -> Void
+    ) {
         self.existingTransactionID = transaction?.id
         self.onSave = onSave
+        _transactionType = State(
+            initialValue: TransactionEntryInitialType.resolved(initialType)
+        )
     }
 
     init(transactionId: UUID, onSave: @escaping () -> Void) {

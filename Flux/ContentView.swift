@@ -10,10 +10,14 @@ import SwiftData
 
 struct ContentView: View {
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
+    @State private var shortcutRouter = ActionButtonShortcutRouter.shared
     
     var body: some View {
         MainTabView()
             .id("main-tab-\(appLanguageCode)")
+            .sheet(item: $shortcutRouter.pendingTransactionEntry) { request in
+                TransactionEntrySheet(initialType: request.type) { }
+            }
     }
 }
 
