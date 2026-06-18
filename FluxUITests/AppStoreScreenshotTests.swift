@@ -11,21 +11,21 @@ final class AppStoreScreenshotTests: XCTestCase {
             appleLanguages: "(en)",
             appleLocale: "en_US",
             appLanguageCode: "english",
-            navigationTitles: ["Dashboard", "Transactions", "Reports", "Budgets", "Settings"]
+            navigationTitles: ["Home", "Transactions", "Reports", "Budgets", "Settings"]
         )
 
         static let simplifiedChinese = ScreenshotLocale(
             appleLanguages: "(zh-Hans)",
             appleLocale: "zh_CN",
             appLanguageCode: "simplifiedChinese",
-            navigationTitles: ["仪表板", "交易", "报告", "预算", "设置"]
+            navigationTitles: ["主页", "交易", "报告", "预算", "设置"]
         )
 
         static let traditionalChinese = ScreenshotLocale(
             appleLanguages: "(zh-Hant)",
             appleLocale: "zh_HK",
             appLanguageCode: "traditionalChinese",
-            navigationTitles: ["儀表板", "交易", "報告", "預算", "設定"]
+            navigationTitles: ["主頁", "交易", "報告", "預算", "設定"]
         )
     }
 
