@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C0DA00012F50000000C0DA01 /* DailySumControls.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C0DA00032F50000000C0DA03 /* DailySumControls.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		C0DA00022F50000000C0DA02 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D1473B752F39023C00F93BDF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0DA00072F50000000C0DA07;
+			remoteInfo = DailySumControls;
+		};
 		D1473B8D2F39023D00F93BDF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D1473B752F39023C00F93BDF /* Project object */;
@@ -24,12 +35,31 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		C0DA00032F50000000C0DA03 /* DailySumControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DailySumControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1473B7D2F39023C00F93BDF /* Flux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Flux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1473B8C2F39023D00F93BDF /* FluxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1473B962F39023D00F93BDF /* FluxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C0DA000E2F50000000C0DA0E /* Exceptions for "DailySumControls" folder in "DailySumControls" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C0DA00072F50000000C0DA07 /* DailySumControls */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		C0DA00042F50000000C0DA04 /* DailySumControls */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C0DA000E2F50000000C0DA0E /* Exceptions for "DailySumControls" folder in "DailySumControls" target */,
+			);
+			path = DailySumControls;
+			sourceTree = "<group>";
+		};
 		D1473B7F2F39023C00F93BDF /* Flux */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Flux;
@@ -48,6 +78,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		C0DA00062F50000000C0DA06 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D1473B7A2F39023C00F93BDF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -76,6 +113,7 @@
 			isa = PBXGroup;
 			children = (
 				D1473B7F2F39023C00F93BDF /* Flux */,
+				C0DA00042F50000000C0DA04 /* DailySumControls */,
 				D1473B8F2F39023D00F93BDF /* FluxTests */,
 				D1473B992F39023D00F93BDF /* FluxUITests */,
 				D1473B7E2F39023C00F93BDF /* Products */,
@@ -86,6 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				D1473B7D2F39023C00F93BDF /* Flux.app */,
+				C0DA00032F50000000C0DA03 /* DailySumControls.appex */,
 				D1473B8C2F39023D00F93BDF /* FluxTests.xctest */,
 				D1473B962F39023D00F93BDF /* FluxUITests.xctest */,
 			);
@@ -95,6 +134,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		C0DA00072F50000000C0DA07 /* DailySumControls */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0DA000D2F50000000C0DA0D /* Build configuration list for PBXNativeTarget "DailySumControls" */;
+			buildPhases = (
+				C0DA00092F50000000C0DA09 /* Sources */,
+				C0DA00062F50000000C0DA06 /* Frameworks */,
+				C0DA00082F50000000C0DA08 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C0DA00042F50000000C0DA04 /* DailySumControls */,
+			);
+			name = DailySumControls;
+			packageProductDependencies = (
+			);
+			productName = DailySumControls;
+			productReference = C0DA00032F50000000C0DA03 /* DailySumControls.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		D1473B7C2F39023C00F93BDF /* Flux */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D1473BA02F39023D00F93BDF /* Build configuration list for PBXNativeTarget "Flux" */;
@@ -102,10 +163,12 @@
 				D1473B792F39023C00F93BDF /* Sources */,
 				D1473B7A2F39023C00F93BDF /* Frameworks */,
 				D1473B7B2F39023C00F93BDF /* Resources */,
+				C0DA00052F50000000C0DA05 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C0DA000A2F50000000C0DA0A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				D1473B7F2F39023C00F93BDF /* Flux */,
@@ -173,6 +236,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					C0DA00072F50000000C0DA07 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					D1473B7C2F39023C00F93BDF = {
 						CreatedOnToolsVersion = 26.2;
 						SystemCapabilities = {
@@ -208,13 +274,35 @@
 			projectRoot = "";
 			targets = (
 				D1473B7C2F39023C00F93BDF /* Flux */,
+				C0DA00072F50000000C0DA07 /* DailySumControls */,
 				D1473B8B2F39023D00F93BDF /* FluxTests */,
 				D1473B952F39023D00F93BDF /* FluxUITests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		C0DA00052F50000000C0DA05 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C0DA00012F50000000C0DA01 /* DailySumControls.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXResourcesBuildPhase section */
+		C0DA00082F50000000C0DA08 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D1473B7B2F39023C00F93BDF /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -239,6 +327,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		C0DA00092F50000000C0DA09 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D1473B792F39023C00F93BDF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -263,6 +358,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		C0DA000A2F50000000C0DA0A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C0DA00072F50000000C0DA07 /* DailySumControls */;
+			targetProxy = C0DA00022F50000000C0DA02 /* PBXContainerItemProxy */;
+		};
 		D1473B8E2F39023D00F93BDF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = D1473B7C2F39023C00F93BDF /* Flux */;
@@ -276,6 +376,64 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		C0DA000B2F50000000C0DA0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 36;
+				DEVELOPMENT_TEAM = Y35DF7ZN72;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailySumControls/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.6;
+				PRODUCT_BUNDLE_IDENTIFIER = Wing.Flux.DailySumControls;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		C0DA000C2F50000000C0DA0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 36;
+				DEVELOPMENT_TEAM = Y35DF7ZN72;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DailySumControls/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.6;
+				PRODUCT_BUNDLE_IDENTIFIER = Wing.Flux.DailySumControls;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		D1473B9E2F39023D00F93BDF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -406,7 +564,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Flux/Flux.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 36;
 				DEVELOPMENT_TEAM = Y35DF7ZN72;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -436,7 +594,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Flux/Flux.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 35;
+				CURRENT_PROJECT_VERSION = 36;
 				DEVELOPMENT_TEAM = Y35DF7ZN72;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -546,6 +704,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		C0DA000D2F50000000C0DA0D /* Build configuration list for PBXNativeTarget "DailySumControls" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C0DA000B2F50000000C0DA0B /* Debug */,
+				C0DA000C2F50000000C0DA0C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		D1473B782F39023C00F93BDF /* Build configuration list for PBXProject "Flux" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

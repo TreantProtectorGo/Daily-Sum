@@ -6,6 +6,26 @@ struct PendingTransactionEntry: Identifiable, Equatable {
     let type: TransactionType
 }
 
+enum ActionButtonShortcutRoute: Equatable {
+    case openApp
+    case transaction(TransactionType)
+
+    static func resolve(_ url: URL) -> Self? {
+        guard url.scheme == "dailysum" else { return nil }
+
+        switch (url.host, url.path) {
+        case ("open", ""):
+            return .openApp
+        case ("transaction", "/expense"):
+            return .transaction(.expense)
+        case ("transaction", "/income"):
+            return .transaction(.income)
+        default:
+            return nil
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class ActionButtonShortcutRouter {
@@ -15,5 +35,13 @@ final class ActionButtonShortcutRouter {
 
     func requestTransactionEntry(type: TransactionType) {
         pendingTransactionEntry = PendingTransactionEntry(type: type)
+    }
+
+    func handle(_ url: URL) {
+        guard let route = ActionButtonShortcutRoute.resolve(url) else { return }
+
+        if case let .transaction(type) = route {
+            requestTransactionEntry(type: type)
+        }
     }
 }

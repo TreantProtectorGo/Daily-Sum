@@ -18,6 +18,9 @@ struct ContentView: View {
             .sheet(item: $shortcutRouter.pendingTransactionEntry) { request in
                 TransactionEntrySheet(initialType: request.type) { }
             }
+            .onOpenURL { url in
+                shortcutRouter.handle(url)
+            }
     }
 }
 
