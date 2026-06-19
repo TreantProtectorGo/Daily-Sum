@@ -154,7 +154,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.options": "Options",
                     "settings.startup": "Startup",
                     "settings.defaultLaunchPage": "Default Page",
-                    "settings.defaultLaunchPage.footer": "Choose which tab opens when you launch Flux."
+                    "settings.defaultLaunchPage.footer": "Choose which tab opens when you launch Daily Sum."
                 ]
             ),
             (
@@ -167,7 +167,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.options": "选项",
                     "settings.startup": "启动",
                     "settings.defaultLaunchPage": "默认页面",
-                    "settings.defaultLaunchPage.footer": "选择启动 Flux 时打开的标签页。"
+                    "settings.defaultLaunchPage.footer": "选择启动日常账时打开的标签页。"
                 ]
             ),
             (
@@ -180,7 +180,7 @@ final class LocalizationTests: XCTestCase {
                     "settings.options": "選項",
                     "settings.startup": "啟動",
                     "settings.defaultLaunchPage": "預設頁面",
-                    "settings.defaultLaunchPage.footer": "選擇啟動 Flux 時開啟的分頁。"
+                    "settings.defaultLaunchPage.footer": "選擇啟動日常帳時開啟的分頁。"
                 ]
             )
         ]

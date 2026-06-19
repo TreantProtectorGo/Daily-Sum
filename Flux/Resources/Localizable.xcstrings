@@ -34,66 +34,66 @@
         }
       }
     },
-    "Open Flux" : {
+    "Open Daily Sum" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 Flux"
+            "value" : "打开日常账"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟 Flux"
+            "value" : "開啟日常帳"
           }
         }
       }
     },
-    "Open Flux and start adding an expense." : {
+    "Open Daily Sum and start adding an expense." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 Flux 并开始新增支出。"
+            "value" : "打开日常账并开始新增支出。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟 Flux 並開始新增支出。"
+            "value" : "開啟日常帳並開始新增支出。"
           }
         }
       }
     },
-    "Open Flux and start adding income." : {
+    "Open Daily Sum and start adding income." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 Flux 并开始新增收入。"
+            "value" : "打开日常账并开始新增收入。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟 Flux 並開始新增收入。"
+            "value" : "開啟日常帳並開始新增收入。"
           }
         }
       }
     },
-    "Open Flux to the main screen." : {
+    "Open Daily Sum to the main screen." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "打开 Flux 主画面。"
+            "value" : "打开日常账主画面。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "開啟 Flux 主畫面。"
+            "value" : "開啟日常帳主畫面。"
           }
         }
       }
@@ -6546,19 +6546,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose which tab opens when you launch Flux."
+            "value" : "Choose which tab opens when you launch Daily Sum."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择启动 Flux 时打开的标签页。"
+            "value" : "选择启动日常账时打开的标签页。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選擇啟動 Flux 時開啟的分頁。"
+            "value" : "選擇啟動日常帳時開啟的分頁。"
           }
         }
       }

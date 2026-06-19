@@ -1,8 +1,8 @@
 import AppIntents
 
 struct OpenFluxIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Flux"
-    static let description = IntentDescription("Open Flux to the main screen.")
+    static let title: LocalizedStringResource = "Open Daily Sum"
+    static let description = IntentDescription("Open Daily Sum to the main screen.")
     static let supportedModes: IntentModes = .foreground(.immediate)
 
     func perform() async throws -> some IntentResult {
@@ -12,7 +12,7 @@ struct OpenFluxIntent: AppIntent {
 
 struct AddExpenseIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Expense"
-    static let description = IntentDescription("Open Flux and start adding an expense.")
+    static let description = IntentDescription("Open Daily Sum and start adding an expense.")
     static let supportedModes: IntentModes = .foreground(.immediate)
 
     func perform() async throws -> some IntentResult {
@@ -23,7 +23,7 @@ struct AddExpenseIntent: AppIntent {
 
 struct AddIncomeIntent: AppIntent {
     static let title: LocalizedStringResource = "Add Income"
-    static let description = IntentDescription("Open Flux and start adding income.")
+    static let description = IntentDescription("Open Daily Sum and start adding income.")
     static let supportedModes: IntentModes = .foreground(.immediate)
 
     func perform() async throws -> some IntentResult {
@@ -39,7 +39,7 @@ struct FluxAppShortcuts: AppShortcutsProvider {
             phrases: [
                 "Open \(.applicationName)"
             ],
-            shortTitle: "Open Flux",
+            shortTitle: "Open Daily Sum",
             systemImageName: "arrow.up.forward.app"
         )
 
