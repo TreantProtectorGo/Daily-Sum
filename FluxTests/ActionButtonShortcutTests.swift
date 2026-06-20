@@ -30,6 +30,13 @@ final class ActionButtonShortcutTests: XCTestCase {
         XCTAssertTrue(infoPlist.contains("com.apple.widgetkit-extension"))
     }
 
+    func testControlWidgetExtensionVersionMatchesContainingApp() throws {
+        let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
+
+        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 37;").count - 1, 4)
+        XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.7;").count - 1, 4)
+    }
+
     func testShortcutCopyUsesDailySumBranding() throws {
         let source = try sourceContents(at: "Flux/AppShortcuts/FluxAppShortcuts.swift")
 
