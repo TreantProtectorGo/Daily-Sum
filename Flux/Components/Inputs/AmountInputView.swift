@@ -2,6 +2,11 @@ import SwiftUI
 
 // MARK: - Amount Input View
 
+enum AmountNumberPadPresentation {
+    case sheet
+    case inline
+}
+
 /// A text field for entering currency amounts with formatting
 struct AmountInputView: View {
     @Binding var amount: Decimal
@@ -10,6 +15,7 @@ struct AmountInputView: View {
     let autoFocus: Bool
     let useGlassBackground: Bool
     let useOuterPadding: Bool
+    let numberPadPresentation: AmountNumberPadPresentation
     let onFirstUserInput: (() -> Void)?
     let onFocusChanged: ((Bool) -> Void)?
     let onConfirm: (() -> Void)?
@@ -28,6 +34,7 @@ struct AmountInputView: View {
         autoFocus: Bool = false,
         useGlassBackground: Bool = true,
         useOuterPadding: Bool = true,
+        numberPadPresentation: AmountNumberPadPresentation = .sheet,
         onFirstUserInput: (() -> Void)? = nil,
         onFocusChanged: ((Bool) -> Void)? = nil,
         onConfirm: (() -> Void)? = nil
@@ -38,23 +45,43 @@ struct AmountInputView: View {
         self.autoFocus = autoFocus
         self.useGlassBackground = useGlassBackground
         self.useOuterPadding = useOuterPadding
+        self.numberPadPresentation = numberPadPresentation
         self.onFirstUserInput = onFirstUserInput
         self.onFocusChanged = onFocusChanged
         self.onConfirm = onConfirm
     }
 
     var body: some View {
-        Group {
-            if useGlassBackground {
-                inputContent
-                    .padding(useOuterPadding ? 16 : 0)
-                    .glassBackground(cornerRadius: 12, isInteractive: true)
-            } else {
-                inputContent
-                    .padding(useOuterPadding ? 16 : 0)
+        VStack(spacing: 0) {
+            Group {
+                if useGlassBackground {
+                    inputContent
+                        .padding(useOuterPadding ? 16 : 0)
+                        .glassBackground(cornerRadius: 12, isInteractive: true)
+                } else {
+                    inputContent
+                        .padding(useOuterPadding ? 16 : 0)
+                }
+            }
+
+            if numberPadPresentation == .inline && isNumberPadPresented {
+                inlineNumberPad
             }
         }
-        .background(preloadedNumberPad)
+        .background {
+            if numberPadPresentation == .sheet {
+                preloadedNumberPad
+            }
+        }
+        .sheet(isPresented: sheetPresentationBinding, onDismiss: handleNumberPadDismissed) {
+            keypadSheetContent(
+                decimalSeparator: localeDecimalSeparator,
+                onAction: handleNumberPadAction
+            )
+            .presentationDetents([.height(CustomNumberPadLayout.sheetHeight)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color(uiColor: CustomNumberPadPalette.sheetSurface))
+        }
     }
 
     private var inputContent: some View {
@@ -89,15 +116,28 @@ struct AmountInputView: View {
             guard !isNumberPadPresented else { return }
             syncBufferFromAmount()
         }
-        .sheet(isPresented: $isNumberPadPresented, onDismiss: handleNumberPadDismissed) {
-            keypadSheetContent(
-                decimalSeparator: localeDecimalSeparator,
-                onAction: handleNumberPadAction
-            )
-            .presentationDetents([.height(CustomNumberPadLayout.sheetHeight)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(uiColor: CustomNumberPadPalette.sheetSurface))
-        }
+    }
+
+    private var sheetPresentationBinding: Binding<Bool> {
+        Binding(
+            get: {
+                numberPadPresentation == .sheet && isNumberPadPresented
+            },
+            set: { isPresented in
+                guard numberPadPresentation == .sheet else { return }
+                isNumberPadPresented = isPresented
+            }
+        )
+    }
+
+    private var inlineNumberPad: some View {
+        keypadSheetContent(
+            decimalSeparator: localeDecimalSeparator,
+            onAction: handleNumberPadAction
+        )
+        .frame(height: CustomNumberPadLayout.sheetHeight)
+        .background(Color(uiColor: CustomNumberPadPalette.sheetSurface))
+        .accessibilityIdentifier("numberPad.inline")
     }
 
     private var renderedDisplayText: String {
@@ -190,6 +230,9 @@ struct AmountInputView: View {
             shouldCommitDraftOnDismiss = false
             shouldRunConfirmActionOnDismiss = true
             setNumberPadPresented(false)
+            if numberPadPresentation == .inline {
+                handleNumberPadDismissed()
+            }
             return .accepted
         }
 

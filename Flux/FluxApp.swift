@@ -19,9 +19,11 @@ struct FluxApp: App {
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
     @AppStorage(AppThemePreference.storageKey) private var appThemeCode = AppTheme.system.rawValue
     private let cloudSyncSettingsStore: any CloudSyncSettingsStoring
+    private let activationMaintenancePolicy: AppActivationMaintenancePolicy
 
     init() {
         self.cloudSyncSettingsStore = CloudSyncSettingsStore()
+        self.activationMaintenancePolicy = AppActivationMaintenancePolicy()
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresentationDelegate.shared
     }
     
@@ -55,6 +57,7 @@ struct FluxApp: App {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
+                guard activationMaintenancePolicy.claimRun() else { return }
                 Task { @MainActor in
                     await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)
@@ -114,6 +117,7 @@ struct FluxApp: App {
             
             if let container {
                 await requestNotificationAuthorizationIfNeeded(in: container)
+                activationMaintenancePolicy.recordRun()
                 Task { @MainActor in
                     await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)

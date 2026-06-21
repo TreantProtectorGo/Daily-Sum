@@ -529,13 +529,13 @@ final class TransactionService {
         from startDate: Date,
         to endDate: Date,
         type: TransactionType
-    ) throws -> [Category: Decimal] {
+    ) throws -> [UUID: Decimal] {
         let transactions = try fetch(from: startDate, to: endDate, type: type)
 
-        var grouped: [Category: Decimal] = [:]
+        var grouped: [UUID: Decimal] = [:]
         for transaction in transactions {
             if let category = transaction.category {
-                grouped[category, default: 0] += transaction.amount
+                grouped[category.id, default: 0] += transaction.amount
             }
         }
         return grouped

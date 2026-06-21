@@ -44,8 +44,8 @@ final class ActionButtonShortcutTests: XCTestCase {
     func testControlWidgetExtensionVersionMatchesContainingApp() throws {
         let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
 
-        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 38;").count - 1, 4)
-        XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.7;").count - 1, 4)
+        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 51;").count - 1, 4)
+        XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.8;").count - 1, 4)
     }
 
     func testShortcutCopyUsesDailySumBranding() throws {
@@ -60,8 +60,8 @@ final class ActionButtonShortcutTests: XCTestCase {
         let data = try Data(contentsOf: repositoryURL.appending(path: "Flux/Resources/InfoPlist.xcstrings"))
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         let strings = try XCTUnwrap(root["strings"] as? [String: Any])
-        let bundleName = try XCTUnwrap(strings["CFBundleName"] as? [String: Any])
-        let localizations = try XCTUnwrap(bundleName["localizations"] as? [String: Any])
+        let displayName = try XCTUnwrap(strings["CFBundleDisplayName"] as? [String: Any])
+        let localizations = try XCTUnwrap(displayName["localizations"] as? [String: Any])
 
         XCTAssertEqual(localizedValue(in: localizations, locale: "en"), "Daily Sum")
         XCTAssertEqual(localizedValue(in: localizations, locale: "zh-Hans"), "日常账")

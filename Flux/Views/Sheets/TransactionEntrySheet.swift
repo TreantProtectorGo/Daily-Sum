@@ -341,6 +341,7 @@ struct TransactionEntrySheet: View {
                         currencyCode: amountInputCurrencyCode,
                         autoFocus: existingTransaction == nil,
                         useGlassBackground: false,
+                        numberPadPresentation: .inline,
                         onFirstUserInput: handleFirstAmountInput,
                         onFocusChanged: handleAmountFieldFocusChanged,
                         onConfirm: handleAmountInputConfirmed
@@ -363,6 +364,7 @@ struct TransactionEntrySheet: View {
                     amount: $amount,
                     currencyCode: amountInputCurrencyCode,
                     autoFocus: existingTransaction == nil,
+                    numberPadPresentation: .inline,
                     onFirstUserInput: handleFirstAmountInput,
                     onFocusChanged: handleAmountFieldFocusChanged,
                     onConfirm: handleAmountInputConfirmed

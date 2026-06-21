@@ -152,14 +152,17 @@ final class FluxUITests: XCTestCase {
         tapElement(app.tabBars.buttons["Transactions"])
         tapElement(app.buttons["transactions.addButton"])
 
+        let inlineNumberPad = app.descendants(matching: .any)["numberPad.inline"]
+        XCTAssertTrue(inlineNumberPad.waitForExistence(timeout: 3))
+
         let confirmButton = keypadButton(in: app, label: "Confirm")
         XCTAssertTrue(confirmButton.waitForExistence(timeout: 10))
 
         tapElement(keypadButton(in: app, label: "1"))
         tapElement(keypadButton(in: app, label: "2"))
-        tapElement(keypadButton(in: app, label: "Add"))
+        tapElement(app.buttons["numberPad.operation.add"])
         tapElement(keypadButton(in: app, label: "3"))
-        tapElement(keypadButton(in: app, label: "Multiply"))
+        tapElement(app.buttons["numberPad.operation.multiply"])
         tapElement(keypadButton(in: app, label: "4"))
         tapElement(confirmButton)
 
