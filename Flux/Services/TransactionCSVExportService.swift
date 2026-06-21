@@ -97,13 +97,22 @@ final class TransactionCSVExportService: TransactionCSVExportServicing {
             at: exportDirectory,
             withIntermediateDirectories: true
         )
+        try removePreviousExports()
         let filename = "Flux_Transactions_\(filenameDateFormatter.string(from: now())).csv"
         let fileURL = exportDirectory.appending(path: filename, directoryHint: .notDirectory)
-        if fileManager.fileExists(atPath: fileURL.path) {
-            try fileManager.removeItem(at: fileURL)
-        }
         try data.write(to: fileURL, options: .atomic)
         return fileURL
+    }
+
+    private func removePreviousExports() throws {
+        let files = try fileManager.contentsOfDirectory(
+            at: exportDirectory,
+            includingPropertiesForKeys: nil
+        )
+        for file in files where file.lastPathComponent.hasPrefix("Flux_Transactions_")
+                && file.pathExtension.lowercased() == "csv" {
+            try fileManager.removeItem(at: file)
+        }
     }
 
     private func transactionSort(_ lhs: Transaction, _ rhs: Transaction) -> Bool {

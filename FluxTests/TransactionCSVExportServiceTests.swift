@@ -276,6 +276,23 @@ final class TransactionCSVExportServiceTests: XCTestCase {
         XCTAssertTrue(quoteProvider.requests.isEmpty)
     }
 
+    func testExportRemovesPreviousTransactionCSVWithoutTouchingOtherFiles() async throws {
+        let previousExport = exportDirectory.appending(path: "Flux_Transactions_2024-01-02.csv")
+        let unrelatedFile = exportDirectory.appending(path: "keep-me.txt")
+        try Data("old".utf8).write(to: previousExport)
+        try Data("keep".utf8).write(to: unrelatedFile)
+        let quoteProvider = MockQuoteProvider(
+            result: .failure(NSError(domain: "Unexpected", code: 1))
+        )
+
+        let newExport = try await makeService(quoteProvider: quoteProvider)
+            .exportTransactions(displayCurrencyCode: "USD")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: previousExport.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unrelatedFile.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: newExport.path))
+    }
+
     private func makeService(quoteProvider: MockQuoteProvider) -> TransactionCSVExportService {
         TransactionCSVExportService(
             context: context,
