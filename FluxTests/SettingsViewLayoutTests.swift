@@ -28,6 +28,18 @@ final class SettingsViewLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains("categoryRowsPicker(viewModel: viewModel)"))
     }
 
+    func testDataManagementContainsTransactionCSVExportAndItemBasedSharing() throws {
+        let source = try settingsViewSource()
+
+        XCTAssertTrue(source.contains("settings.csvExport.action"))
+        XCTAssertTrue(source.contains("settings.csvExport.footer"))
+        XCTAssertTrue(source.contains("viewModel.isExportingTransactionsCSV"))
+        XCTAssertTrue(source.contains("settings.csvExport.button"))
+        XCTAssertTrue(source.contains("settings.csvExport.progress"))
+        XCTAssertTrue(source.contains(".sheet(item: $csvShareItem)"))
+        XCTAssertTrue(source.contains("ActivityShareSheet"))
+    }
+
     private func settingsViewSource() throws -> String {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

@@ -584,6 +584,36 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testCSVExportCopyMatchesCurrentWordingAcrossLanguages() {
+        let expectedValues: [String: [String: String]] = [
+            "en": [
+                "settings.csvExport.action": "Export Transactions CSV",
+                "settings.csvExport.footer": "Exports all transactions with original and converted amounts.",
+                "settings.csvExport.error": "Unable to export transactions. Please try again."
+            ],
+            "zh-Hans": [
+                "settings.csvExport.action": "导出交易 CSV",
+                "settings.csvExport.footer": "导出所有交易，并包括原始金额和换算金额。",
+                "settings.csvExport.error": "无法导出交易，请再试一次。"
+            ],
+            "zh-Hant": [
+                "settings.csvExport.action": "匯出交易 CSV",
+                "settings.csvExport.footer": "匯出所有交易，並包括原始金額及換算金額。",
+                "settings.csvExport.error": "無法匯出交易，請再試一次。"
+            ]
+        ]
+
+        for (locale, keyValues) in expectedValues {
+            for (key, expectedValue) in keyValues {
+                XCTAssertEqual(
+                    localizedStringValue(key: key, locale: locale),
+                    expectedValue,
+                    "Unexpected value for \(key) in \(locale)"
+                )
+            }
+        }
+    }
+
     func testTransactionFilterCopyUsesShorterChineseDateLabelsAndAllAccountsOption() {
         let expectedValues: [String: [String: String]] = [
             "en": [

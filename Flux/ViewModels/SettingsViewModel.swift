@@ -277,6 +277,7 @@ final class SettingsViewModel {
     private let exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler
     private let travelCurrencyLocationService: any TravelCurrencyLocationServicing
     private let backupExportService: any BackupExportServicing
+    private let transactionCSVExportService: any TransactionCSVExportServicing
     private let backupImportService: any BackupImportServicing
     private let backupFileStore: any BackupFileStoring
     private let backupCreationDebounceInterval: TimeInterval
@@ -382,6 +383,8 @@ final class SettingsViewModel {
     var isPreparingBackupExport = false
     var preparedBackupArchive: BackupArchive?
     var backupExportErrorMessage: String?
+    var isExportingTransactionsCSV = false
+    var transactionCSVExportErrorMessage: String?
     var backupFiles: [BackupFileSummary] = []
     var isLoadingBackupFiles = false
     var backupFileListErrorMessage: String?
@@ -608,6 +611,7 @@ final class SettingsViewModel {
         exchangeRateRefreshScheduler: ExchangeRateRefreshScheduler? = nil,
         travelCurrencyLocationService: (any TravelCurrencyLocationServicing)? = nil,
         backupExportService: (any BackupExportServicing)? = nil,
+        transactionCSVExportService: (any TransactionCSVExportServicing)? = nil,
         backupImportService: (any BackupImportServicing)? = nil,
         backupFileStore: (any BackupFileStoring)? = nil,
         cloudSyncSettingsStore: (any CloudSyncSettingsStoring)? = nil,
@@ -621,6 +625,8 @@ final class SettingsViewModel {
             ?? TravelCurrencyLocationService()
         self.backupExportService = backupExportService
             ?? BackupExportService(context: modelContext)
+        self.transactionCSVExportService = transactionCSVExportService
+            ?? TransactionCSVExportService(context: modelContext)
         self.backupImportService = backupImportService
             ?? BackupImportService(restoreSessionMarkerStore: RestoreSessionMarkerStore())
         self.backupFileStore = backupFileStore
@@ -660,6 +666,29 @@ final class SettingsViewModel {
             preparedBackupArchive = try backupExportService.makeBackupArchive()
         } catch {
             backupExportErrorMessage = error.localizedDescription
+        }
+    }
+
+    func exportTransactionsCSV() async -> URL? {
+        guard !isExportingTransactionsCSV else { return nil }
+
+        isExportingTransactionsCSV = true
+        transactionCSVExportErrorMessage = nil
+        defer { isExportingTransactionsCSV = false }
+
+        do {
+            let displayCurrencyCode = UserCurrencyPreference.resolvedDisplayCurrencyCode(
+                preferredCurrencyCode: defaultCurrencyCode
+            )
+            return try await transactionCSVExportService.exportTransactions(
+                displayCurrencyCode: displayCurrencyCode
+            )
+        } catch {
+            transactionCSVExportErrorMessage = AppLocalization.string(
+                "settings.csvExport.error",
+                defaultValue: "Unable to export transactions. Please try again."
+            )
+            return nil
         }
     }
 
