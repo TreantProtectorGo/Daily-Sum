@@ -31,18 +31,18 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Daily Sum"
+            "value" : "Flux"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "日常账"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "日常帳"
           }
         }

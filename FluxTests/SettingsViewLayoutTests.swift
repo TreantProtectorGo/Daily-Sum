@@ -38,6 +38,8 @@ final class SettingsViewLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains("settings.csvExport.progress"))
         XCTAssertTrue(source.contains(".sheet(item: $csvShareItem)"))
         XCTAssertTrue(source.contains("ActivityShareSheet"))
+        XCTAssertTrue(source.contains("viewModel.isExportingTransactionsCSV || csvShareItem != nil"))
+        XCTAssertTrue(source.contains("guard csvShareItem == nil else { return }"))
     }
 
     private func settingsViewSource() throws -> String {

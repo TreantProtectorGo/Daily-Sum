@@ -530,7 +530,7 @@ struct SettingsView: View {
                 }
             }
             .foregroundStyle(AppColors.interactiveText)
-            .disabled(viewModel.isExportingTransactionsCSV)
+            .disabled(viewModel.isExportingTransactionsCSV || csvShareItem != nil)
             .accessibilityIdentifier("settings.csvExport.button")
 
             if let errorMessage = viewModel.transactionCSVExportErrorMessage {
@@ -560,6 +560,7 @@ struct SettingsView: View {
     }
 
     private func exportTransactionsCSV(using viewModel: SettingsViewModel) {
+        guard csvShareItem == nil else { return }
         Task {
             guard let url = await viewModel.exportTransactionsCSV() else { return }
             csvShareItem = CSVShareItem(url: url)
