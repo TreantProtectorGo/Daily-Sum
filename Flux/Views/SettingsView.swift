@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showBackupSheet = false
+    @State private var csvShareItem: CSVShareItem?
 
     init(autoPopWhenTabSwitch: Bool = false) {
         self.autoPopWhenTabSwitch = autoPopWhenTabSwitch
@@ -102,6 +103,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showBackupSheet) {
             ManagedBackupSheet(viewModel: viewModel)
+        }
+        .sheet(item: $csvShareItem) { item in
+            ActivityShareSheet(activityItems: [item.url])
         }
         .onAppear {
             Task {
@@ -507,7 +511,35 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func dataManagementSection(viewModel: SettingsViewModel) -> some View {
-        Section(AppLocalization.string("settings.dataManagement", defaultValue: "Data Management")) {
+        Section {
+            Button {
+                exportTransactionsCSV(using: viewModel)
+            } label: {
+                HStack {
+                    Text(
+                        AppLocalization.string(
+                            "settings.csvExport.action",
+                            defaultValue: "Export Transactions CSV"
+                        )
+                    )
+                    Spacer()
+                    if viewModel.isExportingTransactionsCSV {
+                        ProgressView()
+                            .accessibilityIdentifier("settings.csvExport.progress")
+                    }
+                }
+            }
+            .foregroundStyle(AppColors.interactiveText)
+            .disabled(viewModel.isExportingTransactionsCSV)
+            .accessibilityIdentifier("settings.csvExport.button")
+
+            if let errorMessage = viewModel.transactionCSVExportErrorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("settings.csvExport.error")
+            }
+
             // Clear all data
             Button(role: .destructive) {
                 showClearDataConfirmation = true
@@ -515,6 +547,22 @@ struct SettingsView: View {
                 Text(AppLocalization.string("settings.clearData", defaultValue: "Clear All Data"))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
+        } header: {
+            Text(AppLocalization.string("settings.dataManagement", defaultValue: "Data Management"))
+        } footer: {
+            Text(
+                AppLocalization.string(
+                    "settings.csvExport.footer",
+                    defaultValue: "Exports all transactions with original and converted amounts."
+                )
+            )
+        }
+    }
+
+    private func exportTransactionsCSV(using viewModel: SettingsViewModel) {
+        Task {
+            guard let url = await viewModel.exportTransactionsCSV() else { return }
+            csvShareItem = CSVShareItem(url: url)
         }
     }
 
@@ -549,6 +597,27 @@ struct SettingsView: View {
         }
     }
 
+}
+
+private struct CSVShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIActivityViewController,
+        context: Context
+    ) {}
 }
 
 private struct ManagedBackupSheet: View {
