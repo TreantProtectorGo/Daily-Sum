@@ -327,6 +327,11 @@ struct AmountInputView: View {
     }
 }
 
+enum DockedAmountNumberPadLayout {
+    static let expandedGrabberReservedHeight: CGFloat = 0
+    static let collapsedGrabberHeight: CGFloat = 24
+}
+
 struct DockedAmountNumberPad: View {
     let session: AmountInputSession
     @Binding var amount: Decimal
@@ -335,17 +340,20 @@ struct DockedAmountNumberPad: View {
     let onConfirm: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 0) {
-            grabber
-
+        Group {
             if session.isPresented {
                 CustomNumberPad(
                     decimalSeparator: localeDecimalSeparator,
                     onAction: handleNumberPadAction
                 )
                 .frame(height: CustomNumberPadLayout.sheetHeight)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
                 .accessibilityIdentifier("numberPad.docked")
+                .overlay(alignment: .top) {
+                    grabber
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                grabber
             }
         }
         .background(
@@ -361,7 +369,7 @@ struct DockedAmountNumberPad: View {
                 .fill(.secondary.opacity(0.42))
                 .frame(width: 36, height: 5)
                 .frame(maxWidth: .infinity)
-                .frame(height: 24)
+                .frame(height: DockedAmountNumberPadLayout.collapsedGrabberHeight)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

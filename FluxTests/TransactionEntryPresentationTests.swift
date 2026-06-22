@@ -17,6 +17,7 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertTrue(amountInputSource.contains("case docked"))
         XCTAssertTrue(amountInputSource.contains("numberPad.grabber"))
         XCTAssertTrue(amountInputSource.contains("DragGesture"))
+        XCTAssertTrue(amountInputSource.contains(".overlay(alignment: .top)"))
     }
 
     func testAmountInputKeepsSheetPresentationAsDefaultForOtherFlows() throws {

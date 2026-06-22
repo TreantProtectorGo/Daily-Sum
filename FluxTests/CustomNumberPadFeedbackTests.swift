@@ -3,6 +3,11 @@ import XCTest
 
 @MainActor
 final class CustomNumberPadFeedbackTests: XCTestCase {
+    func testDockedGrabberDoesNotReserveHeightWhileExpanded() {
+        XCTAssertEqual(DockedAmountNumberPadLayout.expandedGrabberReservedHeight, 0)
+        XCTAssertEqual(DockedAmountNumberPadLayout.collapsedGrabberHeight, 24)
+    }
+
     func testLayoutKeepsBackspaceInBottomRightOfNumberGrid() {
         let expectedRows: [[CustomNumberPadAction]] = [
             [.digit(1), .digit(2), .digit(3)],
