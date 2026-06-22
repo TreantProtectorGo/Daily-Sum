@@ -16,6 +16,7 @@ struct AccountEntrySheet: View {
     @State private var defaultDisplayNameInNameField: String?
     @State private var selectedCurrency: SupportedCurrency = UserCurrencyPreference.supportedCurrency
     @State private var initialBalance: Decimal = 0
+    @State private var amountInputSession = AmountInputSession()
     
     @State private var isSaving = false
     @State private var showError = false
@@ -68,6 +69,10 @@ struct AccountEntrySheet: View {
                 Text(errorMessage)
             }
         }
+        .dockedAmountNumberPad(
+            session: amountInputSession,
+            amount: $initialBalance
+        )
         .presentationDetents([.large])
         .destructiveConfirmation(.accountDelete, isPresented: $showDeleteConfirmation) {
             deleteAccount()
@@ -103,7 +108,9 @@ struct AccountEntrySheet: View {
                 label: isEditing
                     ? AppLocalization.string("account.currentBalance", defaultValue: "Current Balance")
                     : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance"),
-                autoFocus: !isEditing
+                autoFocus: !isEditing,
+                numberPadPresentation: .docked,
+                session: amountInputSession
             )
         }
     }

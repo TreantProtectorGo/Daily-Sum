@@ -6,6 +6,7 @@ struct ExchangeCalculatorSheet: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var viewModel: ExchangeCalculatorViewModel?
+    @State private var amountInputSession = AmountInputSession()
 
     var body: some View {
         NavigationStack {
@@ -55,6 +56,13 @@ struct ExchangeCalculatorSheet: View {
         .onChange(of: viewModel.toCurrencyCode) { _, _ in
             viewModel.scheduleCalculation()
         }
+        .dockedAmountNumberPad(
+            session: amountInputSession,
+            amount: Binding(
+                get: { viewModel.amount },
+                set: { viewModel.amount = $0 }
+            )
+        )
     }
 
     private func amountAndResultSection(viewModel: ExchangeCalculatorViewModel) -> some View {
@@ -73,7 +81,9 @@ struct ExchangeCalculatorSheet: View {
                     currencyCode: viewModel.fromCurrencyCode,
                     autoFocus: true,
                     useGlassBackground: false,
-                    useOuterPadding: false
+                    useOuterPadding: false,
+                    numberPadPresentation: .docked,
+                    session: amountInputSession
                 )
 
                 Divider()

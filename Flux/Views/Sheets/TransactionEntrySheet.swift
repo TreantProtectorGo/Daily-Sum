@@ -310,15 +310,13 @@ struct TransactionEntrySheet: View {
                 Text(errorMessage)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            DockedAmountNumberPad(
-                session: amountInputSession,
-                amount: $amount,
-                onFirstUserInput: handleFirstAmountInput,
-                onFocusChanged: handleAmountFieldFocusChanged,
-                onConfirm: handleAmountInputConfirmed
-            )
-        }
+        .dockedAmountNumberPad(
+            session: amountInputSession,
+            amount: $amount,
+            onFirstUserInput: handleFirstAmountInput,
+            onFocusChanged: handleAmountFieldFocusChanged,
+            onConfirm: handleAmountInputConfirmed
+        )
         .presentationDetents([.large])
     }
     

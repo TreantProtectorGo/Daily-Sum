@@ -15,6 +15,7 @@ struct BudgetEntrySheet: View {
     @State private var selectedCategory: Category?
     @State private var currencyCode: String = UserCurrencyPreference.resolvedCurrencyCode
     @State private var alertThreshold: Decimal = 0.8
+    @State private var amountInputSession = AmountInputSession()
     
     @State private var isSaving = false
     @State private var showError = false
@@ -67,6 +68,10 @@ struct BudgetEntrySheet: View {
                 Text(errorMessage)
             }
         }
+        .dockedAmountNumberPad(
+            session: amountInputSession,
+            amount: $limitAmount
+        )
         .presentationDetents([.large])
     }
     
@@ -85,7 +90,9 @@ struct BudgetEntrySheet: View {
                 amount: $limitAmount,
                 currencyCode: currencyCode,
                 label: AppLocalization.string("budget.limit", defaultValue: "Spending Limit"),
-                autoFocus: !isEditing
+                autoFocus: !isEditing,
+                numberPadPresentation: .docked,
+                session: amountInputSession
             )
             
             Picker(AppLocalization.string("budget.currency", defaultValue: "Currency"), selection: $currencyCode) {

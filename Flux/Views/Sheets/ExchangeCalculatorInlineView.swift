@@ -4,6 +4,7 @@ import SwiftData
 struct ExchangeCalculatorInlineView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: ExchangeCalculatorViewModel?
+    @State private var amountInputSession = AmountInputSession()
 
     var body: some View {
         Group {
@@ -41,7 +42,9 @@ struct ExchangeCalculatorInlineView: View {
                     currencyCode: viewModel.fromCurrencyCode,
                     autoFocus: false,
                     useGlassBackground: false,
-                    useOuterPadding: false
+                    useOuterPadding: false,
+                    numberPadPresentation: .docked,
+                    session: amountInputSession
                 )
 
                 Divider()
@@ -205,6 +208,13 @@ struct ExchangeCalculatorInlineView: View {
         .onChange(of: viewModel.toCurrencyCode) { _, _ in
             viewModel.scheduleCalculation()
         }
+        .dockedAmountNumberPad(
+            session: amountInputSession,
+            amount: Binding(
+                get: { viewModel.amount },
+                set: { viewModel.amount = $0 }
+            )
+        )
     }
 }
 
