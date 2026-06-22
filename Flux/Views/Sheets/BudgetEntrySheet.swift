@@ -91,7 +91,6 @@ struct BudgetEntrySheet: View {
                 currencyCode: currencyCode,
                 label: AppLocalization.string("budget.limit", defaultValue: "Spending Limit"),
                 autoFocus: !isEditing,
-                numberPadPresentation: .docked,
                 session: amountInputSession
             )
             

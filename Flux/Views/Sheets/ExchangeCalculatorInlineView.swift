@@ -43,7 +43,6 @@ struct ExchangeCalculatorInlineView: View {
                     autoFocus: false,
                     useGlassBackground: false,
                     useOuterPadding: false,
-                    numberPadPresentation: .docked,
                     session: amountInputSession
                 )
 

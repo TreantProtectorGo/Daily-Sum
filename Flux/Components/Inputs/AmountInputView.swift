@@ -3,11 +3,6 @@ import Observation
 
 // MARK: - Amount Input View
 
-enum AmountNumberPadPresentation {
-    case sheet
-    case docked
-}
-
 @MainActor
 @Observable
 final class AmountInputSession {
@@ -38,10 +33,6 @@ final class AmountInputSession {
     func collapse(currentAmount: Decimal) -> Dismissal {
         isPresented = false
         return finishDismissal(currentAmount: currentAmount)
-    }
-
-    func requestDismissal() {
-        isPresented = false
     }
 
     func finishDismissal(currentAmount: Decimal) -> Dismissal {
@@ -128,15 +119,10 @@ struct AmountInputView: View {
     let autoFocus: Bool
     let useGlassBackground: Bool
     let useOuterPadding: Bool
-    let numberPadPresentation: AmountNumberPadPresentation
-    let sharedSession: AmountInputSession?
-    let onFirstUserInput: (() -> Void)?
+    let session: AmountInputSession
     let onFocusChanged: ((Bool) -> Void)?
-    let onConfirm: (() -> Void)?
 
     @State private var hasAttemptedAutoFocus = false
-    @State private var ownedSession = AmountInputSession()
-    @State private var shouldRunConfirmActionOnDismiss = false
 
     init(
         amount: Binding<Decimal>,
@@ -145,11 +131,8 @@ struct AmountInputView: View {
         autoFocus: Bool = false,
         useGlassBackground: Bool = true,
         useOuterPadding: Bool = true,
-        numberPadPresentation: AmountNumberPadPresentation = .sheet,
-        session: AmountInputSession? = nil,
-        onFirstUserInput: (() -> Void)? = nil,
-        onFocusChanged: ((Bool) -> Void)? = nil,
-        onConfirm: (() -> Void)? = nil
+        session: AmountInputSession,
+        onFocusChanged: ((Bool) -> Void)? = nil
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
@@ -157,11 +140,8 @@ struct AmountInputView: View {
         self.autoFocus = autoFocus
         self.useGlassBackground = useGlassBackground
         self.useOuterPadding = useOuterPadding
-        self.numberPadPresentation = numberPadPresentation
-        self.sharedSession = session
-        self.onFirstUserInput = onFirstUserInput
+        self.session = session
         self.onFocusChanged = onFocusChanged
-        self.onConfirm = onConfirm
     }
 
     var body: some View {
@@ -174,20 +154,6 @@ struct AmountInputView: View {
                 inputContent
                     .padding(useOuterPadding ? 16 : 0)
             }
-        }
-        .background {
-            if numberPadPresentation == .sheet {
-                preloadedNumberPad
-            }
-        }
-        .sheet(isPresented: sheetPresentationBinding, onDismiss: handleNumberPadDismissed) {
-            keypadSheetContent(
-                decimalSeparator: localeDecimalSeparator,
-                onAction: handleNumberPadAction
-            )
-            .presentationDetents([.height(CustomNumberPadLayout.sheetHeight)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(uiColor: CustomNumberPadPalette.sheetSurface))
         }
     }
 
@@ -225,38 +191,12 @@ struct AmountInputView: View {
         }
     }
 
-    private var sheetPresentationBinding: Binding<Bool> {
-        Binding(
-            get: {
-                numberPadPresentation == .sheet && session.isPresented
-            },
-            set: { isPresented in
-                guard numberPadPresentation == .sheet else { return }
-                if isPresented {
-                    presentNumberPad()
-                } else {
-                    session.requestDismissal()
-                }
-            }
-        )
-    }
-
-    private var session: AmountInputSession {
-        sharedSession ?? ownedSession
-    }
-
     private var renderedDisplayText: String {
         session.displayText(locale: AppLocalization.locale)
     }
 
     private var displayText: String {
         renderedDisplayText.isEmpty ? placeholder : renderedDisplayText
-    }
-
-    private var localeDecimalSeparator: String {
-        let formatter = NumberFormatter()
-        formatter.locale = AppLocalization.locale
-        return formatter.decimalSeparator ?? "."
     }
 
     private var currencySymbol: String {
@@ -266,64 +206,14 @@ struct AmountInputView: View {
         return formatter.currencySymbol ?? "$"
     }
 
-    private var preloadedNumberPad: some View {
-        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in
-            .accepted
-        }
-        .opacity(0)
-        .frame(width: 0, height: 0)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
     private func presentNumberPad() {
         guard !session.isPresented else { return }
         session.present(currentAmount: amount)
         onFocusChanged?(true)
     }
 
-    private func handleNumberPadDismissed() {
-        let dismissal = session.finishDismissal(currentAmount: amount)
-        amount = dismissal.amount
-        onFocusChanged?(false)
-        if shouldRunConfirmActionOnDismiss {
-            shouldRunConfirmActionOnDismiss = false
-            onConfirm?()
-        }
-    }
-
     private func syncBufferFromAmount() {
         session.sync(from: amount)
-    }
-
-    private func handleNumberPadAction(_ action: CustomNumberPadAction) -> CustomNumberPadActionResult {
-        let mutation = session.perform(action, currentAmount: amount)
-        amount = mutation.amount
-
-        if mutation.didAcceptFirstInput {
-            onFirstUserInput?()
-        }
-
-        if mutation.didConfirm {
-            shouldRunConfirmActionOnDismiss = true
-        }
-
-        return mutation.result
-    }
-
-    private func keypadSheetContent(
-        decimalSeparator: String,
-        onAction: @escaping (CustomNumberPadAction) -> CustomNumberPadActionResult
-    ) -> some View {
-        ZStack(alignment: .top) {
-            Color(uiColor: CustomNumberPadPalette.sheetSurface)
-
-            CustomNumberPad(
-                decimalSeparator: decimalSeparator,
-                onAction: onAction
-            )
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -365,7 +255,7 @@ struct DockedAmountNumberPad: View {
                 guard value.translation.height > 48 else { return }
                 guard abs(value.translation.width) < value.translation.height else { return }
                 collapse()
-            }
+        }
     }
 
     private var localeDecimalSeparator: String {
@@ -425,30 +315,22 @@ struct CompactAmountInput: View {
     let currencyCode: String
     let label: String
     let autoFocus: Bool
-    let numberPadPresentation: AmountNumberPadPresentation
-    let sharedSession: AmountInputSession?
-    let onConfirm: (() -> Void)?
+    let session: AmountInputSession
 
     @State private var hasAttemptedAutoFocus = false
-    @State private var ownedSession = AmountInputSession()
-    @State private var shouldRunConfirmActionOnDismiss = false
 
     init(
         amount: Binding<Decimal>,
         currencyCode: String,
         label: String,
         autoFocus: Bool = false,
-        numberPadPresentation: AmountNumberPadPresentation = .sheet,
-        session: AmountInputSession? = nil,
-        onConfirm: (() -> Void)? = nil
+        session: AmountInputSession
     ) {
         self._amount = amount
         self.currencyCode = currencyCode
         self.label = label
         self.autoFocus = autoFocus
-        self.numberPadPresentation = numberPadPresentation
-        self.sharedSession = session
-        self.onConfirm = onConfirm
+        self.session = session
     }
 
     var body: some View {
@@ -457,7 +339,6 @@ struct CompactAmountInput: View {
                 .foregroundStyle(.secondary)
 
             Spacer()
-
             Button(action: presentNumberPad) {
                 HStack(spacing: 4) {
                     Text(currencySymbol)
@@ -487,40 +368,6 @@ struct CompactAmountInput: View {
             guard !session.isPresented else { return }
             syncBufferFromAmount()
         }
-        .sheet(isPresented: sheetPresentationBinding, onDismiss: handleNumberPadDismissed) {
-            keypadSheetContent(
-                decimalSeparator: localeDecimalSeparator,
-                onAction: handleNumberPadAction
-            )
-            .presentationDetents([.height(CustomNumberPadLayout.sheetHeight)])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color(uiColor: CustomNumberPadPalette.sheetSurface))
-        }
-        .background {
-            if numberPadPresentation == .sheet {
-                preloadedNumberPad
-            }
-        }
-    }
-
-    private var sheetPresentationBinding: Binding<Bool> {
-        Binding(
-            get: {
-                numberPadPresentation == .sheet && session.isPresented
-            },
-            set: { isPresented in
-                guard numberPadPresentation == .sheet else { return }
-                if isPresented {
-                    presentNumberPad()
-                } else {
-                    session.requestDismissal()
-                }
-            }
-        )
-    }
-
-    private var session: AmountInputSession {
-        sharedSession ?? ownedSession
     }
 
     private var renderedDisplayText: String {
@@ -531,27 +378,11 @@ struct CompactAmountInput: View {
         renderedDisplayText.isEmpty ? "0" : renderedDisplayText
     }
 
-    private var localeDecimalSeparator: String {
-        let formatter = NumberFormatter()
-        formatter.locale = AppLocalization.locale
-        return formatter.decimalSeparator ?? "."
-    }
-
     private var currencySymbol: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = currencyCode
         return formatter.currencySymbol ?? "$"
-    }
-
-    private var preloadedNumberPad: some View {
-        CustomNumberPad(decimalSeparator: localeDecimalSeparator) { _ in
-            .accepted
-        }
-        .opacity(0)
-        .frame(width: 0, height: 0)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 
     private func presentNumberPad() {
@@ -560,43 +391,8 @@ struct CompactAmountInput: View {
         session.present(currentAmount: amount)
     }
 
-    private func handleNumberPadDismissed() {
-        let dismissal = session.finishDismissal(currentAmount: amount)
-        amount = dismissal.amount
-        if shouldRunConfirmActionOnDismiss {
-            shouldRunConfirmActionOnDismiss = false
-            onConfirm?()
-        }
-    }
-
     private func syncBufferFromAmount() {
         session.sync(from: amount)
-    }
-
-    private func handleNumberPadAction(_ action: CustomNumberPadAction) -> CustomNumberPadActionResult {
-        let mutation = session.perform(action, currentAmount: amount)
-        amount = mutation.amount
-
-        if mutation.didConfirm {
-            shouldRunConfirmActionOnDismiss = true
-        }
-
-        return mutation.result
-    }
-
-    private func keypadSheetContent(
-        decimalSeparator: String,
-        onAction: @escaping (CustomNumberPadAction) -> CustomNumberPadActionResult
-    ) -> some View {
-        ZStack(alignment: .top) {
-            Color(uiColor: CustomNumberPadPalette.sheetSurface)
-
-            CustomNumberPad(
-                decimalSeparator: decimalSeparator,
-                onAction: onAction
-            )
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -619,6 +415,8 @@ private extension CustomNumberPadActionResult {
     struct PreviewWrapper: View {
         @State private var amount: Decimal = 0
         @State private var compactAmount: Decimal = 150.50
+        @State private var amountInputSession = AmountInputSession()
+        @State private var compactInputSession = AmountInputSession()
 
         var body: some View {
             VStack(spacing: 24) {
@@ -628,7 +426,8 @@ private extension CustomNumberPadActionResult {
                     VStack(spacing: 16) {
                         AmountInputView(
                             amount: $amount,
-                            currencyCode: "USD"
+                            currencyCode: "USD",
+                            session: amountInputSession
                         )
 
                         Text(verbatim: "Amount: \(amount)")
@@ -637,6 +436,10 @@ private extension CustomNumberPadActionResult {
                     .padding()
                 }
                 .frame(height: 220)
+                .dockedAmountNumberPad(
+                    session: amountInputSession,
+                    amount: $amount
+                )
 
                 Divider()
 
@@ -645,10 +448,15 @@ private extension CustomNumberPadActionResult {
                         amount: $compactAmount,
                         currencyCode: "USD",
                         label: "Budget Amount",
-                        autoFocus: false
+                        autoFocus: false,
+                        session: compactInputSession
                     )
                 }
                 .frame(height: 120)
+                .dockedAmountNumberPad(
+                    session: compactInputSession,
+                    amount: $compactAmount
+                )
             }
         }
     }

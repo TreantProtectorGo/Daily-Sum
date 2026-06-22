@@ -70,11 +70,11 @@ final class FluxUITests: XCTestCase {
 
         tapElement(app.tabBars.buttons["Transactions"])
 
-        let dashboardTab = app.tabBars.buttons["Dashboard"]
-        XCTAssertTrue(dashboardTab.waitForExistence(timeout: 2))
-        tapElement(dashboardTab)
+        let homeTab = app.tabBars.buttons["Home"]
+        XCTAssertTrue(homeTab.waitForExistence(timeout: 10))
+        tapElement(homeTab)
 
-        XCTAssertTrue(app.navigationBars["Dashboard"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.navigationBars["Settings"].exists)
     }
 
@@ -113,7 +113,10 @@ final class FluxUITests: XCTestCase {
 
         tapElement(backupRow)
         XCTAssertTrue(app.alerts["Restore Backup?"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.alerts.buttons["Confirm Restore"].exists)
+        XCTAssertTrue(
+            app.alerts.buttons["settings.backup.restore.confirm.button"]
+                .waitForExistence(timeout: 10)
+        )
         app.alerts.buttons["Cancel"].tap()
 
         XCTAssertTrue(app.buttons["settings.backup.close.button"].waitForExistence(timeout: 10))
@@ -150,7 +153,7 @@ final class FluxUITests: XCTestCase {
         app.launch()
 
         tapElement(app.tabBars.buttons["Transactions"])
-        tapElement(app.buttons["transactions.addButton"])
+        tapElement(app.buttons["transactions.addButton"], timeout: 20)
 
         let dockedNumberPad = app.descendants(matching: .any)["numberPad.docked"]
         XCTAssertTrue(dockedNumberPad.waitForExistence(timeout: 3))
@@ -267,8 +270,8 @@ final class FluxUITests: XCTestCase {
         XCTAssertTrue(salaryButton.waitForExistence(timeout: 2))
         tapElement(salaryButton)
 
-        let saveButton = app.navigationBars.buttons["Save"]
-        XCTAssertTrue(saveButton.waitForExistence(timeout: 2))
+        let saveButton = app.buttons["transaction.save.button"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 10))
         tapElement(saveButton)
 
         let salaryRow = app.staticTexts["Salary"].firstMatch

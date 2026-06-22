@@ -267,6 +267,7 @@ struct TransactionEntrySheet: View {
                             await saveTransaction()
                         }
                     }
+                    .accessibilityIdentifier("transaction.save.button")
                     .disabled(!isFormValid || isSaving)
                 }
             }
@@ -349,11 +350,8 @@ struct TransactionEntrySheet: View {
                         currencyCode: amountInputCurrencyCode,
                         autoFocus: existingTransaction == nil,
                         useGlassBackground: false,
-                        numberPadPresentation: .docked,
                         session: amountInputSession,
-                        onFirstUserInput: handleFirstAmountInput,
-                        onFocusChanged: handleAmountFieldFocusChanged,
-                        onConfirm: handleAmountInputConfirmed
+                        onFocusChanged: handleAmountFieldFocusChanged
                     )
 
                     Rectangle()
@@ -373,11 +371,8 @@ struct TransactionEntrySheet: View {
                     amount: $amount,
                     currencyCode: amountInputCurrencyCode,
                     autoFocus: existingTransaction == nil,
-                    numberPadPresentation: .docked,
                     session: amountInputSession,
-                    onFirstUserInput: handleFirstAmountInput,
-                    onFocusChanged: handleAmountFieldFocusChanged,
-                    onConfirm: handleAmountInputConfirmed
+                    onFocusChanged: handleAmountFieldFocusChanged
                 )
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)

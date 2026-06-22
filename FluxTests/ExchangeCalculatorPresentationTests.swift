@@ -14,14 +14,12 @@ final class ExchangeCalculatorPresentationTests: XCTestCase {
         )
 
         XCTAssertTrue(inlineSource.contains("@State private var amountInputSession = AmountInputSession()"))
-        XCTAssertTrue(inlineSource.contains("numberPadPresentation: .docked"))
         XCTAssertTrue(inlineSource.contains("session: amountInputSession"))
         XCTAssertTrue(inlineSource.contains(".dockedAmountNumberPad("))
         XCTAssertFalse(inlineSource.contains("safeAreaInset(edge: .bottom"))
         XCTAssertFalse(inlineSource.contains("DockedAmountNumberPad("))
 
         XCTAssertTrue(sheetSource.contains("@State private var amountInputSession = AmountInputSession()"))
-        XCTAssertTrue(sheetSource.contains("numberPadPresentation: .docked"))
         XCTAssertTrue(sheetSource.contains("session: amountInputSession"))
         XCTAssertTrue(sheetSource.contains(".dockedAmountNumberPad("))
         XCTAssertFalse(sheetSource.contains("safeAreaInset(edge: .bottom"))

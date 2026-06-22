@@ -109,7 +109,6 @@ struct AccountEntrySheet: View {
                     ? AppLocalization.string("account.currentBalance", defaultValue: "Current Balance")
                     : AppLocalization.string("account.initialBalance", defaultValue: "Initial Balance"),
                 autoFocus: !isEditing,
-                numberPadPresentation: .docked,
                 session: amountInputSession
             )
         }

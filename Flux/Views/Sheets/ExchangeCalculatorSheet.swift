@@ -82,7 +82,6 @@ struct ExchangeCalculatorSheet: View {
                     autoFocus: true,
                     useGlassBackground: false,
                     useOuterPadding: false,
-                    numberPadPresentation: .docked,
                     session: amountInputSession
                 )
 

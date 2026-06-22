@@ -15,15 +15,15 @@ final class CompactAmountInputPresentationTests: XCTestCase {
 
         for source in [accountSource, budgetSource] {
             XCTAssertTrue(source.contains("@State private var amountInputSession = AmountInputSession()"))
-            XCTAssertTrue(source.contains("numberPadPresentation: .docked"))
             XCTAssertTrue(source.contains("session: amountInputSession"))
             XCTAssertTrue(source.contains(".dockedAmountNumberPad("))
         }
 
         let compactSource = try compactAmountInputSource(from: amountInputSource)
-        XCTAssertTrue(compactSource.contains("numberPadPresentation: AmountNumberPadPresentation = .sheet"))
-        XCTAssertTrue(compactSource.contains("session: AmountInputSession? = nil"))
-        XCTAssertTrue(compactSource.contains("@State private var ownedSession = AmountInputSession()"))
+        XCTAssertTrue(compactSource.contains("let session: AmountInputSession"))
+        XCTAssertFalse(compactSource.contains("numberPadPresentation"))
+        XCTAssertFalse(compactSource.contains("sharedSession"))
+        XCTAssertFalse(compactSource.contains("ownedSession"))
         XCTAssertFalse(compactSource.contains("@State private var isNumberPadPresented"))
     }
 
