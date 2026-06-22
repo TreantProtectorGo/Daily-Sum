@@ -328,8 +328,7 @@ struct AmountInputView: View {
 }
 
 enum DockedAmountNumberPadLayout {
-    static let expandedGrabberReservedHeight: CGFloat = 0
-    static let collapsedGrabberHeight: CGFloat = 24
+    static let collapsedHeight: CGFloat = 0
 }
 
 struct DockedAmountNumberPad: View {
@@ -348,14 +347,11 @@ struct DockedAmountNumberPad: View {
                 )
                 .frame(height: CustomNumberPadLayout.sheetHeight)
                 .accessibilityIdentifier("numberPad.docked")
-                .overlay(alignment: .top) {
-                    grabber
-                }
+                .simultaneousGesture(collapseGesture)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else {
-                grabber
             }
         }
+        .frame(minHeight: session.isPresented ? nil : DockedAmountNumberPadLayout.collapsedHeight)
         .background(
             Color(uiColor: CustomNumberPadPalette.sheetSurface)
                 .ignoresSafeArea(edges: .bottom)
@@ -363,44 +359,19 @@ struct DockedAmountNumberPad: View {
         .animation(.snappy(duration: 0.22), value: session.isPresented)
     }
 
-    private var grabber: some View {
-        Button(action: togglePresentation) {
-            Capsule()
-                .fill(.secondary.opacity(0.42))
-                .frame(width: 36, height: 5)
-                .frame(maxWidth: .infinity)
-                .frame(height: DockedAmountNumberPadLayout.collapsedGrabberHeight)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("numberPad.grabber")
-        .accessibilityLabel(
-            session.isPresented
-                ? "Collapse keypad"
-                : "Expand keypad"
-        )
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 10)
-                .onEnded { value in
-                    guard value.translation.height > 24 else { return }
-                    collapse()
-                }
-        )
+    private var collapseGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                guard value.translation.height > 48 else { return }
+                guard abs(value.translation.width) < value.translation.height else { return }
+                collapse()
+            }
     }
 
     private var localeDecimalSeparator: String {
         let formatter = NumberFormatter()
         formatter.locale = AppLocalization.locale
         return formatter.decimalSeparator ?? "."
-    }
-
-    private func togglePresentation() {
-        if session.isPresented {
-            collapse()
-        } else {
-            session.present(currentAmount: amount)
-            onFocusChanged?(true)
-        }
     }
 
     private func collapse() {

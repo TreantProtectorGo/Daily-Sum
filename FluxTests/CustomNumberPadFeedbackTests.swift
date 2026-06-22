@@ -3,9 +3,8 @@ import XCTest
 
 @MainActor
 final class CustomNumberPadFeedbackTests: XCTestCase {
-    func testDockedGrabberDoesNotReserveHeightWhileExpanded() {
-        XCTAssertEqual(DockedAmountNumberPadLayout.expandedGrabberReservedHeight, 0)
-        XCTAssertEqual(DockedAmountNumberPadLayout.collapsedGrabberHeight, 24)
+    func testDockedKeypadReservesNoHeightWhileCollapsed() {
+        XCTAssertEqual(DockedAmountNumberPadLayout.collapsedHeight, 0)
     }
 
     func testLayoutKeepsBackspaceInBottomRightOfNumberGrid() {

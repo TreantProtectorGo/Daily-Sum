@@ -155,9 +155,7 @@ final class FluxUITests: XCTestCase {
         let dockedNumberPad = app.descendants(matching: .any)["numberPad.docked"]
         XCTAssertTrue(dockedNumberPad.waitForExistence(timeout: 3))
 
-        let grabber = app.buttons["numberPad.grabber"]
-        XCTAssertTrue(grabber.waitForExistence(timeout: 2))
-        tapElement(grabber)
+        dockedNumberPad.swipeDown()
         XCTAssertTrue(dockedNumberPad.waitForNonExistence(timeout: 2))
 
         let amountTrigger = app.buttons["amountInput.trigger"]
