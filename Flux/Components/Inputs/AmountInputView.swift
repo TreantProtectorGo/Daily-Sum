@@ -1,10 +1,123 @@
 import SwiftUI
+import Observation
 
 // MARK: - Amount Input View
 
 enum AmountNumberPadPresentation {
     case sheet
-    case inline
+    case docked
+}
+
+@MainActor
+@Observable
+final class AmountInputSession {
+    struct Mutation: Equatable {
+        let result: CustomNumberPadActionResult
+        let amount: Decimal
+        let didAcceptFirstInput: Bool
+        let didConfirm: Bool
+    }
+
+    struct Dismissal: Equatable {
+        let amount: Decimal
+        let didConfirm: Bool
+    }
+
+    private(set) var inputBuffer = NumericExpressionBuffer(maxFractionDigits: 4)
+    private(set) var isPresented = false
+    private var shouldCommitDraftOnDismiss = false
+    private var hasReportedFirstInput = false
+
+    func present(currentAmount: Decimal) {
+        guard !isPresented else { return }
+        sync(from: currentAmount)
+        shouldCommitDraftOnDismiss = true
+        isPresented = true
+    }
+
+    func collapse(currentAmount: Decimal) -> Dismissal {
+        isPresented = false
+        return finishDismissal(currentAmount: currentAmount)
+    }
+
+    func requestDismissal() {
+        isPresented = false
+    }
+
+    func finishDismissal(currentAmount: Decimal) -> Dismissal {
+        let committedAmount = shouldCommitDraftOnDismiss
+            ? commit(currentAmount: currentAmount)
+            : currentAmount
+        shouldCommitDraftOnDismiss = false
+        isPresented = false
+        return Dismissal(amount: committedAmount, didConfirm: false)
+    }
+
+    func perform(
+        _ action: CustomNumberPadAction,
+        currentAmount: Decimal
+    ) -> Mutation {
+        let result: CustomNumberPadActionResult
+        var nextAmount = currentAmount
+
+        switch action {
+        case .digit(let value):
+            result = CustomNumberPadActionResult(inputBuffer.appendDigit(Character("\(value)")))
+        case .decimalSeparator:
+            result = CustomNumberPadActionResult(inputBuffer.insertDecimalSeparator())
+        case .backspace:
+            result = CustomNumberPadActionResult(inputBuffer.backspace())
+        case .operation(let operation):
+            result = CustomNumberPadActionResult(inputBuffer.insertOperator(operation))
+        case .confirm:
+            nextAmount = commit(currentAmount: currentAmount)
+            shouldCommitDraftOnDismiss = false
+            isPresented = false
+            return Mutation(
+                result: .accepted,
+                amount: nextAmount,
+                didAcceptFirstInput: false,
+                didConfirm: true
+            )
+        }
+
+        let didAcceptFirstInput = result != .ignored && !hasReportedFirstInput
+        if didAcceptFirstInput {
+            hasReportedFirstInput = true
+        }
+
+        if let liveValue = inputBuffer.liveDecimalValue {
+            nextAmount = liveValue
+        }
+
+        return Mutation(
+            result: result,
+            amount: nextAmount,
+            didAcceptFirstInput: didAcceptFirstInput,
+            didConfirm: false
+        )
+    }
+
+    func displayText(locale: Locale) -> String {
+        inputBuffer.displayText(locale: locale)
+    }
+
+    func sync(from amount: Decimal) {
+        inputBuffer = NumericExpressionBuffer(
+            initialValue: amount,
+            maxFractionDigits: 4,
+            emptyWhenZero: amount == 0
+        )
+    }
+
+    private func commit(currentAmount: Decimal) -> Decimal {
+        guard inputBuffer.hasExpression || inputBuffer.hasContent || currentAmount != 0 else {
+            sync(from: currentAmount)
+            return currentAmount
+        }
+
+        return inputBuffer.commit()
+    }
 }
 
 /// A text field for entering currency amounts with formatting
@@ -16,15 +129,13 @@ struct AmountInputView: View {
     let useGlassBackground: Bool
     let useOuterPadding: Bool
     let numberPadPresentation: AmountNumberPadPresentation
+    let sharedSession: AmountInputSession?
     let onFirstUserInput: (() -> Void)?
     let onFocusChanged: ((Bool) -> Void)?
     let onConfirm: (() -> Void)?
 
     @State private var hasAttemptedAutoFocus = false
-    @State private var hasReportedFirstInput = false
-    @State private var inputBuffer = NumericExpressionBuffer(maxFractionDigits: 4)
-    @State private var isNumberPadPresented = false
-    @State private var shouldCommitDraftOnDismiss = false
+    @State private var ownedSession = AmountInputSession()
     @State private var shouldRunConfirmActionOnDismiss = false
 
     init(
@@ -35,6 +146,7 @@ struct AmountInputView: View {
         useGlassBackground: Bool = true,
         useOuterPadding: Bool = true,
         numberPadPresentation: AmountNumberPadPresentation = .sheet,
+        session: AmountInputSession? = nil,
         onFirstUserInput: (() -> Void)? = nil,
         onFocusChanged: ((Bool) -> Void)? = nil,
         onConfirm: (() -> Void)? = nil
@@ -46,26 +158,21 @@ struct AmountInputView: View {
         self.useGlassBackground = useGlassBackground
         self.useOuterPadding = useOuterPadding
         self.numberPadPresentation = numberPadPresentation
+        self.sharedSession = session
         self.onFirstUserInput = onFirstUserInput
         self.onFocusChanged = onFocusChanged
         self.onConfirm = onConfirm
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Group {
-                if useGlassBackground {
-                    inputContent
-                        .padding(useOuterPadding ? 16 : 0)
-                        .glassBackground(cornerRadius: 12, isInteractive: true)
-                } else {
-                    inputContent
-                        .padding(useOuterPadding ? 16 : 0)
-                }
-            }
-
-            if numberPadPresentation == .inline && isNumberPadPresented {
-                inlineNumberPad
+        Group {
+            if useGlassBackground {
+                inputContent
+                    .padding(useOuterPadding ? 16 : 0)
+                    .glassBackground(cornerRadius: 12, isInteractive: true)
+            } else {
+                inputContent
+                    .padding(useOuterPadding ? 16 : 0)
             }
         }
         .background {
@@ -113,35 +220,33 @@ struct AmountInputView: View {
             }
         }
         .onChange(of: amount) { _, _ in
-            guard !isNumberPadPresented else { return }
-            syncBufferFromAmount()
+            guard !session.isPresented else { return }
+            session.sync(from: amount)
         }
     }
 
     private var sheetPresentationBinding: Binding<Bool> {
         Binding(
             get: {
-                numberPadPresentation == .sheet && isNumberPadPresented
+                numberPadPresentation == .sheet && session.isPresented
             },
             set: { isPresented in
                 guard numberPadPresentation == .sheet else { return }
-                isNumberPadPresented = isPresented
+                if isPresented {
+                    presentNumberPad()
+                } else {
+                    session.requestDismissal()
+                }
             }
         )
     }
 
-    private var inlineNumberPad: some View {
-        keypadSheetContent(
-            decimalSeparator: localeDecimalSeparator,
-            onAction: handleNumberPadAction
-        )
-        .frame(height: CustomNumberPadLayout.sheetHeight)
-        .background(Color(uiColor: CustomNumberPadPalette.sheetSurface))
-        .accessibilityIdentifier("numberPad.inline")
+    private var session: AmountInputSession {
+        sharedSession ?? ownedSession
     }
 
     private var renderedDisplayText: String {
-        inputBuffer.displayText(locale: AppLocalization.locale)
+        session.displayText(locale: AppLocalization.locale)
     }
 
     private var displayText: String {
@@ -172,26 +277,14 @@ struct AmountInputView: View {
     }
 
     private func presentNumberPad() {
-        guard !isNumberPadPresented else { return }
-        syncBufferFromAmount()
-        shouldCommitDraftOnDismiss = true
-        setNumberPadPresented(true)
+        guard !session.isPresented else { return }
+        session.present(currentAmount: amount)
         onFocusChanged?(true)
     }
 
-    private func setNumberPadPresented(_ presented: Bool) {
-        var transaction = SwiftUI.Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            isNumberPadPresented = presented
-        }
-    }
-
     private func handleNumberPadDismissed() {
-        if shouldCommitDraftOnDismiss {
-            _ = commitDraft()
-        }
-        shouldCommitDraftOnDismiss = false
+        let dismissal = session.finishDismissal(currentAmount: amount)
+        amount = dismissal.amount
         onFocusChanged?(false)
         if shouldRunConfirmActionOnDismiss {
             shouldRunConfirmActionOnDismiss = false
@@ -199,63 +292,23 @@ struct AmountInputView: View {
         }
     }
 
-    private func reportFirstUserInputIfNeeded() {
-        guard !hasReportedFirstInput else { return }
-        hasReportedFirstInput = true
-        onFirstUserInput?()
-    }
-
     private func syncBufferFromAmount() {
-        inputBuffer = NumericExpressionBuffer(
-            initialValue: amount,
-            maxFractionDigits: 4,
-            emptyWhenZero: amount == 0
-        )
+        session.sync(from: amount)
     }
 
     private func handleNumberPadAction(_ action: CustomNumberPadAction) -> CustomNumberPadActionResult {
-        let result: CustomNumberPadActionResult
+        let mutation = session.perform(action, currentAmount: amount)
+        amount = mutation.amount
 
-        switch action {
-        case .digit(let value):
-            result = CustomNumberPadActionResult(inputBuffer.appendDigit(Character("\(value)")))
-        case .decimalSeparator:
-            result = CustomNumberPadActionResult(inputBuffer.insertDecimalSeparator())
-        case .backspace:
-            result = CustomNumberPadActionResult(inputBuffer.backspace())
-        case .operation(let operation):
-            result = CustomNumberPadActionResult(inputBuffer.insertOperator(operation))
-        case .confirm:
-            _ = commitDraft()
-            shouldCommitDraftOnDismiss = false
+        if mutation.didAcceptFirstInput {
+            onFirstUserInput?()
+        }
+
+        if mutation.didConfirm {
             shouldRunConfirmActionOnDismiss = true
-            setNumberPadPresented(false)
-            if numberPadPresentation == .inline {
-                handleNumberPadDismissed()
-            }
-            return .accepted
         }
 
-        if result != .ignored {
-            reportFirstUserInputIfNeeded()
-        }
-
-        if let liveValue = inputBuffer.liveDecimalValue {
-            amount = liveValue
-        }
-
-        return result
-    }
-
-    private func commitDraft() -> Decimal {
-        guard inputBuffer.hasExpression || inputBuffer.hasContent || amount != 0 else {
-            syncBufferFromAmount()
-            return amount
-        }
-
-        let committed = inputBuffer.commit()
-        amount = committed
-        return committed
+        return mutation.result
     }
 
     private func keypadSheetContent(
@@ -271,6 +324,97 @@ struct AmountInputView: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+struct DockedAmountNumberPad: View {
+    let session: AmountInputSession
+    @Binding var amount: Decimal
+    let onFirstUserInput: (() -> Void)?
+    let onFocusChanged: ((Bool) -> Void)?
+    let onConfirm: (() -> Void)?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            grabber
+
+            if session.isPresented {
+                CustomNumberPad(
+                    decimalSeparator: localeDecimalSeparator,
+                    onAction: handleNumberPadAction
+                )
+                .frame(height: CustomNumberPadLayout.sheetHeight)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .accessibilityIdentifier("numberPad.docked")
+            }
+        }
+        .background(
+            Color(uiColor: CustomNumberPadPalette.sheetSurface)
+                .ignoresSafeArea(edges: .bottom)
+        )
+        .animation(.snappy(duration: 0.22), value: session.isPresented)
+    }
+
+    private var grabber: some View {
+        Button(action: togglePresentation) {
+            Capsule()
+                .fill(.secondary.opacity(0.42))
+                .frame(width: 36, height: 5)
+                .frame(maxWidth: .infinity)
+                .frame(height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("numberPad.grabber")
+        .accessibilityLabel(
+            session.isPresented
+                ? "Collapse keypad"
+                : "Expand keypad"
+        )
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 10)
+                .onEnded { value in
+                    guard value.translation.height > 24 else { return }
+                    collapse()
+                }
+        )
+    }
+
+    private var localeDecimalSeparator: String {
+        let formatter = NumberFormatter()
+        formatter.locale = AppLocalization.locale
+        return formatter.decimalSeparator ?? "."
+    }
+
+    private func togglePresentation() {
+        if session.isPresented {
+            collapse()
+        } else {
+            session.present(currentAmount: amount)
+            onFocusChanged?(true)
+        }
+    }
+
+    private func collapse() {
+        let dismissal = session.collapse(currentAmount: amount)
+        amount = dismissal.amount
+        onFocusChanged?(false)
+    }
+
+    private func handleNumberPadAction(_ action: CustomNumberPadAction) -> CustomNumberPadActionResult {
+        let mutation = session.perform(action, currentAmount: amount)
+        amount = mutation.amount
+
+        if mutation.didAcceptFirstInput {
+            onFirstUserInput?()
+        }
+
+        if mutation.didConfirm {
+            onFocusChanged?(false)
+            onConfirm?()
+        }
+
+        return mutation.result
     }
 }
 

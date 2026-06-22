@@ -193,6 +193,7 @@ struct TransactionEntrySheet: View {
     @State private var amountFieldFocusedAt: Date?
     @State private var categoryPresentationTrigger = 0
     @State private var accountPresentationTrigger = 0
+    @State private var amountInputSession = AmountInputSession()
     
     @State private var isSaving = false
     @State private var showError = false
@@ -309,6 +310,15 @@ struct TransactionEntrySheet: View {
                 Text(errorMessage)
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            DockedAmountNumberPad(
+                session: amountInputSession,
+                amount: $amount,
+                onFirstUserInput: handleFirstAmountInput,
+                onFocusChanged: handleAmountFieldFocusChanged,
+                onConfirm: handleAmountInputConfirmed
+            )
+        }
         .presentationDetents([.large])
     }
     
@@ -341,7 +351,8 @@ struct TransactionEntrySheet: View {
                         currencyCode: amountInputCurrencyCode,
                         autoFocus: existingTransaction == nil,
                         useGlassBackground: false,
-                        numberPadPresentation: .inline,
+                        numberPadPresentation: .docked,
+                        session: amountInputSession,
                         onFirstUserInput: handleFirstAmountInput,
                         onFocusChanged: handleAmountFieldFocusChanged,
                         onConfirm: handleAmountInputConfirmed
@@ -364,7 +375,8 @@ struct TransactionEntrySheet: View {
                     amount: $amount,
                     currencyCode: amountInputCurrencyCode,
                     autoFocus: existingTransaction == nil,
-                    numberPadPresentation: .inline,
+                    numberPadPresentation: .docked,
+                    session: amountInputSession,
                     onFirstUserInput: handleFirstAmountInput,
                     onFocusChanged: handleAmountFieldFocusChanged,
                     onConfirm: handleAmountInputConfirmed

@@ -2,7 +2,7 @@ import XCTest
 @testable import Flux
 
 final class TransactionEntryPresentationTests: XCTestCase {
-    func testNewTransactionAmountUsesInlineNumberPadPresentation() throws {
+    func testNewTransactionAmountUsesBottomDockedNumberPadPresentation() throws {
         let transactionSource = try sourceContents(
             at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
         )
@@ -10,9 +10,13 @@ final class TransactionEntryPresentationTests: XCTestCase {
             at: "Flux/Components/Inputs/AmountInputView.swift"
         )
 
-        XCTAssertTrue(transactionSource.contains("numberPadPresentation: .inline"))
+        XCTAssertTrue(transactionSource.contains("numberPadPresentation: .docked"))
+        XCTAssertTrue(transactionSource.contains("safeAreaInset(edge: .bottom"))
+        XCTAssertTrue(transactionSource.contains("DockedAmountNumberPad"))
         XCTAssertTrue(amountInputSource.contains("enum AmountNumberPadPresentation"))
-        XCTAssertTrue(amountInputSource.contains("case inline"))
+        XCTAssertTrue(amountInputSource.contains("case docked"))
+        XCTAssertTrue(amountInputSource.contains("numberPad.grabber"))
+        XCTAssertTrue(amountInputSource.contains("DragGesture"))
     }
 
     func testAmountInputKeepsSheetPresentationAsDefaultForOtherFlows() throws {

@@ -59,6 +59,7 @@ struct FluxApp: App {
                 guard newPhase == .active, let container else { return }
                 guard activationMaintenancePolicy.claimRun() else { return }
                 Task { @MainActor in
+                    try? await activationMaintenancePolicy.waitForInteractionGracePeriod()
                     await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)
                     runAutomaticBackupIfNeeded(in: container)
@@ -114,11 +115,14 @@ struct FluxApp: App {
             let newContainer = try await ModelContainer.createAndSeed(enableCloudKit: enableCloudKit)
             containerGeneration += 1
             container = newContainer
-            
+
+            isLoading = false
+
             if let container {
-                await requestNotificationAuthorizationIfNeeded(in: container)
                 activationMaintenancePolicy.recordRun()
                 Task { @MainActor in
+                    try? await activationMaintenancePolicy.waitForInteractionGracePeriod()
+                    await requestNotificationAuthorizationIfNeeded(in: container)
                     await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)
                     await refreshExchangeRatesIfNeeded(in: container)
@@ -126,7 +130,6 @@ struct FluxApp: App {
                 }
             }
             
-            isLoading = false
         } catch {
             container = previousContainer
             loadError = previousContainer == nil ? error : nil

@@ -152,8 +152,17 @@ final class FluxUITests: XCTestCase {
         tapElement(app.tabBars.buttons["Transactions"])
         tapElement(app.buttons["transactions.addButton"])
 
-        let inlineNumberPad = app.descendants(matching: .any)["numberPad.inline"]
-        XCTAssertTrue(inlineNumberPad.waitForExistence(timeout: 3))
+        let dockedNumberPad = app.descendants(matching: .any)["numberPad.docked"]
+        XCTAssertTrue(dockedNumberPad.waitForExistence(timeout: 3))
+
+        let grabber = app.buttons["numberPad.grabber"]
+        XCTAssertTrue(grabber.waitForExistence(timeout: 2))
+        tapElement(grabber)
+        XCTAssertTrue(dockedNumberPad.waitForNonExistence(timeout: 2))
+
+        let amountTrigger = app.buttons["amountInput.trigger"]
+        tapElement(amountTrigger)
+        XCTAssertTrue(dockedNumberPad.waitForExistence(timeout: 2))
 
         let confirmButton = keypadButton(in: app, label: "Confirm")
         XCTAssertTrue(confirmButton.waitForExistence(timeout: 10))
@@ -166,7 +175,6 @@ final class FluxUITests: XCTestCase {
         tapElement(keypadButton(in: app, label: "4"))
         tapElement(confirmButton)
 
-        let amountTrigger = app.buttons["amountInput.trigger"]
         XCTAssertTrue(amountTrigger.waitForExistence(timeout: 2))
         XCTAssertEqual(amountTrigger.value as? String, "24")
     }

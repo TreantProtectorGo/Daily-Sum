@@ -46,4 +46,14 @@ final class AppActivationMaintenancePolicyTests: XCTestCase {
         XCTAssertTrue(policy.claimRun(at: firstRun))
         XCTAssertTrue(policy.claimRun(at: firstRun.addingTimeInterval(15 * 60)))
     }
+
+    func testInteractionGracePeriodCanBeConfigured() {
+        let policy = AppActivationMaintenancePolicy(
+            defaults: defaults,
+            minimumInterval: 15 * 60,
+            interactionGracePeriod: .milliseconds(750)
+        )
+
+        XCTAssertEqual(policy.interactionGracePeriod, .milliseconds(750))
+    }
 }
