@@ -1,39 +1,11 @@
 import AppIntents
-import Foundation
 import SwiftUI
 import WidgetKit
-
-struct OpenDailySumControlIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Daily Sum"
-    static let supportedModes: IntentModes = .foreground(.immediate)
-
-    func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "dailysum://open")!))
-    }
-}
-
-struct AddExpenseControlIntent: AppIntent {
-    static let title: LocalizedStringResource = "Add Expense"
-    static let supportedModes: IntentModes = .foreground(.immediate)
-
-    func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "dailysum://transaction/expense")!))
-    }
-}
-
-struct AddIncomeControlIntent: AppIntent {
-    static let title: LocalizedStringResource = "Add Income"
-    static let supportedModes: IntentModes = .foreground(.immediate)
-
-    func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(URL(string: "dailysum://transaction/income")!))
-    }
-}
 
 struct OpenDailySumControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "com.dailysum.control.open") {
-            ControlWidgetButton(action: OpenDailySumControlIntent()) {
+            ControlWidgetButton(action: OpenDailySumControlIntent(target: .open)) {
                 Label("Open Daily Sum", systemImage: "wallet.bifold")
             }
         }
@@ -45,7 +17,7 @@ struct OpenDailySumControl: ControlWidget {
 struct AddExpenseControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "com.dailysum.control.expense") {
-            ControlWidgetButton(action: AddExpenseControlIntent()) {
+            ControlWidgetButton(action: OpenDailySumControlIntent(target: .expense)) {
                 Label("Add Expense", systemImage: "minus.circle")
             }
         }
@@ -57,7 +29,7 @@ struct AddExpenseControl: ControlWidget {
 struct AddIncomeControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "com.dailysum.control.income") {
-            ControlWidgetButton(action: AddIncomeControlIntent()) {
+            ControlWidgetButton(action: OpenDailySumControlIntent(target: .income)) {
                 Label("Add Income", systemImage: "plus.circle")
             }
         }

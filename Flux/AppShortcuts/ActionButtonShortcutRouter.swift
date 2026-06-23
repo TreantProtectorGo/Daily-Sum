@@ -44,4 +44,15 @@ final class ActionButtonShortcutRouter {
             requestTransactionEntry(type: type)
         }
     }
+
+    func handle(_ destination: DailySumControlDestination) {
+        switch destination {
+        case .open:
+            break
+        case .expense:
+            requestTransactionEntry(type: .expense)
+        case .income:
+            requestTransactionEntry(type: .income)
+        }
+    }
 }

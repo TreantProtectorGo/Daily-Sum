@@ -74,6 +74,11 @@
 			path = DailySumControls;
 			sourceTree = "<group>";
 		};
+		C0DA000F2F50000000C0DA0F /* SharedAppIntents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SharedAppIntents;
+			sourceTree = "<group>";
+		};
 		D1473B7F2F39023C00F93BDF /* Flux */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Flux;
@@ -128,6 +133,7 @@
 			children = (
 				D1473B7F2F39023C00F93BDF /* Flux */,
 				C0DA00042F50000000C0DA04 /* DailySumControls */,
+				C0DA000F2F50000000C0DA0F /* SharedAppIntents */,
 				D1473B8F2F39023D00F93BDF /* FluxTests */,
 				D1473B992F39023D00F93BDF /* FluxUITests */,
 				D1473B7E2F39023C00F93BDF /* Products */,
@@ -162,6 +168,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				C0DA00042F50000000C0DA04 /* DailySumControls */,
+				C0DA000F2F50000000C0DA0F /* SharedAppIntents */,
 			);
 			name = DailySumControls;
 			packageProductDependencies = (
@@ -186,6 +193,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				D1473B7F2F39023C00F93BDF /* Flux */,
+				C0DA000F2F50000000C0DA0F /* SharedAppIntents */,
 			);
 			name = Flux;
 			packageProductDependencies = (

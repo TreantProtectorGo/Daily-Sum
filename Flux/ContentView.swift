@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import AppIntents
 
 struct ContentView: View {
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
@@ -20,6 +21,9 @@ struct ContentView: View {
             }
             .onOpenURL { url in
                 shortcutRouter.handle(url)
+            }
+            .onAppIntentExecution(OpenDailySumControlIntent.self) { intent in
+                shortcutRouter.handle(intent.target)
             }
     }
 }

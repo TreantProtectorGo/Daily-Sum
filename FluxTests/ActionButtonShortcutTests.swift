@@ -14,20 +14,23 @@ final class ActionButtonShortcutTests: XCTestCase {
         XCTAssertTrue(source.contains("com.dailysum.control.open"))
         XCTAssertTrue(source.contains("com.dailysum.control.expense"))
         XCTAssertTrue(source.contains("com.dailysum.control.income"))
-        XCTAssertTrue(source.contains("dailysum://open"))
-        XCTAssertTrue(source.contains("dailysum://transaction/expense"))
-        XCTAssertTrue(source.contains("dailysum://transaction/income"))
+        XCTAssertTrue(source.contains("OpenDailySumControlIntent(target: .open)"))
+        XCTAssertTrue(source.contains("OpenDailySumControlIntent(target: .expense)"))
+        XCTAssertTrue(source.contains("OpenDailySumControlIntent(target: .income)"))
     }
 
-    func testControlWidgetsUseForegroundAppIntentsInsteadOfDirectURLIntents() throws {
+    func testControlWidgetsUseSharedOpenIntentInsteadOfURLHandoff() throws {
         let source = try sourceContents(at: "DailySumControls/DailySumControls.swift")
+        let sharedIntentSource = try sourceContents(at: "SharedAppIntents/DailySumControlIntents.swift")
+        let contentViewSource = try sourceContents(at: "Flux/ContentView.swift")
 
         XCTAssertFalse(source.contains("ControlWidgetButton(action: OpenURLIntent"))
-        XCTAssertEqual(source.components(separatedBy: ".foreground(.immediate)").count - 1, 3)
-        XCTAssertEqual(source.components(separatedBy: ".result(opensIntent: OpenURLIntent(").count - 1, 3)
-        XCTAssertTrue(source.contains("ControlWidgetButton(action: OpenDailySumControlIntent())"))
-        XCTAssertTrue(source.contains("ControlWidgetButton(action: AddExpenseControlIntent())"))
-        XCTAssertTrue(source.contains("ControlWidgetButton(action: AddIncomeControlIntent())"))
+        XCTAssertFalse(source.contains("OpenURLIntent("))
+        XCTAssertFalse(source.contains("dailysum://"))
+        XCTAssertTrue(sharedIntentSource.contains("struct OpenDailySumControlIntent: OpenIntent, TargetContentProvidingIntent"))
+        XCTAssertTrue(sharedIntentSource.contains("@Parameter(title: \"Action\")"))
+        XCTAssertTrue(contentViewSource.contains(".onAppIntentExecution(OpenDailySumControlIntent.self)"))
+        XCTAssertTrue(contentViewSource.contains("shortcutRouter.handle(intent.target)"))
     }
 
     func testControlWidgetExtensionIsEmbeddedInApp() throws {
@@ -39,6 +42,28 @@ final class ActionButtonShortcutTests: XCTestCase {
         XCTAssertTrue(project.contains("Wing.Flux.DailySumControls"))
         XCTAssertTrue(project.contains("Embed App Extensions"))
         XCTAssertTrue(infoPlist.contains("com.apple.widgetkit-extension"))
+    }
+
+    func testSharedControlIntentIsAvailableToAppAndExtensionTargets() throws {
+        let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
+
+        XCTAssertTrue(project.contains("SharedAppIntents"))
+        XCTAssertTrue(
+            project.contains(
+                "\t\t\tfileSystemSynchronizedGroups = (\n" +
+                "\t\t\t\tC0DA00042F50000000C0DA04 /* DailySumControls */,\n" +
+                "\t\t\t\tC0DA000F2F50000000C0DA0F /* SharedAppIntents */,\n" +
+                "\t\t\t);"
+            )
+        )
+        XCTAssertTrue(
+            project.contains(
+                "\t\t\tfileSystemSynchronizedGroups = (\n" +
+                "\t\t\t\tD1473B7F2F39023C00F93BDF /* Flux */,\n" +
+                "\t\t\t\tC0DA000F2F50000000C0DA0F /* SharedAppIntents */,\n" +
+                "\t\t\t);"
+            )
+        )
     }
 
     func testControlWidgetExtensionVersionMatchesContainingApp() throws {
