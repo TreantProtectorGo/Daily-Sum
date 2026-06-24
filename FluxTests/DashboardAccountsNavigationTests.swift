@@ -52,6 +52,24 @@ final class DashboardAccountsNavigationTests: XCTestCase {
         XCTAssertFalse(source.contains("viewModel.monthlyExpenses"))
     }
 
+    func testDashboardFooterViewAllLinksShareLabelAndBudgetNavigation() throws {
+        let dashboardSource = try sourceContents(at: "Flux/Views/DashboardView.swift")
+        let mainTabSource = try sourceContents(at: "Flux/Views/MainTabView.swift")
+
+        XCTAssertTrue(dashboardSource.contains("private struct DashboardViewAllFooterLink"))
+        XCTAssertTrue(dashboardSource.contains("private struct DashboardViewAllFooterLabel"))
+        XCTAssertTrue(dashboardSource.contains("DashboardViewAllFooterLink(action: onViewAllTransactions)"))
+        XCTAssertTrue(dashboardSource.contains("DashboardViewAllFooterLink(action: onViewAllBudgets)"))
+        XCTAssertTrue(dashboardSource.contains("dashboard.budgets.viewAll"))
+        XCTAssertTrue(dashboardSource.contains("dashboard.viewAll\", defaultValue: \"View All\""))
+        XCTAssertTrue(dashboardSource.contains("Image(systemName: \"chevron.right\")"))
+        XCTAssertFalse(dashboardSource.contains("dashboard.viewAllInReports"))
+        XCTAssertFalse(dashboardSource.contains("Image(systemName: \"arrow.right\")"))
+
+        XCTAssertTrue(mainTabSource.contains("onViewAllBudgets:"))
+        XCTAssertTrue(mainTabSource.contains("selectedTabBinding.wrappedValue = .budgets"))
+    }
+
     func testDashboardTabUsesHomeLabel() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -115,5 +133,18 @@ final class DashboardAccountsNavigationTests: XCTestCase {
         XCTAssertTrue(source.contains(".frame(height: isCompact ? 44 : 180)"))
         XCTAssertTrue(source.contains(".accessibilityIdentifier(\"dashboard.totalBalance.card\")"))
         XCTAssertTrue(source.contains(".accessibilityIdentifier(\"dashboard.balanceTrend.chart\")"))
+    }
+
+    private var repositoryURL: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+
+    private func sourceContents(at relativePath: String) throws -> String {
+        try String(
+            contentsOf: repositoryURL.appending(path: relativePath),
+            encoding: .utf8
+        )
     }
 }

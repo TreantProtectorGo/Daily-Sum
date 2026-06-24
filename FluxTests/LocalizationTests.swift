@@ -260,7 +260,7 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             localizedStringValue(key: "dashboard.viewAllInReports", locale: "en"),
-            "View all in Reports"
+            "View All"
         )
         XCTAssertEqual(
             localizedStringValue(key: "schedule.reminder.title", locale: "en"),

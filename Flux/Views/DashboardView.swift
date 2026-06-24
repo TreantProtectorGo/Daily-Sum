@@ -6,6 +6,7 @@ struct DashboardView: View {
     @State private var viewModel: DashboardViewModel?
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
     let onViewAllTransactions: (() -> Void)?
+    let onViewAllBudgets: (() -> Void)?
     
     @State private var showAddTransaction = false
     @State private var showAddAccount = false
@@ -14,8 +15,12 @@ struct DashboardView: View {
     @State private var selectedTransaction: TransactionEditorSelection?
     @State private var selectedBudget: Budget?
 
-    init(onViewAllTransactions: (() -> Void)? = nil) {
+    init(
+        onViewAllTransactions: (() -> Void)? = nil,
+        onViewAllBudgets: (() -> Void)? = nil
+    ) {
         self.onViewAllTransactions = onViewAllTransactions
+        self.onViewAllBudgets = onViewAllBudgets
     }
 
     private var displayCurrencyCode: String {
@@ -197,9 +202,7 @@ struct DashboardView: View {
                     
                     if viewModel.recentTransactionRows.count > 5 {
                         if let onViewAllTransactions {
-                            Button(action: onViewAllTransactions) {
-                                recentTransactionsViewAllLabel
-                            }
+                            DashboardViewAllFooterLink(action: onViewAllTransactions)
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("dashboard.recentTransactions.viewAll")
                             .padding(.top, 4)
@@ -207,7 +210,7 @@ struct DashboardView: View {
                             NavigationLink {
                                 TransactionListView()
                             } label: {
-                                recentTransactionsViewAllLabel
+                                DashboardViewAllFooterLabel()
                             }
                             .accessibilityIdentifier("dashboard.recentTransactions.viewAll")
                             .padding(.top, 4)
@@ -227,15 +230,6 @@ struct DashboardView: View {
         }
     }
 
-    private var recentTransactionsViewAllLabel: some View {
-        HStack {
-            Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
-            Image(systemName: "chevron.right")
-        }
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-    }
-    
     // MARK: - Budget Overview Section
     
     @ViewBuilder
@@ -254,13 +248,20 @@ struct DashboardView: View {
                         }
                     }
                     
-                    HStack {
-                        Text(AppLocalization.string("dashboard.viewAllInReports", defaultValue: "View all in Reports tab"))
-                        Image(systemName: "arrow.right")
+                    if let onViewAllBudgets {
+                        DashboardViewAllFooterLink(action: onViewAllBudgets)
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("dashboard.budgets.viewAll")
+                            .padding(.top, 4)
+                    } else {
+                        NavigationLink {
+                            ReportsView(initialTab: .budgets, showsTabPicker: false)
+                        } label: {
+                            DashboardViewAllFooterLabel()
+                        }
+                        .accessibilityIdentifier("dashboard.budgets.viewAll")
+                        .padding(.top, 4)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 4)
                 }
             } else {
                 GlassEmptyState(
@@ -273,6 +274,27 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+}
+
+private struct DashboardViewAllFooterLink: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            DashboardViewAllFooterLabel()
+        }
+    }
+}
+
+private struct DashboardViewAllFooterLabel: View {
+    var body: some View {
+        HStack {
+            Text(AppLocalization.string("dashboard.viewAll", defaultValue: "View All"))
+            Image(systemName: "chevron.right")
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
     }
 }
 

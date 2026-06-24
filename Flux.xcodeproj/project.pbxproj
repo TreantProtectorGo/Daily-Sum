@@ -192,8 +192,8 @@
 				C0DA000A2F50000000C0DA0A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D1473B7F2F39023C00F93BDF /* Flux */,
 				C0DA000F2F50000000C0DA0F /* SharedAppIntents */,
+				D1473B7F2F39023C00F93BDF /* Flux */,
 			);
 			name = Flux;
 			packageProductDependencies = (

@@ -23,9 +23,14 @@ struct MainTabView: View {
                 systemImage: "house.fill",
                 value: .dashboard
             ) {
-                DashboardView {
-                    selectedTabBinding.wrappedValue = .transactions
-                }
+                DashboardView(
+                    onViewAllTransactions: {
+                        selectedTabBinding.wrappedValue = .transactions
+                    },
+                    onViewAllBudgets: {
+                        selectedTabBinding.wrappedValue = .budgets
+                    }
+                )
             }
             
             Tab(
