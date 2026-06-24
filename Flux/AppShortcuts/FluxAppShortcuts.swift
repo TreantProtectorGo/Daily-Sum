@@ -16,7 +16,7 @@ struct AddExpenseIntent: AppIntent {
     static let supportedModes: IntentModes = .foreground(.immediate)
 
     func perform() async throws -> some IntentResult {
-        await ActionButtonShortcutRouter.shared.requestTransactionEntry(type: .expense)
+        await DailySumControlIntentRouter.shared.request(.expense)
         return .result()
     }
 }
@@ -27,7 +27,7 @@ struct AddIncomeIntent: AppIntent {
     static let supportedModes: IntentModes = .foreground(.immediate)
 
     func perform() async throws -> some IntentResult {
-        await ActionButtonShortcutRouter.shared.requestTransactionEntry(type: .income)
+        await DailySumControlIntentRouter.shared.request(.income)
         return .result()
     }
 }

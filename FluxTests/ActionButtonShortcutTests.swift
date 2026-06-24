@@ -83,6 +83,14 @@ final class ActionButtonShortcutTests: XCTestCase {
         XCTAssertFalse(source.contains("Open Flux and"))
     }
 
+    func testShortcutIntentsUseSameFastForegroundRouterAsControls() throws {
+        let source = try sourceContents(at: "Flux/AppShortcuts/FluxAppShortcuts.swift")
+
+        XCTAssertFalse(source.contains("ActionButtonShortcutRouter.shared.requestTransactionEntry"))
+        XCTAssertTrue(source.contains("DailySumControlIntentRouter.shared.request(.expense)"))
+        XCTAssertTrue(source.contains("DailySumControlIntentRouter.shared.request(.income)"))
+    }
+
     func testBundleNameUsesPublicAppNameAcrossLanguages() throws {
         let data = try Data(contentsOf: repositoryURL.appending(path: "Flux/Resources/InfoPlist.xcstrings"))
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
