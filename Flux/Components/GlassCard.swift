@@ -150,7 +150,7 @@ struct GlassSectionHeader<Trailing: View>: View {
                 if let systemImage {
                     Image(systemName: systemImage)
                         .font(.subheadline)
-                        .foregroundStyle(AppColors.sectionAccent)
+                        .foregroundStyle(AppColors.UI.sectionAccent)
                 }
                 Text(title)
                     .font(.headline)
@@ -173,7 +173,7 @@ struct GlassSectionHeader<Trailing: View>: View {
 
     private var sectionMarker: some View {
         RoundedRectangle(cornerRadius: 2, style: .continuous)
-            .fill(AppColors.sectionAccent)
+            .fill(AppColors.UI.sectionAccent)
             .frame(width: 3, height: 18)
     }
 
@@ -274,7 +274,7 @@ struct GlassProminentButton: View {
 struct GlassDivider: View {
     var body: some View {
         Rectangle()
-            .fill(AppColors.glassBorder)
+            .fill(AppColors.UI.glassBorder)
             .frame(height: 0.5)
     }
 }

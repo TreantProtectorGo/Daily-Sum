@@ -264,7 +264,7 @@ struct ReportsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.down.circle.fill")
-                                .foregroundStyle(AppColors.income)
+                                .foregroundStyle(AppColors.Finance.income)
                             Text(AppLocalization.string("reports.totalIncome", defaultValue: "Total Income"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -284,7 +284,7 @@ struct ReportsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.up.circle.fill")
-                                .foregroundStyle(AppColors.expense)
+                                .foregroundStyle(AppColors.Finance.expense)
                             Text(AppLocalization.string("reports.totalExpenses", defaultValue: "Total Expenses"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -332,7 +332,7 @@ struct ReportsView: View {
                             Text(viewModel.savingsRate, format: .number.precision(.fractionLength(1)))
                                 .font(.title3)
                                 .fontWeight(.bold)
-                                .foregroundStyle(viewModel.savingsRate >= 0 ? AppColors.income : AppColors.expense)
+                                .foregroundStyle(viewModel.savingsRate >= 0 ? AppColors.Finance.income : AppColors.Finance.expense)
                             Text("%")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -542,7 +542,7 @@ struct ReportsView: View {
                             .fill(Color.secondary.opacity(0.2))
                         
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(AppColors.budgetProgressColor(for: viewModel.overallProgress))
+                            .fill(AppColors.Budget.progressColor(for: viewModel.overallProgress))
                             .frame(width: min(geometry.size.width * CGFloat(viewModel.overallProgress), geometry.size.width))
                     }
                 }
@@ -552,7 +552,7 @@ struct ReportsView: View {
                     budgetStatBadge(
                         value: viewModel.budgetsOverLimit,
                         label: AppLocalization.string("budgets.overLimit", defaultValue: "Over Limit"),
-                        color: AppColors.budgetDanger
+                        color: AppColors.Budget.danger
                     )
                     
                     Spacer()
@@ -560,7 +560,7 @@ struct ReportsView: View {
                     budgetStatBadge(
                         value: viewModel.budgetsNearLimit,
                         label: AppLocalization.string("budgets.nearLimit", defaultValue: "Near Limit"),
-                        color: AppColors.budgetWarning
+                        color: AppColors.Budget.warning
                     )
                     
                     Spacer()
@@ -568,7 +568,7 @@ struct ReportsView: View {
                     budgetStatBadge(
                         value: viewModel.activeBudgets.count - viewModel.budgetsOverLimit - viewModel.budgetsNearLimit,
                         label: AppLocalization.string("budgets.onTrack", defaultValue: "On Track"),
-                        color: AppColors.budgetSafe
+                        color: AppColors.Budget.safe
                     )
                 }
             }
@@ -976,7 +976,7 @@ struct MonthlyTrendRow: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(currency: trend.income, code: currencyCode)
                     .font(.subheadline)
-                    .foregroundStyle(AppColors.income)
+                    .foregroundStyle(AppColors.Finance.income)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                     .allowsTightening(true)
@@ -989,7 +989,7 @@ struct MonthlyTrendRow: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(currency: trend.expenses, code: currencyCode)
                     .font(.subheadline)
-                    .foregroundStyle(AppColors.expense)
+                    .foregroundStyle(AppColors.Finance.expense)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                     .allowsTightening(true)

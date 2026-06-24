@@ -71,7 +71,7 @@ struct MainTabView: View {
             }
         }
         .tabViewSearchActivation(.searchTabSelection)
-        .tint(AppColors.selectedNavigation)
+        .tint(AppColors.UI.selectedNavigation)
     }
 }
 

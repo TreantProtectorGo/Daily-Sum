@@ -98,7 +98,7 @@ struct BudgetProgressView: View {
     }
     
     private var progressColor: Color {
-        AppColors.budgetProgressColor(for: progress)
+        AppColors.Budget.progressColor(for: progress)
     }
     
     private var statusText: String {
@@ -147,7 +147,7 @@ struct CompactBudgetProgress: View {
                         .fill(Color.secondary.opacity(0.2))
                     
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(AppColors.budgetProgressColor(for: progress))
+                        .fill(AppColors.Budget.progressColor(for: progress))
                         .frame(width: min(geometry.size.width * CGFloat(progress), geometry.size.width))
                 }
             }
@@ -156,7 +156,7 @@ struct CompactBudgetProgress: View {
             // Percentage
             Text("\(Int(progress * 100))%")
                 .font(.caption)
-                .foregroundStyle(AppColors.budgetProgressColor(for: progress))
+                .foregroundStyle(AppColors.Budget.progressColor(for: progress))
                 .frame(width: 40, alignment: .trailing)
         }
     }

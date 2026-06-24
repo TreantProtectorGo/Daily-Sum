@@ -59,9 +59,9 @@ enum BalanceTrendPolarity: Equatable {
     var color: Color {
         switch self {
         case .positive:
-            AppColors.income
+            AppColors.Finance.income
         case .negative:
-            AppColors.expense
+            AppColors.Finance.expense
         }
     }
 }
@@ -394,7 +394,7 @@ struct BalanceOverviewCard: View {
     }
 
     private var trendColor: Color {
-        summary.change < 0 ? AppColors.expense : AppColors.income
+        summary.change < 0 ? AppColors.Finance.expense : AppColors.Finance.income
     }
 
     private var chartPoints: [BalanceTrendChartPoint] {
@@ -661,11 +661,11 @@ struct BalanceOverviewCard: View {
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .frame(height: 34)
-                        .foregroundStyle(selectedRange == range ? AppColors.selectedNavigation : .secondary)
+                        .foregroundStyle(selectedRange == range ? AppColors.UI.selectedNavigation : .secondary)
                         .background {
                             if selectedRange == range {
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(AppColors.selectedNavigation.opacity(0.12))
+                                    .fill(AppColors.UI.selectedNavigation.opacity(0.12))
                             }
                         }
                 }

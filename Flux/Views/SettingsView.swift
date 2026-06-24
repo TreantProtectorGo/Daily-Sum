@@ -141,7 +141,7 @@ struct SettingsView: View {
                         .tag(account.id as UUID?)
                 }
             }
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
             
             Toggle(
                 AppLocalization.string("settings.rememberLastAccount", defaultValue: "Remember Last Used Account"),
@@ -150,7 +150,7 @@ struct SettingsView: View {
                     set: { viewModel.rememberLastUsedAccount = $0 }
                 )
             )
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
 
             Toggle(
                 AppLocalization.string(
@@ -162,7 +162,7 @@ struct SettingsView: View {
                     set: { viewModel.autoPresentAccountAfterCategorySelection = $0 }
                 )
             )
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
         } header: {
             Text(AppLocalization.string("settings.transactionDefaults", defaultValue: "Transaction Defaults"))
         } footer: {
@@ -204,7 +204,7 @@ struct SettingsView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .foregroundStyle(AppColors.interactiveText)
+            .foregroundStyle(AppColors.UI.interactiveText)
 
             Button {
                 showExchangeCalculator = true
@@ -216,7 +216,7 @@ struct SettingsView: View {
                         )
                 )
             }
-            .foregroundStyle(AppColors.interactiveText)
+            .foregroundStyle(AppColors.UI.interactiveText)
         }
     }
 
@@ -252,7 +252,7 @@ struct SettingsView: View {
                     Image(systemName: "chevron.up.chevron.down")
                         .imageScale(.small)
                 }
-                .foregroundStyle(AppColors.interactiveText)
+                .foregroundStyle(AppColors.UI.interactiveText)
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -293,7 +293,7 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
             .accessibilityIdentifier("settings.theme.picker")
         } header: {
             Text(AppLocalization.string("settings.theme", defaultValue: "Appearance"))
@@ -317,7 +317,7 @@ struct SettingsView: View {
                     .tag(language)
             }
         }
-        .tint(AppColors.interactiveText)
+        .tint(AppColors.UI.interactiveText)
     }
 
     private func defaultLaunchPagePicker(viewModel: SettingsViewModel) -> some View {
@@ -333,7 +333,7 @@ struct SettingsView: View {
                     .tag(tab)
             }
         }
-        .tint(AppColors.interactiveText)
+        .tint(AppColors.UI.interactiveText)
         .accessibilityIdentifier("settings.defaultLaunchPage.picker")
     }
 
@@ -352,7 +352,7 @@ struct SettingsView: View {
                 }
             )
         )
-        .tint(AppColors.interactiveText)
+        .tint(AppColors.UI.interactiveText)
     }
 
     private func categoryRowsPicker(viewModel: SettingsViewModel) -> some View {
@@ -371,7 +371,7 @@ struct SettingsView: View {
                     .tag(rowLimit)
             }
         }
-        .tint(AppColors.interactiveText)
+        .tint(AppColors.UI.interactiveText)
     }
 
     // MARK: - Data Summary Section
@@ -409,7 +409,7 @@ struct SettingsView: View {
         HStack {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
-                    .foregroundStyle(AppColors.mutedDataIcon)
+                    .foregroundStyle(AppColors.UI.dataIcon)
                     .frame(width: 20, alignment: .center)
 
                 Text(label)
@@ -437,7 +437,7 @@ struct SettingsView: View {
                     set: { viewModel.isCloudSyncEnabled = $0 }
                 )
             )
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
             .disabled(cloudSyncRequiresAttention)
             .opacity(cloudSyncRequiresAttention ? 0.5 : 1)
             .saturation(cloudSyncRequiresAttention ? 0 : 1)
@@ -463,7 +463,7 @@ struct SettingsView: View {
                         .tag(frequency)
                 }
             }
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
             .accessibilityIdentifier("settings.backup.automatic.picker")
 
             Picker(
@@ -481,7 +481,7 @@ struct SettingsView: View {
                         .tag(limit)
                 }
             }
-            .tint(AppColors.interactiveText)
+            .tint(AppColors.UI.interactiveText)
             .accessibilityIdentifier("settings.backup.retention.picker")
 
             Button {
@@ -494,7 +494,7 @@ struct SettingsView: View {
                     )
                 )
             }
-            .foregroundStyle(AppColors.interactiveText)
+            .foregroundStyle(AppColors.UI.interactiveText)
             .accessibilityIdentifier("settings.backup.sheet.button")
 
             Text(
@@ -529,7 +529,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .foregroundStyle(AppColors.interactiveText)
+            .foregroundStyle(AppColors.UI.interactiveText)
             .disabled(viewModel.isExportingTransactionsCSV || csvShareItem != nil)
             .accessibilityIdentifier("settings.csvExport.button")
 
@@ -593,7 +593,7 @@ struct SettingsView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .foregroundStyle(AppColors.interactiveText)
+            .foregroundStyle(AppColors.UI.interactiveText)
             .accessibilityIdentifier("settings.privacyPolicy.link")
         }
     }
@@ -647,7 +647,7 @@ private struct ManagedBackupSheet: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(isBackupButtonDisabled ? Color.secondary : AppColors.primary)
+                    .foregroundStyle(isBackupButtonDisabled ? Color.secondary : AppColors.Brand.primary)
                     .disabled(isBackupButtonDisabled)
                     .accessibilityIdentifier("settings.backup.export.button")
 
@@ -881,7 +881,7 @@ private struct TravelCurrencySettingsSheet: View {
                             }
                         )
                     )
-                    .tint(AppColors.interactiveText)
+                    .tint(AppColors.UI.interactiveText)
 
                     Picker(
                         AppLocalization.string(
@@ -913,7 +913,7 @@ private struct TravelCurrencySettingsSheet: View {
                         )
                         .tag(TravelCurrencySource.manual)
                     }
-                    .tint(AppColors.interactiveText)
+                    .tint(AppColors.UI.interactiveText)
                     .disabled(!viewModel.isTravelCurrencyModeEnabled)
 
                     HStack {
@@ -944,7 +944,7 @@ private struct TravelCurrencySettingsSheet: View {
                         }
                         .foregroundStyle(
                             viewModel.isTravelCurrencyModeEnabled
-                                ? AppColors.interactiveText
+                                ? AppColors.UI.interactiveText
                                 : .secondary
                         )
                         .disabled(!viewModel.isTravelCurrencyModeEnabled)
@@ -993,7 +993,7 @@ private struct TravelCurrencySettingsSheet: View {
                                     .tag(Optional(currency.rawValue))
                             }
                         }
-                        .tint(AppColors.interactiveText)
+                        .tint(AppColors.UI.interactiveText)
                         .disabled(!viewModel.isTravelCurrencyModeEnabled)
                     }
                 } footer: {

@@ -156,11 +156,11 @@ extension AccountType {
     
     var color: Color {
         switch self {
-        case .cash: AppColors.accountCash
-        case .bank: AppColors.accountBank
-        case .creditCard: AppColors.accountCreditCard
-        case .eWallet: AppColors.accountEWallet
-        case .investment: AppColors.accountInvestment
+        case .cash: AppColors.Account.cash
+        case .bank: AppColors.Account.bank
+        case .creditCard: AppColors.Account.creditCard
+        case .eWallet: AppColors.Account.eWallet
+        case .investment: AppColors.Account.investment
         }
     }
 }

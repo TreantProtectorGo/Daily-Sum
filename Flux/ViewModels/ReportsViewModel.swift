@@ -91,11 +91,11 @@ final class ReportsViewModel {
         var color: Color {
             switch self {
             case .income:
-                AppColors.income
+                AppColors.Finance.income
             case .expenses:
-                AppColors.expense
+                AppColors.Finance.expense
             case .net:
-                AppColors.transfer
+                AppColors.Finance.transfer
             }
         }
 

@@ -366,7 +366,7 @@ struct CustomNumberPad: View {
         case .accent:
             return Color.accentColor.opacity(0.88)
         case .inverse:
-            return AppColors.onPrimary
+            return AppColors.Brand.onPrimary
         }
     }
 

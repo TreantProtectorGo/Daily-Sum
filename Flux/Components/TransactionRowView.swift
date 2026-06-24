@@ -244,8 +244,8 @@ struct TransactionTypeBadge: View {
 extension TransactionType {
     var color: Color {
         switch self {
-        case .income: AppColors.income
-        case .expense: AppColors.expense
+        case .income: AppColors.Finance.income
+        case .expense: AppColors.Finance.expense
         }
     }
     
