@@ -207,9 +207,7 @@ struct DefaultDataSeeder {
         let accountTypeMap = try accountTypeDefinitionsByLegacyType()
         
         let defaultAccounts: [(name: String, type: AccountType)] = [
-            ("Cash", .cash),
-            ("Bank Account", .bank),
-            ("Credit Card", .creditCard)
+            ("Cash", .cash)
         ]
         
         for item in defaultAccounts {

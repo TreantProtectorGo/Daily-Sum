@@ -111,9 +111,28 @@ final class BackupFileStoreTests: XCTestCase {
 
         XCTAssertFalse(manualSummary.isAutomatic)
         XCTAssertTrue(automaticSummary.isAutomatic)
-        XCTAssertTrue(automaticSummary.filename.hasPrefix("Flux_Auto_"))
+        XCTAssertTrue(manualSummary.filename.hasPrefix("DailySum_"))
+        XCTAssertTrue(automaticSummary.filename.hasPrefix("DailySum_Auto_"))
         XCTAssertEqual(listedBackups.first?.backupKind, .automatic)
         XCTAssertEqual(listedBackups.last?.backupKind, .manual)
+    }
+
+    func testLegacyFluxAutomaticBackupFilenameStillReadsAsAutomatic() throws {
+        let archive = Self.makeArchive(
+            archiveId: UUID(uuidString: "10101010-1010-1010-1010-101010101010")!,
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            accounts: 1,
+            transactions: 1
+        )
+        let encoded = try BackupArchiveCodec.encode(archive)
+        let legacyURL = temporaryDirectory.appendingPathComponent("Flux_Auto_20260416_152151.json")
+        try encoded.write(to: legacyURL)
+        let store = BackupFileStore(directory: temporaryDirectory)
+
+        let listedBackups = try store.listBackups()
+
+        XCTAssertEqual(listedBackups.first?.filename, legacyURL.lastPathComponent)
+        XCTAssertEqual(listedBackups.first?.backupKind, .automatic)
     }
 
     func testBackupFileDisplayFormatterUsesReadableDateInsteadOfTechnicalFilename() throws {

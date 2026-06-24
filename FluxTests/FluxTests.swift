@@ -1281,7 +1281,7 @@ final class FluxTests: XCTestCase {
     }
     
     @MainActor
-    func testDefaultDataSeederCreatesDefaultAccountsWhenNoneExist() async throws {
+    func testDefaultDataSeederCreatesOnlyStarterCashAccountWhenNoneExist() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
         let seeder = DefaultDataSeeder(context: context)
@@ -1291,12 +1291,12 @@ final class FluxTests: XCTestCase {
         try await seeder.seedIfNeeded()
         
         let accounts = try context.fetch(FetchDescriptor<Account>())
-        XCTAssertEqual(accounts.count, 3)
+        XCTAssertEqual(accounts.count, 1)
         
         let names = Set(accounts.map(\.name))
         XCTAssertTrue(names.contains("Cash"))
-        XCTAssertTrue(names.contains("Bank Account"))
-        XCTAssertTrue(names.contains("Credit Card"))
+        XCTAssertFalse(names.contains("Bank Account"))
+        XCTAssertFalse(names.contains("Credit Card"))
     }
 
     @MainActor
@@ -1524,8 +1524,8 @@ final class FluxTests: XCTestCase {
         try await seeder.seedIfNeeded()
         let secondCount = try context.fetchCount(FetchDescriptor<Account>())
         
-        XCTAssertEqual(firstCount, 3)
-        XCTAssertEqual(secondCount, 3)
+        XCTAssertEqual(firstCount, 1)
+        XCTAssertEqual(secondCount, 1)
     }
 
     @MainActor

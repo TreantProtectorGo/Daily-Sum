@@ -255,12 +255,15 @@ final class BackupFileStore: BackupFileStoring {
     }
 
     private func makeFilename(exportedAt: Date, kind: BackupFileKind) -> String {
-        let prefix = kind == .automatic ? "Flux_Auto" : "Flux"
+        let prefix = kind == .automatic ? "DailySum_Auto" : "DailySum"
         return "\(prefix)_\(Self.filenameDateFormatter.string(from: exportedAt)).json"
     }
 
     private func backupKind(for fileURL: URL) -> BackupFileKind {
-        fileURL.lastPathComponent.hasPrefix("Flux_Auto_") ? .automatic : .manual
+        let filename = fileURL.lastPathComponent
+        return filename.hasPrefix("DailySum_Auto_") || filename.hasPrefix("Flux_Auto_")
+            ? .automatic
+            : .manual
     }
 
     private func uniqueFileURL(in directory: URL, filename: String) -> URL {
