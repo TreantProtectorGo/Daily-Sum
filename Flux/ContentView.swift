@@ -7,11 +7,11 @@
 
 import SwiftUI
 import SwiftData
-import AppIntents
 
 struct ContentView: View {
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
     @State private var shortcutRouter = ActionButtonShortcutRouter.shared
+    @State private var controlIntentRouter = DailySumControlIntentRouter.shared
     
     var body: some View {
         MainTabView()
@@ -22,9 +22,23 @@ struct ContentView: View {
             .onOpenURL { url in
                 shortcutRouter.handle(url)
             }
-            .onAppIntentExecution(OpenDailySumControlIntent.self) { intent in
-                shortcutRouter.handle(intent.target)
+            .onAppear {
+                consumePendingControlIntentDestination()
             }
+            .onChange(of: controlIntentRouter.pendingDestination?.id) { _, _ in
+                consumePendingControlIntentDestination()
+            }
+    }
+
+    private func consumePendingControlIntentDestination() {
+        guard let pendingDestination = controlIntentRouter.pendingDestination else { return }
+
+        handleControlIntentDestination(pendingDestination.destination)
+        controlIntentRouter.clearPendingDestination()
+    }
+
+    private func handleControlIntentDestination(_ destination: DailySumControlDestination) {
+        shortcutRouter.handle(destination)
     }
 }
 

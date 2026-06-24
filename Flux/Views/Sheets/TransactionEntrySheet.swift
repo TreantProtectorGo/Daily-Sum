@@ -172,6 +172,7 @@ struct TransactionEntrySheet: View {
     @Environment(\.dismiss) private var dismiss
     
     private let existingTransactionID: UUID?
+    private let initialTransactionType: TransactionType
     private let onSave: () -> Void
     @State private var existingTransaction: Transaction?
     
@@ -213,14 +214,16 @@ struct TransactionEntrySheet: View {
         onSave: @escaping () -> Void
     ) {
         self.existingTransactionID = transaction?.id
+        self.initialTransactionType = TransactionEntryInitialType.resolved(initialType)
         self.onSave = onSave
         _transactionType = State(
-            initialValue: TransactionEntryInitialType.resolved(initialType)
+            initialValue: initialTransactionType
         )
     }
 
     init(transactionId: UUID, onSave: @escaping () -> Void) {
         self.existingTransactionID = transactionId
+        self.initialTransactionType = .expense
         self.onSave = onSave
     }
     
@@ -588,7 +591,7 @@ struct TransactionEntrySheet: View {
 
     private func resetFormForNewTransaction() {
         let now = Date()
-        transactionType = .expense
+        transactionType = initialTransactionType
         amount = 0
         selectedCategory = nil
         selectedAccount = nil

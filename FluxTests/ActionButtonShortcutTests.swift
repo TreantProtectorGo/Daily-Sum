@@ -27,10 +27,12 @@ final class ActionButtonShortcutTests: XCTestCase {
         XCTAssertFalse(source.contains("ControlWidgetButton(action: OpenURLIntent"))
         XCTAssertFalse(source.contains("OpenURLIntent("))
         XCTAssertFalse(source.contains("dailysum://"))
-        XCTAssertTrue(sharedIntentSource.contains("struct OpenDailySumControlIntent: OpenIntent, TargetContentProvidingIntent"))
+        XCTAssertTrue(sharedIntentSource.contains("struct OpenDailySumControlIntent: AppIntent"))
         XCTAssertTrue(sharedIntentSource.contains("@Parameter(title: \"Action\")"))
-        XCTAssertTrue(contentViewSource.contains(".onAppIntentExecution(OpenDailySumControlIntent.self)"))
-        XCTAssertTrue(contentViewSource.contains("shortcutRouter.handle(intent.target)"))
+        XCTAssertTrue(sharedIntentSource.contains("static let supportedModes: IntentModes = .foreground(.immediate)"))
+        XCTAssertTrue(sharedIntentSource.contains("DailySumControlIntentRouter.shared.request(target)"))
+        XCTAssertTrue(contentViewSource.contains("@State private var controlIntentRouter = DailySumControlIntentRouter.shared"))
+        XCTAssertTrue(contentViewSource.contains("handleControlIntentDestination"))
     }
 
     func testControlWidgetExtensionIsEmbeddedInApp() throws {
@@ -141,6 +143,23 @@ final class ActionButtonShortcutTests: XCTestCase {
         XCTAssertEqual(router.pendingTransactionEntry?.type, .expense)
     }
 
+    func testSharedControlIntentRouterPublishesIncomeDestination() {
+        let router = DailySumControlIntentRouter()
+
+        router.request(.income)
+
+        XCTAssertEqual(router.pendingDestination?.destination, .income)
+    }
+
+    func testSharedControlIntentRouterCanClearConsumedDestination() {
+        let router = DailySumControlIntentRouter()
+        router.request(.expense)
+
+        router.clearPendingDestination()
+
+        XCTAssertNil(router.pendingDestination)
+    }
+
     func testRepeatedRequestsHaveFreshIdentity() throws {
         let router = ActionButtonShortcutRouter()
         router.requestTransactionEntry(type: .expense)
@@ -158,6 +177,14 @@ final class ActionButtonShortcutTests: XCTestCase {
 
     func testTransactionEntryUsesShortcutRequestedType() {
         XCTAssertEqual(TransactionEntryInitialType.resolved(.income), .income)
+    }
+
+    func testNewTransactionResetKeepsRequestedInitialType() throws {
+        let source = try sourceContents(at: "Flux/Views/Sheets/TransactionEntrySheet.swift")
+
+        XCTAssertTrue(source.contains("private let initialTransactionType: TransactionType"))
+        XCTAssertTrue(source.contains("transactionType = initialTransactionType"))
+        XCTAssertFalse(source.contains("func resetFormForNewTransaction() {\n        let now = Date()\n        transactionType = .expense"))
     }
 
     private var repositoryURL: URL {
