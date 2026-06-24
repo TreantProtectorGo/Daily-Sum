@@ -150,7 +150,7 @@ struct GlassSectionHeader<Trailing: View>: View {
                 if let systemImage {
                     Image(systemName: systemImage)
                         .font(.subheadline)
-                        .foregroundStyle(AppColors.secondaryAccent)
+                        .foregroundStyle(AppColors.sectionAccent)
                 }
                 Text(title)
                     .font(.headline)
@@ -173,7 +173,7 @@ struct GlassSectionHeader<Trailing: View>: View {
 
     private var sectionMarker: some View {
         RoundedRectangle(cornerRadius: 2, style: .continuous)
-            .fill(AppColors.secondaryAccent)
+            .fill(AppColors.sectionAccent)
             .frame(width: 3, height: 18)
     }
 

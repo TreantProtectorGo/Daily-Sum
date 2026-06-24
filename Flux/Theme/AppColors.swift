@@ -27,6 +27,9 @@ enum AppColors {
     /// Secondary brand accent for selected states, chart emphasis, and subtle highlights.
     static let secondaryAccent = Color(red: 0.0, green: 0.58, blue: 0.52)
 
+    /// Accent for section markers and informational section icons.
+    static let sectionAccent = secondaryAccent
+
     /// Warm counterpoint to the teal brand color for moments that need extra emphasis.
     static let brandCoral = Color(red: 0.93, green: 0.33, blue: 0.26)
 
