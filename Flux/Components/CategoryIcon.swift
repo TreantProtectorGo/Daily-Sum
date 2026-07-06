@@ -77,21 +77,27 @@ struct PlaceholderCategoryIcon: View {
 
 enum BudgetAllCategoriesPresentation {
     static let icon = CategoryPickerMode.budgetExpense.placeholderIcon
+    static let glyphColor = UIColor.white
 }
 
 struct BudgetAllCategoriesIcon: View {
     let size: CategoryIcon.Size
+    let backgroundColor: Color
 
-    init(size: CategoryIcon.Size = .medium) {
+    init(
+        size: CategoryIcon.Size = .medium,
+        backgroundColor: Color = Color.secondary.opacity(0.15)
+    ) {
         self.size = size
+        self.backgroundColor = backgroundColor
     }
 
     var body: some View {
         Image(systemName: BudgetAllCategoriesPresentation.icon)
             .font(size.iconFont)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color(uiColor: BudgetAllCategoriesPresentation.glyphColor))
             .frame(width: size.dimension, height: size.dimension)
-            .background(Color.secondary.opacity(0.15))
+            .background(backgroundColor)
             .clipShape(Circle())
     }
 }

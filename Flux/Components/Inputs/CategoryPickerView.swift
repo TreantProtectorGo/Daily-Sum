@@ -160,7 +160,6 @@ private struct CategorySelectionSheet: View {
                     if mode.showsPlaceholderOption {
                         CategoryPlaceholderGridItem(
                             title: mode.placeholderTitle,
-                            icon: mode.placeholderIcon,
                             isSelected: selectedCategory == nil
                         ) {
                             selectedCategory = nil
@@ -435,7 +434,6 @@ private struct CategoryGridItem: View {
 
 private struct CategoryPlaceholderGridItem: View {
     let title: String
-    let icon: String
     let isSelected: Bool
     let onSelect: () -> Void
 
@@ -445,7 +443,10 @@ private struct CategoryPlaceholderGridItem: View {
             tintColor: .secondary,
             isSelected: isSelected
         ) {
-            IconColorCircle(icon: icon, color: .secondary, size: .medium)
+            BudgetAllCategoriesIcon(
+                size: .medium,
+                backgroundColor: .secondary
+            )
         } onSelect: {
             onSelect()
         }

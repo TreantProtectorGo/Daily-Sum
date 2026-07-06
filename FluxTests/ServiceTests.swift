@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import UIKit
 import UserNotifications
 @testable import Flux
 
@@ -864,6 +865,13 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(
             BudgetAllCategoriesPresentation.icon,
             CategoryPickerMode.budgetExpense.placeholderIcon
+        )
+    }
+
+    func testBudgetAllCategoriesPresentationUsesWhiteGlyph() {
+        XCTAssertEqual(
+            BudgetAllCategoriesPresentation.glyphColor,
+            UIColor.white
         )
     }
 
