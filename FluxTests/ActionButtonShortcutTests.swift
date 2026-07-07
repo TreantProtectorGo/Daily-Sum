@@ -71,8 +71,8 @@ final class ActionButtonShortcutTests: XCTestCase {
     func testControlWidgetExtensionVersionMatchesContainingApp() throws {
         let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
 
-        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 58;").count - 1, 4)
-        XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.9;").count - 1, 4)
+        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 70;").count - 1, 4)
+        XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.10;").count - 1, 4)
     }
 
     func testShortcutCopyUsesDailySumBranding() throws {
