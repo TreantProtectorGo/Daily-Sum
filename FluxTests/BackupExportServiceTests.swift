@@ -62,6 +62,7 @@ final class BackupExportServiceTests: XCTestCase {
         let archive = try service.makeBackupArchive()
 
         XCTAssertEqual(archive.schemaVersion, BackupArchive.currentSchemaVersion)
+        XCTAssertEqual(archive.financialData.accountTypeDefinitions.count, 1)
         XCTAssertEqual(archive.financialData.currencies.count, 1)
         XCTAssertEqual(archive.financialData.exchangeRates.count, 1)
         XCTAssertEqual(archive.financialData.categories.count, 1)
@@ -78,6 +79,9 @@ final class BackupExportServiceTests: XCTestCase {
         XCTAssertEqual(archive.preferences.deviceLocal.defaultTransactionAccountId, seedAccountID)
         XCTAssertEqual(archive.integrityMetadata.recordCounts.accounts, 1)
         XCTAssertEqual(archive.integrityMetadata.recordCounts.transactions, 1)
+        XCTAssertEqual(archive.integrityMetadata.recordCounts.accountTypeDefinitions, 1)
+        XCTAssertEqual(archive.financialData.accounts.first?.typeDefinitionId, seedAccountTypeID)
+        XCTAssertEqual(archive.financialData.categories.first?.sortOrder, 6)
         XCTAssertTrue(archive.integrityMetadata.contentHash.hasPrefix("sha256:"))
     }
 
@@ -134,6 +138,10 @@ final class BackupExportServiceTests: XCTestCase {
         UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
     }
 
+    private var seedAccountTypeID: UUID {
+        UUID(uuidString: "aaaaaaaa-1111-1111-1111-111111111111")!
+    }
+
     private func seedExportPreferences() {
         UserCurrencyPreference.currencyCode = "USD"
         let preferredLanguage: AppLanguage = .traditionalChinese
@@ -167,13 +175,22 @@ final class BackupExportServiceTests: XCTestCase {
             fetchedAt: Date(timeIntervalSince1970: 1_700_000_300),
             provider: "mock"
         )
+        let accountType = AccountTypeDefinition(
+            id: seedAccountTypeID,
+            name: "Cash",
+            icon: "banknote",
+            colorHex: "#007AFF",
+            sortOrder: 4,
+            legacyType: .cash
+        )
         let category = Category(
             id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
             nameKey: "Food",
             icon: "fork.knife",
             colorHex: "#FF0000",
             type: .expense,
-            isSystemDefault: false
+            isSystemDefault: false,
+            sortOrder: 6
         )
         let account = Account(
             id: seedAccountID,
@@ -181,6 +198,7 @@ final class BackupExportServiceTests: XCTestCase {
             type: .cash,
             currencyCode: "USD",
             initialBalance: 500,
+            typeDefinition: accountType,
             icon: "banknote",
             colorHex: "#007AFF",
             includeInTotal: true,
@@ -223,6 +241,7 @@ final class BackupExportServiceTests: XCTestCase {
         )
 
         context.insert(currency)
+        context.insert(accountType)
         context.insert(exchangeRate)
         context.insert(category)
         context.insert(account)

@@ -39,8 +39,12 @@ final class BudgetListViewModel {
         conversionMode: ConversionMode = .defaultForReports
     ) {
         self.modelContext = modelContext
-        self.budgetService = BudgetService(context: modelContext)
-        self.conversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        let resolvedConversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        self.budgetService = BudgetService(
+            context: modelContext,
+            conversionService: resolvedConversionService
+        )
+        self.conversionService = resolvedConversionService
         self.conversionMode = conversionMode
     }
     
@@ -53,11 +57,7 @@ final class BudgetListViewModel {
                 sortBy: [SortDescriptor(\Budget.createdAt, order: .reverse)]
             )
             budgets = try modelContext.fetch(descriptor)
-            budgetStatusesByID = Dictionary(
-                uniqueKeysWithValues: budgets.map { budget in
-                    (budget.id, budgetService.status(for: budget))
-                }
-            )
+            budgetStatusesByID = try await budgetService.statuses(for: budgets)
             
             // Active state is no longer user-facing; treat all budgets as visible.
             activeBudgets = budgets

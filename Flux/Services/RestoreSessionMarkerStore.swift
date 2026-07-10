@@ -65,3 +65,15 @@ final class InMemoryRestoreSessionMarkerStore: RestoreSessionMarkerStoring {
         marker = nil
     }
 }
+
+enum RestoreSessionStartupRecovery {
+    /// Replace restores commit financial data once, so an interrupted marker only
+    /// indicates an aborted attempt. Consume it at launch to avoid stale recovery state.
+    static func consumeMarkerIfPresent(
+        from store: any RestoreSessionMarkerStoring = RestoreSessionMarkerStore()
+    ) -> RestoreSessionMarker? {
+        let marker = try? store.load()
+        store.clear()
+        return marker
+    }
+}

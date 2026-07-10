@@ -12,6 +12,7 @@ final class DashboardViewModel {
     
     private let modelContext: ModelContext
     private let conversionService: CurrencyConversionService
+    private let budgetService: BudgetService
     private let conversionMode: ConversionMode
 
     var totalBalance: Decimal = 0
@@ -19,6 +20,7 @@ final class DashboardViewModel {
     var monthlyExpenses: Decimal = 0
     var recentTransactionRows: [TransactionRowSnapshot] = []
     var topBudgets: [Budget] = []
+    var budgetStatusesByID: [UUID: BudgetService.BudgetStatus] = [:]
     var accounts: [Account] = []
     
     var isLoading = false
@@ -60,7 +62,12 @@ final class DashboardViewModel {
         conversionMode: ConversionMode = .defaultForDashboard
     ) {
         self.modelContext = modelContext
-        self.conversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        let resolvedConversionService = conversionService ?? CurrencyConversionService(context: modelContext)
+        self.conversionService = resolvedConversionService
+        self.budgetService = BudgetService(
+            context: modelContext,
+            conversionService: resolvedConversionService
+        )
         self.conversionMode = conversionMode
     }
     
@@ -81,8 +88,11 @@ final class DashboardViewModel {
             totalBalance = try await convertedAccountTotal(accounts)
             
             // Fetch recent transactions (non-recurring templates, last 10)
+            let currentDate = Date.now
             var transactionDescriptor = FetchDescriptor<Transaction>(
-                predicate: #Predicate<Transaction> { !$0.isRecurringTemplate },
+                predicate: #Predicate<Transaction> {
+                    !$0.isRecurringTemplate && $0.date <= currentDate
+                },
                 sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
             )
             transactionDescriptor.fetchLimit = 10
@@ -113,6 +123,7 @@ final class DashboardViewModel {
             )
             budgetDescriptor.fetchLimit = 3
             topBudgets = try modelContext.fetch(budgetDescriptor)
+            budgetStatusesByID = try await budgetService.statuses(for: topBudgets)
             
         } catch {
             errorMessage = error.localizedDescription

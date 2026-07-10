@@ -112,7 +112,8 @@ enum BackupArchiveCodec {
     }
 
     private static func validateSemanticStructure(_ archive: BackupArchive) throws {
-        guard archive.schemaVersion == BackupArchive.currentSchemaVersion else {
+        guard (BackupArchive.minimumSupportedSchemaVersion...BackupArchive.currentSchemaVersion)
+            .contains(archive.schemaVersion) else {
             throw BackupArchiveCodecError.unsupportedSchemaVersion(archive.schemaVersion)
         }
 
@@ -126,6 +127,11 @@ enum BackupArchiveCodec {
         }
 
         try validateUniqueIDs(archive.financialData.exchangeRates, entity: "exchangeRates")
+        try validateUniqueIDs(
+            archive.financialData.accountTypeDefinitions,
+            entity: "accountTypeDefinitions",
+            id: \.id
+        )
         try validateUniqueIDs(archive.financialData.categories, entity: "categories")
         try validateUniqueIDs(archive.financialData.accounts, entity: "accounts")
         try validateUniqueIDs(archive.financialData.transactions, entity: "transactions")
@@ -151,21 +157,26 @@ enum BackupArchiveCodec {
     }
 
     private static func contentHash(for archive: BackupArchive) throws -> String {
-        let payload = BackupArchiveContentPayload(
-            schemaVersion: archive.schemaVersion,
-            appVersion: archive.appVersion,
-            exportedAt: archive.exportedAt,
-            exportSourceDevice: archive.exportSourceDevice,
-            financialData: archive.financialData,
-            preferences: archive.preferences
-        )
-        let data = try makeEncoder().encode(payload)
+        let data: Data
+        if archive.schemaVersion == 1 {
+            data = try makeEncoder().encode(BackupArchiveContentPayloadV1(archive: archive))
+        } else {
+            let payload = BackupArchiveContentPayload(
+                schemaVersion: archive.schemaVersion,
+                appVersion: archive.appVersion,
+                exportedAt: archive.exportedAt,
+                exportSourceDevice: archive.exportSourceDevice,
+                financialData: archive.financialData,
+                preferences: archive.preferences
+            )
+            data = try makeEncoder().encode(payload)
+        }
         let digest = SHA256.hash(data: data)
         return "sha256:" + digest.map { String(format: "%02x", $0) }.joined()
     }
 
     private static func actualRecordCounts(for archive: BackupArchive) -> [String: Int] {
-        [
+        var counts = [
             "currencies": archive.financialData.currencies.count,
             "exchangeRates": archive.financialData.exchangeRates.count,
             "categories": archive.financialData.categories.count,
@@ -174,10 +185,14 @@ enum BackupArchiveCodec {
             "scheduledOccurrenceExceptions": archive.financialData.scheduledOccurrenceExceptions.count,
             "budgets": archive.financialData.budgets.count
         ]
+        if archive.integrityMetadata.recordCounts.accountTypeDefinitions != nil {
+            counts["accountTypeDefinitions"] = archive.financialData.accountTypeDefinitions.count
+        }
+        return counts
     }
 
     private static func expectedRecordCounts(from counts: BackupRecordCounts) -> [String: Int] {
-        [
+        var expected = [
             "currencies": counts.currencies,
             "exchangeRates": counts.exchangeRates,
             "categories": counts.categories,
@@ -186,6 +201,10 @@ enum BackupArchiveCodec {
             "scheduledOccurrenceExceptions": counts.scheduledOccurrenceExceptions,
             "budgets": counts.budgets
         ]
+        if let accountTypeDefinitions = counts.accountTypeDefinitions {
+            expected["accountTypeDefinitions"] = accountTypeDefinitions
+        }
+        return expected
     }
 
     private static func validateUniqueIDs<T>(
@@ -273,6 +292,88 @@ private struct BackupArchiveContentPayload: Codable {
     let exportSourceDevice: String
     let financialData: BackupFinancialData
     let preferences: BackupPreferences
+}
+
+private struct BackupArchiveContentPayloadV1: Encodable {
+    let schemaVersion: Int
+    let appVersion: String
+    let exportedAt: Date
+    let exportSourceDevice: String
+    let financialData: BackupFinancialDataV1
+    let preferences: BackupPreferences
+
+    init(archive: BackupArchive) {
+        schemaVersion = archive.schemaVersion
+        appVersion = archive.appVersion
+        exportedAt = archive.exportedAt
+        exportSourceDevice = archive.exportSourceDevice
+        financialData = BackupFinancialDataV1(financialData: archive.financialData)
+        preferences = archive.preferences
+    }
+}
+
+private struct BackupFinancialDataV1: Encodable {
+    let currencies: [BackupCurrencyRecord]
+    let exchangeRates: [BackupExchangeRateRecord]
+    let categories: [BackupCategoryRecordV1]
+    let accounts: [BackupAccountRecordV1]
+    let transactions: [BackupTransactionRecord]
+    let scheduledOccurrenceExceptions: [BackupScheduledOccurrenceExceptionRecord]
+    let budgets: [BackupBudgetRecord]
+
+    init(financialData: BackupFinancialData) {
+        currencies = financialData.currencies
+        exchangeRates = financialData.exchangeRates
+        categories = financialData.categories.map(BackupCategoryRecordV1.init)
+        accounts = financialData.accounts.map(BackupAccountRecordV1.init)
+        transactions = financialData.transactions
+        scheduledOccurrenceExceptions = financialData.scheduledOccurrenceExceptions
+        budgets = financialData.budgets
+    }
+}
+
+private struct BackupCategoryRecordV1: Encodable {
+    let id: UUID
+    let nameKey: String
+    let icon: String
+    let colorHex: String
+    let type: TransactionType
+    let isSystemDefault: Bool
+    let parentCategoryId: UUID?
+
+    init(_ record: BackupCategoryRecord) {
+        id = record.id
+        nameKey = record.nameKey
+        icon = record.icon
+        colorHex = record.colorHex
+        type = record.type
+        isSystemDefault = record.isSystemDefault
+        parentCategoryId = record.parentCategoryId
+    }
+}
+
+private struct BackupAccountRecordV1: Encodable {
+    let id: UUID
+    let name: String
+    let type: AccountType
+    let currencyCode: String
+    let initialBalance: Decimal
+    let icon: String
+    let colorHex: String
+    let includeInTotal: Bool
+    let createdAt: Date
+
+    init(_ record: BackupAccountRecord) {
+        id = record.id
+        name = record.name
+        type = record.type
+        currencyCode = record.currencyCode
+        initialBalance = record.initialBalance
+        icon = record.icon
+        colorHex = record.colorHex
+        includeInTotal = record.includeInTotal
+        createdAt = record.createdAt
+    }
 }
 
 private struct ExchangeRateNaturalKey: Hashable {

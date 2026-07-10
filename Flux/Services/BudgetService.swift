@@ -6,9 +6,14 @@ import SwiftData
 @Observable
 final class BudgetService {
     private let context: ModelContext
+    private let conversionService: CurrencyConversionService
     
-    init(context: ModelContext) {
+    init(
+        context: ModelContext,
+        conversionService: CurrencyConversionService? = nil
+    ) {
         self.context = context
+        self.conversionService = conversionService ?? CurrencyConversionService(context: context)
     }
     
     // MARK: - Create
@@ -153,24 +158,65 @@ final class BudgetService {
     // MARK: - Status
     
     /// Gets the status of all active budgets
-    func allBudgetStatuses(for date: Date = .now) throws -> [BudgetStatus] {
+    func allBudgetStatuses(for date: Date = .now) async throws -> [BudgetStatus] {
         let budgets = try fetch(activeOnly: true)
-        return budgets.map { status(for: $0, date: date) }
+        let statusesByID = try await statuses(for: budgets, date: date)
+        return budgets.compactMap { statusesByID[$0.id] }
     }
 
-    func status(for budget: Budget, date: Date = .now) -> BudgetStatus {
-        BudgetStatus(
-            budget: budget,
-            spent: budget.spentAmount(in: context, for: date),
-            limit: budget.limitAmount,
-            isAlertTriggered: budget.isAlertTriggered(in: context, for: date),
-            isExceeded: budget.isExceeded(in: context, for: date)
+    func status(for budget: Budget, date: Date = .now) async throws -> BudgetStatus {
+        let statusesByID = try await statuses(for: [budget], date: date)
+        return statusesByID[budget.id] ?? BudgetStatus(budget: budget, spent: 0)
+    }
+
+    /// Calculates multiple budgets from one transaction fetch. Transaction amounts
+    /// are converted on their transaction date before comparison with the budget.
+    func statuses(
+        for budgets: [Budget],
+        date: Date = .now
+    ) async throws -> [UUID: BudgetStatus] {
+        guard !budgets.isEmpty else { return [:] }
+
+        let transactions = try context.fetch(
+            FetchDescriptor<Transaction>(
+                predicate: #Predicate<Transaction> {
+                    !$0.isRecurringTemplate
+                }
+            )
         )
+        var result: [UUID: BudgetStatus] = [:]
+
+        for budget in budgets {
+            let range = budget.period.dateRange(containing: date)
+            let categoryID = budget.category?.id
+            let matchingTransactions = transactions.filter { transaction in
+                guard transaction.type == .expense else { return false }
+                guard transaction.date >= range.start, transaction.date < range.end else {
+                    return false
+                }
+                return categoryID == nil || transaction.category?.id == categoryID
+            }
+
+            var spent: Decimal = 0
+            for transaction in matchingTransactions {
+                spent += try await conversionService.convert(
+                    transaction.amount,
+                    from: transaction.currencyCode,
+                    to: budget.currencyCode,
+                    on: transaction.date,
+                    mode: .historical
+                )
+            }
+            result[budget.id] = BudgetStatus(budget: budget, spent: spent)
+        }
+
+        return result
     }
     
     /// Gets budgets that have triggered alerts
-    func triggeredAlerts(for date: Date = .now) throws -> [BudgetAlert] {
+    func triggeredAlerts(for date: Date = .now) async throws -> [BudgetAlert] {
         let budgets = try fetch(activeOnly: true)
+        let statusesByID = try await statuses(for: budgets, date: date)
         var alerts: [BudgetAlert] = []
         var requiresSave = false
 
@@ -179,7 +225,7 @@ final class BudgetService {
                 requiresSave = true
             }
 
-            let usage = budget.usagePercentage(in: context, for: date)
+            let usage = statusesByID[budget.id]?.percentage ?? 0
             if usage >= 1.0 {
                 if !budget.hasSentWarningAlertInTrackedPeriod {
                     budget.hasSentWarningAlertInTrackedPeriod = true
@@ -216,6 +262,15 @@ final class BudgetService {
         let limit: Decimal
         let isAlertTriggered: Bool
         let isExceeded: Bool
+
+        init(budget: Budget, spent: Decimal) {
+            self.budget = budget
+            self.spent = spent
+            self.limit = budget.limitAmount
+            let percentage = budget.limitAmount > 0 ? spent / budget.limitAmount : 0
+            self.isAlertTriggered = percentage >= budget.alertThreshold
+            self.isExceeded = percentage >= 1
+        }
         
         var remaining: Decimal { limit - spent }
         var percentage: Decimal { limit > 0 ? spent / limit : 0 }

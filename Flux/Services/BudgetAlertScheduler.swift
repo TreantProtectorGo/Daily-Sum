@@ -26,7 +26,7 @@ struct BudgetAlertScheduler {
             return
         }
 
-        let alerts = try BudgetService(context: context).triggeredAlerts(for: date)
+        let alerts = try await BudgetService(context: context).triggeredAlerts(for: date)
         for alert in alerts {
             let periodStart = alert.budget.period.dateRange(containing: date, calendar: calendar).start
             let identifier = Self.identifier(

@@ -243,7 +243,10 @@ struct DashboardView: View {
             if viewModel.hasBudgets {
                 VStack(spacing: 8) {
                     ForEach(viewModel.topBudgets) { budget in
-                        BudgetCard(budget: budget) {
+                        BudgetCard(
+                            budget: budget,
+                            status: viewModel.budgetStatusesByID[budget.id]
+                        ) {
                             selectedBudget = budget
                         }
                     }

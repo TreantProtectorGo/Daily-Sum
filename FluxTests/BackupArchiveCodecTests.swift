@@ -17,6 +17,27 @@ final class BackupArchiveCodecTests: XCTestCase {
         XCTAssertTrue(decoded.integrityMetadata.contentHash.hasPrefix("sha256:"))
     }
 
+    func testBackupArchiveCodecDecodesLegacySchemaVersionOneWithoutNewFields() throws {
+        var archive = Self.makeValidArchive()
+        archive.schemaVersion = 1
+        archive.integrityMetadata.recordCounts.accountTypeDefinitions = nil
+        let encoded = try BackupArchiveCodec.encode(archive)
+        let encodedJSON = try XCTUnwrap(String(data: encoded, encoding: .utf8))
+        let legacyJSON = encodedJSON.replacingOccurrences(
+            of: "\"accountTypeDefinitions\":[],",
+            with: ""
+        )
+        XCTAssertNotEqual(legacyJSON, encodedJSON)
+        let legacyData = Data(legacyJSON.utf8)
+
+        let decoded = try BackupArchiveCodec.decode(legacyData)
+
+        XCTAssertEqual(decoded.schemaVersion, 1)
+        XCTAssertTrue(decoded.financialData.accountTypeDefinitions.isEmpty)
+        XCTAssertNil(decoded.financialData.categories.first?.sortOrder)
+        XCTAssertNil(decoded.financialData.accounts.first?.typeDefinitionId)
+    }
+
     func testBackupArchiveCodecRejectsUnsupportedSchemaVersion() throws {
         let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
             json["schemaVersion"] = 99
@@ -137,13 +158,13 @@ final class BackupArchiveCodecTests: XCTestCase {
 
     func testBackupArchiveCodecRejectsOlderSchemaVersion() throws {
         let data = try Self.encodedData(from: Self.makeValidArchive()) { json in
-            json["schemaVersion"] = BackupArchive.currentSchemaVersion - 1
+            json["schemaVersion"] = BackupArchive.minimumSupportedSchemaVersion - 1
         }
 
         XCTAssertThrowsError(try BackupArchiveCodec.decode(data)) { error in
             XCTAssertEqual(
                 error as? BackupArchiveCodecError,
-                .unsupportedSchemaVersion(BackupArchive.currentSchemaVersion - 1)
+                .unsupportedSchemaVersion(BackupArchive.minimumSupportedSchemaVersion - 1)
             )
         }
     }

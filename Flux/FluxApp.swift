@@ -113,6 +113,7 @@ struct FluxApp: App {
             // Create and seed the model container
             let enableCloudKit = cloudSyncSettingsStore.status == .enabled
             let newContainer = try await ModelContainer.createAndSeed(enableCloudKit: enableCloudKit)
+            _ = RestoreSessionStartupRecovery.consumeMarkerIfPresent()
             containerGeneration += 1
             container = newContainer
 

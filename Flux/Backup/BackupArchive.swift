@@ -1,7 +1,8 @@
 import Foundation
 
 struct BackupArchive: Codable, Equatable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
+    static let minimumSupportedSchemaVersion = 1
 
     var schemaVersion: Int
     var appVersion: String
@@ -13,6 +14,7 @@ struct BackupArchive: Codable, Equatable {
 }
 
 struct BackupFinancialData: Codable, Equatable {
+    var accountTypeDefinitions: [BackupAccountTypeDefinitionRecord]
     var currencies: [BackupCurrencyRecord]
     var exchangeRates: [BackupExchangeRateRecord]
     var categories: [BackupCategoryRecord]
@@ -22,6 +24,7 @@ struct BackupFinancialData: Codable, Equatable {
     var budgets: [BackupBudgetRecord]
 
     init(
+        accountTypeDefinitions: [BackupAccountTypeDefinitionRecord] = [],
         currencies: [BackupCurrencyRecord] = [],
         exchangeRates: [BackupExchangeRateRecord] = [],
         categories: [BackupCategoryRecord] = [],
@@ -30,6 +33,7 @@ struct BackupFinancialData: Codable, Equatable {
         scheduledOccurrenceExceptions: [BackupScheduledOccurrenceExceptionRecord] = [],
         budgets: [BackupBudgetRecord] = []
     ) {
+        self.accountTypeDefinitions = accountTypeDefinitions
         self.currencies = currencies
         self.exchangeRates = exchangeRates
         self.categories = categories
@@ -38,6 +42,40 @@ struct BackupFinancialData: Codable, Equatable {
         self.scheduledOccurrenceExceptions = scheduledOccurrenceExceptions
         self.budgets = budgets
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case accountTypeDefinitions, currencies, exchangeRates, categories, accounts
+        case transactions, scheduledOccurrenceExceptions, budgets
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        accountTypeDefinitions = try container.decodeIfPresent(
+            [BackupAccountTypeDefinitionRecord].self,
+            forKey: .accountTypeDefinitions
+        ) ?? []
+        currencies = try container.decode([BackupCurrencyRecord].self, forKey: .currencies)
+        exchangeRates = try container.decode([BackupExchangeRateRecord].self, forKey: .exchangeRates)
+        categories = try container.decode([BackupCategoryRecord].self, forKey: .categories)
+        accounts = try container.decode([BackupAccountRecord].self, forKey: .accounts)
+        transactions = try container.decode([BackupTransactionRecord].self, forKey: .transactions)
+        scheduledOccurrenceExceptions = try container.decode(
+            [BackupScheduledOccurrenceExceptionRecord].self,
+            forKey: .scheduledOccurrenceExceptions
+        )
+        budgets = try container.decode([BackupBudgetRecord].self, forKey: .budgets)
+    }
+}
+
+struct BackupAccountTypeDefinitionRecord: Codable, Equatable {
+    var id: UUID
+    var name: String
+    var icon: String
+    var colorHex: String
+    var isSystemDefault: Bool
+    var sortOrder: Int
+    var createdAt: Date
+    var legacyTypeRawValue: String?
 }
 
 struct BackupCurrencyRecord: Codable, Equatable {
@@ -64,6 +102,7 @@ struct BackupCategoryRecord: Codable, Equatable {
     var colorHex: String
     var type: TransactionType
     var isSystemDefault: Bool
+    var sortOrder: Int? = nil
     var parentCategoryId: UUID?
 }
 
@@ -77,6 +116,7 @@ struct BackupAccountRecord: Codable, Equatable {
     var colorHex: String
     var includeInTotal: Bool
     var createdAt: Date
+    var typeDefinitionId: UUID? = nil
 }
 
 struct BackupTransactionRecord: Codable, Equatable {
@@ -130,6 +170,7 @@ struct BackupBudgetRecord: Codable, Equatable {
 }
 
 struct BackupRecordCounts: Codable, Equatable {
+    var accountTypeDefinitions: Int? = nil
     var currencies: Int
     var exchangeRates: Int
     var categories: Int

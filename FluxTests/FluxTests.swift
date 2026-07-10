@@ -714,6 +714,47 @@ final class FluxTests: XCTestCase {
     }
 
     @MainActor
+    func testTransactionEndDateIncludesTheWholeSelectedDay() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Filter Account", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let calendar = Calendar.current
+        let selectedDay = calendar.date(
+            from: DateComponents(year: 2026, month: 7, day: 10)
+        )!
+        let lateTransaction = Transaction(
+            amount: 42,
+            currencyCode: "USD",
+            type: .expense,
+            date: calendar.date(
+                from: DateComponents(year: 2026, month: 7, day: 10, hour: 23, minute: 59)
+            )!,
+            account: account
+        )
+        let followingDay = Transaction(
+            amount: 99,
+            currencyCode: "USD",
+            type: .expense,
+            date: calendar.date(
+                from: DateComponents(year: 2026, month: 7, day: 11)
+            )!,
+            account: account
+        )
+        context.insert(lateTransaction)
+        context.insert(followingDay)
+        try context.save()
+
+        let viewModel = TransactionListViewModel(modelContext: context)
+        await viewModel.loadTransactions()
+        viewModel.endDate = selectedDay
+        viewModel.applyFilters()
+
+        XCTAssertEqual(viewModel.filteredTransactions.map(\.id), [lateTransaction.id])
+    }
+
+    @MainActor
     func testTransactionListHidesOnlyFutureGeneratedScheduledWhenToggleOff() async throws {
         let originalValue = UserDefaults.standard.object(
             forKey: TransactionListPreference.showUpcomingScheduledStorageKey
@@ -1580,6 +1621,39 @@ final class FluxTests: XCTestCase {
     }
 
     @MainActor
+    func testDashboardRecentTransactionsExcludeFutureEntries() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Dashboard", type: .cash, currencyCode: "USD")
+        context.insert(account)
+
+        let past = Transaction(
+            amount: 10,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: -1, to: .now)!,
+            account: account
+        )
+        let future = Transaction(
+            amount: 20,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 1, to: .now)!,
+            recurringTemplateId: UUID(),
+            account: account
+        )
+        context.insert(past)
+        context.insert(future)
+        try context.save()
+
+        UserCurrencyPreference.currencyCode = "USD"
+        let viewModel = DashboardViewModel(modelContext: context)
+        await viewModel.loadData()
+
+        XCTAssertEqual(viewModel.recentTransactionRows.map(\.id), [past.id])
+    }
+
+    @MainActor
     func testUserCurrencyPreferenceResolvesValidCode() throws {
         XCTAssertEqual(
             UserCurrencyPreference.resolvedDisplayCurrencyCode(preferredCurrencyCode: "EUR"),
@@ -1734,6 +1808,41 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(viewModel.totalIncome, 200)
         XCTAssertEqual(viewModel.monthlyTrends.count, 1)
         XCTAssertEqual(viewModel.monthlyTrends.first?.income, 200)
+    }
+
+    @MainActor
+    func testReportsGroupAllUncategorizedTransactionsTogether() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let account = Account(name: "Cash", type: .cash, currencyCode: "USD")
+        context.insert(account)
+        context.insert(
+            Transaction(
+                amount: 10,
+                currencyCode: "USD",
+                type: .expense,
+                date: .now,
+                account: account
+            )
+        )
+        context.insert(
+            Transaction(
+                amount: 15,
+                currencyCode: "USD",
+                type: .expense,
+                date: .now,
+                account: account
+            )
+        )
+        try context.save()
+
+        UserCurrencyPreference.currencyCode = "USD"
+        let viewModel = ReportsViewModel(modelContext: context)
+        viewModel.selectedPeriod = .all
+        await viewModel.loadReports()
+
+        XCTAssertEqual(viewModel.expensesByCategory.count, 1)
+        XCTAssertEqual(viewModel.expensesByCategory.first?.amount, 25)
     }
 
     func testMonthlyTrendMetricResolvesIncomeExpensesAndNetAmounts() {

@@ -222,7 +222,13 @@ final class TransactionListViewModel {
             result = result.filter { $0.date >= start }
         }
         if let end = endDate {
-            result = result.filter { $0.date <= end }
+            let calendar = Calendar.current
+            let exclusiveEnd = calendar.date(
+                byAdding: .day,
+                value: 1,
+                to: calendar.startOfDay(for: end)
+            ) ?? end
+            result = result.filter { $0.date < exclusiveEnd }
         }
         
         // Filter by search text

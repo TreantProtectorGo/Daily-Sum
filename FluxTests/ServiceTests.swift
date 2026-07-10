@@ -1213,6 +1213,55 @@ final class ServiceTests: XCTestCase {
     }
     
     // MARK: - BudgetService Tests
+
+    func testBudgetStatusConvertsTransactionsIntoBudgetCurrency() async throws {
+        let categoryService = CategoryService(context: context)
+        let transactionService = TransactionService(context: context)
+        let accountService = AccountService(context: context)
+        let budgetService = BudgetService(context: context)
+
+        let category = try categoryService.create(
+            name: "Travel",
+            icon: "airplane",
+            colorHex: "#00AA88",
+            type: .expense
+        )
+        let account = try accountService.create(
+            name: "TWD Wallet",
+            type: .cash,
+            currencyCode: "TWD"
+        )
+        let budget = try budgetService.create(
+            category: category,
+            limitAmount: 100,
+            currencyCode: "USD"
+        )
+        let transactionDate = Calendar.current.date(
+            from: DateComponents(year: 2026, month: 7, day: 10)
+        )!
+        _ = try transactionService.create(
+            amount: 1_600,
+            type: .expense,
+            date: transactionDate,
+            account: account,
+            category: category
+        )
+        context.insert(
+            ExchangeRate(
+                baseCurrencyCode: "USD",
+                quoteCurrencyCode: "TWD",
+                rate: 32,
+                effectiveDate: transactionDate
+            )
+        )
+        try context.save()
+
+        let status = try await budgetService.status(for: budget, date: transactionDate)
+
+        XCTAssertEqual(status.spent, 50)
+        XCTAssertEqual(status.remaining, 50)
+        XCTAssertEqual(status.percentage, 0.5)
+    }
     
     func testBudgetServiceTriggersWarningAtEightyPercentOncePerPeriod() async throws {
         let categoryService = CategoryService(context: context)
@@ -1248,12 +1297,12 @@ final class ServiceTests: XCTestCase {
             category: category
         )
         
-        let triggered = try budgetService.triggeredAlerts()
+        let triggered = try await budgetService.triggeredAlerts()
         XCTAssertEqual(triggered.count, 1)
         XCTAssertEqual(triggered.first?.budget.id, budget.id)
         XCTAssertEqual(triggered.first?.stage, .warning)
 
-        let secondTriggered = try budgetService.triggeredAlerts()
+        let secondTriggered = try await budgetService.triggeredAlerts()
         XCTAssertTrue(secondTriggered.isEmpty)
     }
 
@@ -1292,7 +1341,7 @@ final class ServiceTests: XCTestCase {
             category: category
         )
 
-        let triggered = try budgetService.triggeredAlerts()
+        let triggered = try await budgetService.triggeredAlerts()
         XCTAssertEqual(triggered.count, 1)
         XCTAssertEqual(triggered.first?.budget.id, budget.id)
         XCTAssertEqual(triggered.first?.stage, .warning)
@@ -1332,14 +1381,14 @@ final class ServiceTests: XCTestCase {
             category: category
         )
 
-        let triggered = try budgetService.triggeredAlerts()
+        let triggered = try await budgetService.triggeredAlerts()
         XCTAssertEqual(triggered.count, 1)
         XCTAssertEqual(triggered.first?.budget.id, budget.id)
         XCTAssertEqual(triggered.first?.stage, .exceeded)
         XCTAssertTrue(budget.hasSentWarningAlertInTrackedPeriod)
         XCTAssertTrue(budget.hasSentExceededAlertInTrackedPeriod)
 
-        let secondTriggered = try budgetService.triggeredAlerts()
+        let secondTriggered = try await budgetService.triggeredAlerts()
         XCTAssertTrue(secondTriggered.isEmpty)
     }
 
@@ -1377,7 +1426,8 @@ final class ServiceTests: XCTestCase {
             category: category
         )
 
-        XCTAssertEqual(try budgetService.triggeredAlerts().first?.stage, .warning)
+        let firstStage = try await budgetService.triggeredAlerts().first?.stage
+        XCTAssertEqual(firstStage, .warning)
 
         try transactionService.delete(expense)
 
@@ -1388,7 +1438,7 @@ final class ServiceTests: XCTestCase {
             category: category
         )
 
-        let triggeredAgain = try budgetService.triggeredAlerts()
+        let triggeredAgain = try await budgetService.triggeredAlerts()
         XCTAssertTrue(triggeredAgain.isEmpty)
     }
 
@@ -1432,10 +1482,8 @@ final class ServiceTests: XCTestCase {
             category: category
         )
 
-        XCTAssertEqual(
-            try budgetService.triggeredAlerts(for: januaryDate).first?.stage,
-            .warning
-        )
+        let januaryStage = try await budgetService.triggeredAlerts(for: januaryDate).first?.stage
+        XCTAssertEqual(januaryStage, .warning)
 
         try transactionService.delete(januaryExpense)
 
@@ -1447,10 +1495,8 @@ final class ServiceTests: XCTestCase {
             category: category
         )
 
-        XCTAssertEqual(
-            try budgetService.triggeredAlerts(for: februaryDate).first?.stage,
-            .warning
-        )
+        let februaryStage = try await budgetService.triggeredAlerts(for: februaryDate).first?.stage
+        XCTAssertEqual(februaryStage, .warning)
     }
     
     func testBudgetServiceRejectsDuplicateCategoryAndPeriod() async throws {

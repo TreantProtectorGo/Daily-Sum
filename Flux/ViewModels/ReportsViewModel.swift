@@ -14,6 +14,11 @@ final class ReportsViewModel {
         let transaction: Transaction
         let convertedAmount: Decimal
     }
+
+    private enum CategoryGroupKey: Hashable {
+        case category(UUID)
+        case uncategorized
+    }
     
     struct CategorySummary: Identifiable {
         let id = UUID()
@@ -320,7 +325,11 @@ final class ReportsViewModel {
         _ transactions: [ConvertedTransaction],
         total: Decimal
     ) -> [CategorySummary] {
-        let grouped = Dictionary(grouping: transactions) { $0.transaction.category?.id ?? UUID() }
+        let grouped = Dictionary(grouping: transactions) { transaction in
+            transaction.transaction.category.map {
+                CategoryGroupKey.category($0.id)
+            } ?? CategoryGroupKey.uncategorized
+        }
         
         return grouped.map { (_, categoryTransactions) in
             let category = categoryTransactions.first?.transaction.category

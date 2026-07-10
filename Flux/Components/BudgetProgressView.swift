@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 // MARK: - Budget Progress View
 
@@ -9,7 +8,6 @@ struct BudgetProgressView: View {
     let showsCategoryHeader: Bool
     let isCompact: Bool
     
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.regionalSettings) private var regionalSettings
 
     init(
@@ -25,15 +23,15 @@ struct BudgetProgressView: View {
     }
     
     private var spentAmount: Decimal {
-        status?.spent ?? budget.spentAmount(in: modelContext)
+        status?.spent ?? 0
     }
     
     private var progress: Double {
-        NSDecimalNumber(decimal: status?.percentage ?? budget.usagePercentage(in: modelContext)).doubleValue
+        NSDecimalNumber(decimal: status?.percentage ?? 0).doubleValue
     }
     
     private var remainingAmount: Decimal {
-        status?.remaining ?? budget.remainingAmount(in: modelContext)
+        status?.remaining ?? budget.limitAmount
     }
     
     var body: some View {
@@ -167,10 +165,16 @@ struct CompactBudgetProgress: View {
 /// A glass card displaying budget information
 struct BudgetCard: View {
     let budget: Budget
+    let status: BudgetService.BudgetStatus?
     let onTap: (() -> Void)?
     
-    init(budget: Budget, onTap: (() -> Void)? = nil) {
+    init(
+        budget: Budget,
+        status: BudgetService.BudgetStatus? = nil,
+        onTap: (() -> Void)? = nil
+    ) {
         self.budget = budget
+        self.status = status
         self.onTap = onTap
     }
     
@@ -178,7 +182,7 @@ struct BudgetCard: View {
         Button {
             onTap?()
         } label: {
-            BudgetProgressView(budget: budget)
+            BudgetProgressView(budget: budget, status: status)
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())

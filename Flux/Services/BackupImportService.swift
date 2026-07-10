@@ -84,6 +84,7 @@ protocol BackupImportServicing {
 @MainActor
 final class BackupImportService: BackupImportServicing {
     private struct ImportedArchiveObjects {
+        var accountTypeDefinitions: [UUID: AccountTypeDefinition] = [:]
         var currencies: [String: Currency] = [:]
         var categories: [UUID: Category] = [:]
         var accounts: [UUID: Account] = [:]
@@ -92,6 +93,7 @@ final class BackupImportService: BackupImportServicing {
     }
 
     private struct MergeState {
+        var accountTypeDefinitions: [UUID: AccountTypeDefinition]
         var currencies: [String: Currency]
         var exchangeRates: [String: ExchangeRate]
         var categories: [UUID: Category]
@@ -173,9 +175,22 @@ final class BackupImportService: BackupImportServicing {
     }
 
     private func validateReferencedRecords(in archive: BackupArchive) throws {
+        let accountTypeDefinitionIDs = Set(archive.financialData.accountTypeDefinitions.map(\.id))
         let accountIDs = Set(archive.financialData.accounts.map(\.id))
         let categoryIDs = Set(archive.financialData.categories.map(\.id))
         let transactionIDs = Set(archive.financialData.transactions.map(\.id))
+
+        for account in archive.financialData.accounts {
+            if let definitionID = account.typeDefinitionId,
+               !accountTypeDefinitionIDs.contains(definitionID) {
+                throw BackupImportServiceError.missingReferencedRecord(
+                    recordType: "accounts",
+                    recordID: account.id,
+                    referencedType: "accountTypeDefinitions",
+                    referencedID: definitionID
+                )
+            }
+        }
 
         for transaction in archive.financialData.transactions {
             if let accountID = transaction.accountId, !accountIDs.contains(accountID) {
@@ -270,31 +285,35 @@ final class BackupImportService: BackupImportServicing {
         marker.recoveryActionHint = "Replace restore started clearing local records."
         try restoreSessionMarkerStore.save(marker)
 
-        try clearSupportedLocalRecords(in: context)
+        do {
+            try clearSupportedLocalRecords(in: context)
 
-        marker.phase = .importPass1
-        marker.recoveryActionHint = "Replace restore is rebuilding base records."
-        try restoreSessionMarkerStore.save(marker)
+            marker.phase = .importPass1
+            marker.recoveryActionHint = "Replace restore is rebuilding base records."
+            try restoreSessionMarkerStore.save(marker)
 
-        let importedObjects = importArchivePass1(archive, into: context)
-        try context.save()
+            let importedObjects = importArchivePass1(archive, into: context)
 
-        marker.phase = .importPass2
-        marker.recoveryActionHint = "Replace restore is reconnecting relationships."
-        try restoreSessionMarkerStore.save(marker)
+            marker.phase = .importPass2
+            marker.recoveryActionHint = "Replace restore is reconnecting relationships."
+            try restoreSessionMarkerStore.save(marker)
 
-        resolveRelationships(in: archive, with: importedObjects)
-        try context.save()
+            resolveRelationships(in: archive, with: importedObjects)
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
 
         applyPreferences(from: archive.preferences, scope: scope)
 
         marker.phase = .preferencesApplied
         marker.recoveryActionHint = "Replace restore applied the selected preferences."
-        try restoreSessionMarkerStore.save(marker)
+        try? restoreSessionMarkerStore.save(marker)
 
         marker.phase = .finalized
         marker.recoveryActionHint = "Restore completed successfully."
-        try restoreSessionMarkerStore.save(marker)
+        try? restoreSessionMarkerStore.save(marker)
         restoreSessionMarkerStore.clear()
 
         return makeImportReport(from: archive)
@@ -311,6 +330,12 @@ final class BackupImportService: BackupImportServicing {
 
         mergeCurrencies(
             archive.financialData.currencies,
+            into: context,
+            state: &state,
+            accumulator: &accumulator
+        )
+        mergeAccountTypeDefinitions(
+            archive.financialData.accountTypeDefinitions,
             into: context,
             state: &state,
             accumulator: &accumulator
@@ -374,10 +399,10 @@ final class BackupImportService: BackupImportServicing {
         try deleteAll(Budget.self, from: context)
         try deleteAll(ScheduledOccurrenceException.self, from: context)
         try deleteAll(Account.self, from: context)
+        try deleteAll(AccountTypeDefinition.self, from: context)
         try deleteAll(Category.self, from: context)
         try deleteAll(ExchangeRate.self, from: context)
         try deleteAll(Currency.self, from: context)
-        try context.save()
     }
 
     private func deleteAll<Model: PersistentModel>(
@@ -395,6 +420,21 @@ final class BackupImportService: BackupImportServicing {
         into context: ModelContext
     ) -> ImportedArchiveObjects {
         var imported = ImportedArchiveObjects()
+
+        for record in archive.financialData.accountTypeDefinitions {
+            let definition = AccountTypeDefinition(
+                id: record.id,
+                name: record.name,
+                icon: record.icon,
+                colorHex: record.colorHex,
+                isSystemDefault: record.isSystemDefault,
+                sortOrder: record.sortOrder,
+                createdAt: record.createdAt,
+                legacyType: record.legacyTypeRawValue.flatMap(AccountType.init(rawValue:))
+            )
+            context.insert(definition)
+            imported.accountTypeDefinitions[record.id] = definition
+        }
 
         for record in archive.financialData.currencies {
             let currency = Currency(
@@ -414,7 +454,8 @@ final class BackupImportService: BackupImportServicing {
                 icon: record.icon,
                 colorHex: record.colorHex,
                 type: record.type,
-                isSystemDefault: record.isSystemDefault
+                isSystemDefault: record.isSystemDefault,
+                sortOrder: record.sortOrder ?? 0
             )
             context.insert(category)
             imported.categories[record.id] = category
@@ -427,6 +468,9 @@ final class BackupImportService: BackupImportServicing {
                 type: record.type,
                 currencyCode: record.currencyCode,
                 initialBalance: record.initialBalance,
+                typeDefinition: record.typeDefinitionId.flatMap {
+                    imported.accountTypeDefinitions[$0]
+                },
                 icon: record.icon,
                 colorHex: record.colorHex,
                 includeInTotal: record.includeInTotal,
@@ -513,6 +557,7 @@ final class BackupImportService: BackupImportServicing {
     }
 
     private func loadMergeState(from context: ModelContext) throws -> MergeState {
+        let accountTypeDefinitions = try context.fetch(FetchDescriptor<AccountTypeDefinition>())
         let currencies = try context.fetch(FetchDescriptor<Currency>())
         let exchangeRates = try context.fetch(FetchDescriptor<ExchangeRate>())
         let categories = try context.fetch(FetchDescriptor<Category>())
@@ -524,6 +569,9 @@ final class BackupImportService: BackupImportServicing {
         )
 
         return MergeState(
+            accountTypeDefinitions: Dictionary(
+                uniqueKeysWithValues: accountTypeDefinitions.map { ($0.id, $0) }
+            ),
             currencies: Dictionary(uniqueKeysWithValues: currencies.map { ($0.code, $0) }),
             exchangeRates: Dictionary(
                 uniqueKeysWithValues: exchangeRates.map {
@@ -542,6 +590,71 @@ final class BackupImportService: BackupImportServicing {
                 uniqueKeysWithValues: scheduledOccurrenceExceptions.map { ($0.id, $0) }
             )
         )
+    }
+
+    private func mergeAccountTypeDefinitions(
+        _ records: [BackupAccountTypeDefinitionRecord],
+        into context: ModelContext,
+        state: inout MergeState,
+        accumulator: inout MergeAccumulator
+    ) {
+        for record in records {
+            if let existing = state.accountTypeDefinitions[record.id] {
+                let matches = existing.name == record.name &&
+                    existing.icon == record.icon &&
+                    existing.colorHex == record.colorHex &&
+                    existing.isSystemDefault == record.isSystemDefault &&
+                    existing.sortOrder == record.sortOrder &&
+                    existing.createdAt == record.createdAt &&
+                    existing.legacyTypeRawValue == record.legacyTypeRawValue
+                if !matches {
+                    existing.name = record.name
+                    existing.icon = record.icon
+                    existing.colorHex = record.colorHex
+                    existing.isSystemDefault = record.isSystemDefault
+                    existing.sortOrder = record.sortOrder
+                    existing.createdAt = record.createdAt
+                    existing.legacyTypeRawValue = record.legacyTypeRawValue
+                }
+                accumulator.append(
+                    makeReportEntry(
+                        entityType: "accountTypeDefinitions",
+                        entityId: record.id,
+                        action: matches ? .skipped : .updated,
+                        severity: .info,
+                        message: matches ? "Skipped unchanged account type \(record.id)." :
+                            "Updated account type \(record.id).",
+                        conflictReason: nil,
+                        details: ["name": record.name]
+                    )
+                )
+                continue
+            }
+
+            let definition = AccountTypeDefinition(
+                id: record.id,
+                name: record.name,
+                icon: record.icon,
+                colorHex: record.colorHex,
+                isSystemDefault: record.isSystemDefault,
+                sortOrder: record.sortOrder,
+                createdAt: record.createdAt,
+                legacyType: record.legacyTypeRawValue.flatMap(AccountType.init(rawValue:))
+            )
+            context.insert(definition)
+            state.accountTypeDefinitions[record.id] = definition
+            accumulator.append(
+                makeReportEntry(
+                    entityType: "accountTypeDefinitions",
+                    entityId: record.id,
+                    action: .imported,
+                    severity: .info,
+                    message: "Imported account type \(record.id).",
+                    conflictReason: nil,
+                    details: ["name": record.name]
+                )
+            )
+        }
     }
 
     private func mergeCurrencies(
@@ -631,6 +744,7 @@ final class BackupImportService: BackupImportServicing {
                     existing.colorHex = record.colorHex
                     existing.type = record.type
                     existing.isSystemDefault = record.isSystemDefault
+                    existing.sortOrder = record.sortOrder ?? 0
                     accumulator.append(
                         makeReportEntry(
                             entityType: "categories",
@@ -652,7 +766,8 @@ final class BackupImportService: BackupImportServicing {
                 icon: record.icon,
                 colorHex: record.colorHex,
                 type: record.type,
-                isSystemDefault: record.isSystemDefault
+                isSystemDefault: record.isSystemDefault,
+                sortOrder: record.sortOrder ?? 0
             )
             context.insert(category)
             state.categories[record.id] = category
@@ -732,6 +847,9 @@ final class BackupImportService: BackupImportServicing {
                 } else {
                     existing.name = record.name
                     existing.type = record.type
+                    existing.typeDefinition = record.typeDefinitionId.flatMap {
+                        state.accountTypeDefinitions[$0]
+                    }
                     existing.currencyCode = record.currencyCode
                     existing.initialBalance = record.initialBalance
                     existing.icon = record.icon
@@ -759,6 +877,9 @@ final class BackupImportService: BackupImportServicing {
                 type: record.type,
                 currencyCode: record.currencyCode,
                 initialBalance: record.initialBalance,
+                typeDefinition: record.typeDefinitionId.flatMap {
+                    state.accountTypeDefinitions[$0]
+                },
                 icon: record.icon,
                 colorHex: record.colorHex,
                 includeInTotal: record.includeInTotal,
@@ -1391,12 +1512,14 @@ final class BackupImportService: BackupImportServicing {
         category.colorHex == record.colorHex &&
         category.type == record.type &&
         category.isSystemDefault == record.isSystemDefault &&
+        category.sortOrder == (record.sortOrder ?? 0) &&
         category.parentCategory?.id == record.parentCategoryId
     }
 
     private func accountMatches(_ account: Account, record: BackupAccountRecord) -> Bool {
         account.name == record.name &&
         account.type == record.type &&
+        account.typeDefinition?.id == record.typeDefinitionId &&
         account.currencyCode == record.currencyCode &&
         account.initialBalance == record.initialBalance &&
         account.icon == record.icon &&

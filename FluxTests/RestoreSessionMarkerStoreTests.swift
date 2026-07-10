@@ -24,4 +24,23 @@ final class RestoreSessionMarkerStoreTests: XCTestCase {
 
         XCTAssertNil(try store.load())
     }
+
+    func testStartupRecoveryConsumesStaleRestoreMarker() throws {
+        let store = InMemoryRestoreSessionMarkerStore()
+        let marker = RestoreSessionMarker(
+            restoreSessionId: UUID(),
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            archiveId: UUID(),
+            mode: .replace,
+            scope: .financialDataOnly,
+            phase: .importPass1,
+            recoveryActionHint: "Retry restore."
+        )
+        try store.save(marker)
+
+        let recovered = RestoreSessionStartupRecovery.consumeMarkerIfPresent(from: store)
+
+        XCTAssertEqual(recovered, marker)
+        XCTAssertNil(try store.load())
+    }
 }

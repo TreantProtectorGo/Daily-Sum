@@ -218,8 +218,69 @@ final class BackupImportServiceTests: XCTestCase {
 
         let marker = try XCTUnwrap(markerStore.load())
         XCTAssertEqual(marker.phase, .destructiveClearStarted)
-        XCTAssertTrue(try context.fetch(FetchDescriptor<Account>()).isEmpty)
-        XCTAssertTrue(try context.fetch(FetchDescriptor<Transaction>()).isEmpty)
+        XCTAssertEqual(
+            try context.fetch(FetchDescriptor<Account>()).map(\.id),
+            [UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!]
+        )
+        XCTAssertEqual(
+            try context.fetch(FetchDescriptor<Transaction>()).map(\.id),
+            [UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")!]
+        )
+    }
+
+    func testApplyImportReplaceRestoresAccountTypeLinkAndCategorySortOrder() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        var archive = Self.makeArchive()
+        let typeID = UUID(uuidString: "11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+        let categoryID = UUID(uuidString: "22222222-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+        archive.financialData.accountTypeDefinitions = [
+            BackupAccountTypeDefinitionRecord(
+                id: typeID,
+                name: "Travel Wallet",
+                icon: "airplane",
+                colorHex: "#00AA88",
+                isSystemDefault: false,
+                sortOrder: 7,
+                createdAt: Date(timeIntervalSince1970: 1_700_000_100),
+                legacyTypeRawValue: AccountType.cash.rawValue
+            )
+        ]
+        archive.financialData.accounts[0].typeDefinitionId = typeID
+        archive.financialData.categories = [
+            BackupCategoryRecord(
+                id: categoryID,
+                nameKey: "Trips",
+                icon: "airplane",
+                colorHex: "#00AA88",
+                type: .expense,
+                isSystemDefault: false,
+                sortOrder: 9,
+                parentCategoryId: nil
+            )
+        ]
+        archive.integrityMetadata.recordCounts.accountTypeDefinitions = 1
+        archive.integrityMetadata.recordCounts.categories = 1
+
+        let data = try BackupArchiveCodec.encode(archive)
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: data,
+            mode: .replace,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        let restoredType = try XCTUnwrap(context.fetch(FetchDescriptor<AccountTypeDefinition>()).first)
+        let restoredAccount = try XCTUnwrap(context.fetch(FetchDescriptor<Account>()).first)
+        let restoredCategory = try XCTUnwrap(
+            context.fetch(FetchDescriptor<Flux.Category>()).first
+        )
+        XCTAssertEqual(restoredType.id, typeID)
+        XCTAssertEqual(restoredType.sortOrder, 7)
+        XCTAssertEqual(restoredAccount.typeDefinition?.id, typeID)
+        XCTAssertEqual(restoredCategory.sortOrder, 9)
     }
 
     func testApplyImportMergeUpdatesStableIDMatchesAndReportsUpdates() throws {
@@ -343,7 +404,7 @@ final class BackupImportServiceTests: XCTestCase {
 
     func testPrepareImportRejectsOlderSchemaVersion() throws {
         let data = try Self.encodedData(from: Self.makeArchive()) { json in
-            json["schemaVersion"] = BackupArchive.currentSchemaVersion - 1
+            json["schemaVersion"] = BackupArchive.minimumSupportedSchemaVersion - 1
         }
         let service = BackupImportService(restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore())
 
@@ -356,7 +417,7 @@ final class BackupImportServiceTests: XCTestCase {
         ) { error in
             XCTAssertEqual(
                 error as? BackupArchiveCodecError,
-                .unsupportedSchemaVersion(BackupArchive.currentSchemaVersion - 1)
+                .unsupportedSchemaVersion(BackupArchive.minimumSupportedSchemaVersion - 1)
             )
         }
     }

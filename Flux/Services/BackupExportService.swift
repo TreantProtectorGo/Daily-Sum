@@ -39,6 +39,11 @@ final class BackupExportService: BackupExportServicing {
     }
 
     private func makeFinancialData() throws -> BackupFinancialData {
+        let accountTypeDefinitions = try modelContext.fetch(
+            FetchDescriptor<AccountTypeDefinition>(
+                sortBy: [SortDescriptor(\.sortOrder), SortDescriptor(\.id)]
+            )
+        )
         let currencies = try modelContext.fetch(
             FetchDescriptor<Currency>(
                 sortBy: [SortDescriptor(\.code)]
@@ -99,6 +104,18 @@ final class BackupExportService: BackupExportServicing {
         let deduplicatedExchangeRates = deduplicateExchangeRates(exchangeRates)
 
         return BackupFinancialData(
+            accountTypeDefinitions: accountTypeDefinitions.map { definition in
+                BackupAccountTypeDefinitionRecord(
+                    id: definition.id,
+                    name: definition.name,
+                    icon: definition.icon,
+                    colorHex: definition.colorHex,
+                    isSystemDefault: definition.isSystemDefault,
+                    sortOrder: definition.sortOrder,
+                    createdAt: definition.createdAt,
+                    legacyTypeRawValue: definition.legacyTypeRawValue
+                )
+            },
             currencies: currencies.map { currency in
                 BackupCurrencyRecord(
                     code: currency.code,
@@ -126,6 +143,7 @@ final class BackupExportService: BackupExportServicing {
                     colorHex: category.colorHex,
                     type: category.type,
                     isSystemDefault: category.isSystemDefault,
+                    sortOrder: category.sortOrder,
                     parentCategoryId: category.parentCategory?.id
                 )
             },
@@ -139,7 +157,8 @@ final class BackupExportService: BackupExportServicing {
                     icon: account.icon,
                     colorHex: account.colorHex,
                     includeInTotal: account.includeInTotal,
-                    createdAt: account.createdAt
+                    createdAt: account.createdAt,
+                    typeDefinitionId: account.typeDefinition?.id
                 )
             },
             transactions: transactions.map { transaction in
@@ -262,6 +281,7 @@ final class BackupExportService: BackupExportServicing {
 
     private func recordCounts(for financialData: BackupFinancialData) -> BackupRecordCounts {
         BackupRecordCounts(
+            accountTypeDefinitions: financialData.accountTypeDefinitions.count,
             currencies: financialData.currencies.count,
             exchangeRates: financialData.exchangeRates.count,
             categories: financialData.categories.count,
