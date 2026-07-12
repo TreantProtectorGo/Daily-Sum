@@ -48,30 +48,28 @@ final class ActionButtonShortcutTests: XCTestCase {
 
     func testSharedControlIntentIsAvailableToAppAndExtensionTargets() throws {
         let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
+        let controlTarget = try targetBlock(
+            identifier: "C0DA00072F50000000C0DA07",
+            name: "DailySumControls",
+            in: project
+        )
+        let appTarget = try targetBlock(
+            identifier: "D1473B7C2F39023C00F93BDF",
+            name: "Flux",
+            in: project
+        )
 
         XCTAssertTrue(project.contains("SharedAppIntents"))
-        XCTAssertTrue(
-            project.contains(
-                "\t\t\tfileSystemSynchronizedGroups = (\n" +
-                "\t\t\t\tC0DA00042F50000000C0DA04 /* DailySumControls */,\n" +
-                "\t\t\t\tC0DA000F2F50000000C0DA0F /* SharedAppIntents */,\n" +
-                "\t\t\t);"
-            )
-        )
-        XCTAssertTrue(
-            project.contains(
-                "\t\t\tfileSystemSynchronizedGroups = (\n" +
-                "\t\t\t\tD1473B7F2F39023C00F93BDF /* Flux */,\n" +
-                "\t\t\t\tC0DA000F2F50000000C0DA0F /* SharedAppIntents */,\n" +
-                "\t\t\t);"
-            )
-        )
+        XCTAssertTrue(controlTarget.contains("C0DA00042F50000000C0DA04 /* DailySumControls */"))
+        XCTAssertTrue(controlTarget.contains("C0DA000F2F50000000C0DA0F /* SharedAppIntents */"))
+        XCTAssertTrue(appTarget.contains("D1473B7F2F39023C00F93BDF /* Flux */"))
+        XCTAssertTrue(appTarget.contains("C0DA000F2F50000000C0DA0F /* SharedAppIntents */"))
     }
 
     func testControlWidgetExtensionVersionMatchesContainingApp() throws {
         let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
 
-        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 71;").count - 1, 4)
+        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 73;").count - 1, 4)
         XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.11;").count - 1, 4)
     }
 
@@ -215,5 +213,17 @@ final class ActionButtonShortcutTests: XCTestCase {
         let localization = localizations[locale] as? [String: Any]
         let stringUnit = localization?["stringUnit"] as? [String: Any]
         return stringUnit?["value"] as? String
+    }
+
+    private func targetBlock(
+        identifier: String,
+        name: String,
+        in project: String
+    ) throws -> Substring {
+        let marker = "\t\t\(identifier) /* \(name) */ = {\n\t\t\tisa = PBXNativeTarget;"
+        let start = try XCTUnwrap(project.range(of: marker))
+        let remainder = project[start.lowerBound...]
+        let end = try XCTUnwrap(remainder.range(of: "\n\t\t};"))
+        return project[start.lowerBound..<end.upperBound]
     }
 }

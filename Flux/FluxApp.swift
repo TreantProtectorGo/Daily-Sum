@@ -57,10 +57,10 @@ struct FluxApp: App {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
-                guard activationMaintenancePolicy.claimRun() else { return }
                 Task { @MainActor in
-                    try? await activationMaintenancePolicy.waitForInteractionGracePeriod()
                     await refreshTravelCurrencyPreferenceIfNeeded()
+                    guard activationMaintenancePolicy.claimRun() else { return }
+                    try? await activationMaintenancePolicy.waitForInteractionGracePeriod()
                     await refreshScheduledTransactionsAndReminders(in: container)
                     runAutomaticBackupIfNeeded(in: container)
                 }
@@ -122,9 +122,9 @@ struct FluxApp: App {
             if let container {
                 activationMaintenancePolicy.recordRun()
                 Task { @MainActor in
+                    await refreshTravelCurrencyPreferenceIfNeeded()
                     try? await activationMaintenancePolicy.waitForInteractionGracePeriod()
                     await requestNotificationAuthorizationIfNeeded(in: container)
-                    await refreshTravelCurrencyPreferenceIfNeeded()
                     await refreshScheduledTransactionsAndReminders(in: container)
                     await refreshExchangeRatesIfNeeded(in: container)
                     runAutomaticBackupIfNeeded(in: container)

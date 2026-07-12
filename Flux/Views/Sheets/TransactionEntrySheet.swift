@@ -301,6 +301,12 @@ struct TransactionEntrySheet: View {
             .onChange(of: travelInputCurrencyCode) { _, _ in
                 handleTravelInputCurrencyChange()
             }
+            .onChange(of: detectedTravelCurrencyCode) { _, _ in
+                applyTravelTransactionDefaultIfNeeded()
+            }
+            .task {
+                await refreshDetectedTravelCurrency()
+            }
             .task(id: travelPreviewRefreshKey) {
                 await refreshTravelPreviewIfNeeded()
             }
@@ -847,6 +853,14 @@ struct TransactionEntrySheet: View {
             manualTravelCurrencyCode: manualTravelCurrencyCode
         )
         .currentTravelCurrencyCode
+    }
+
+    private func refreshDetectedTravelCurrency() async {
+        let refresher = TravelCurrencyPreferenceRefresher()
+        guard let refreshedCurrencyCode = await refresher.refreshDetectedTravelCurrency() else {
+            return
+        }
+        detectedTravelCurrencyCode = refreshedCurrencyCode
     }
     
     private func saveTransaction(

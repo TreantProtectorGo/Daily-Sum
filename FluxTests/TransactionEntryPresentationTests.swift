@@ -47,6 +47,41 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertTrue(source.contains("transaction.subscription.sync.allGenerated"))
     }
 
+    func testNewTransactionRefreshesTravelCurrencyAndReappliesUntouchedDefault() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+
+        XCTAssertTrue(
+            source.contains(
+                ".task {\n                await refreshDetectedTravelCurrency()\n            }"
+            )
+        )
+        XCTAssertTrue(
+            source.contains(
+                ".onChange(of: detectedTravelCurrencyCode) { _, _ in\n" +
+                "                applyTravelTransactionDefaultIfNeeded()\n" +
+                "            }"
+            )
+        )
+    }
+
+    func testAppActivationRefreshesTravelCurrencyOutsideMaintenanceThrottle() throws {
+        let source = try sourceContents(at: "Flux/FluxApp.swift")
+        let activationStart = try XCTUnwrap(
+            source.range(of: ".onChange(of: scenePhase)")
+        )
+        let activationSource = source[activationStart.lowerBound...]
+        let refreshIndex = try XCTUnwrap(
+            activationSource.range(of: "await refreshTravelCurrencyPreferenceIfNeeded()")
+        ).lowerBound
+        let throttleIndex = try XCTUnwrap(
+            activationSource.range(of: "activationMaintenancePolicy.claimRun()")
+        ).lowerBound
+
+        XCTAssertLessThan(refreshIndex, throttleIndex)
+    }
+
     private var repositoryURL: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
