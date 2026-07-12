@@ -19,7 +19,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "賬單"
+            "value" : "帳單"
           }
         }
       }
@@ -519,13 +519,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自由职业"
+            "value" : "自由职业收入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自由工作"
+            "value" : "自由工作收入"
           }
         }
       }
@@ -657,13 +657,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "二手出售"
+            "value" : "二手转卖"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "二手出售"
+            "value" : "二手轉售"
           }
         }
       }

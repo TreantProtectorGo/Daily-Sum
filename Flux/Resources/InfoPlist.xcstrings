@@ -60,13 +60,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "日常账会使用你的位置，在汇率计算器中预先选择本地外币。"
+            "value" : "日常账会使用你的位置信息，在汇率计算器中预选当地货币。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "日常帳會使用你的位置，在匯率計算器中預先選擇本地外幣。"
+            "value" : "日常帳會使用你的位置，在匯率計算器中預選當地貨幣。"
           }
         }
       }
