@@ -10,43 +10,21 @@ enum ScheduledFutureDeleteAction {
     case stopPlan
 }
 
-enum ScheduledTransactionSyncScope: Equatable {
-    case todayAndFuture
-    case allGenerated
-}
-
 /// Service for managing Transaction CRUD operations
 @MainActor
 final class TransactionService {
     typealias ScheduledPlanKind = TransactionScheduledPlanKind
-    typealias ScheduledTransactionRegenerator = (Transaction, Date, Date) throws -> [Transaction]
 
     private let context: ModelContext
     private let calendar: Calendar
-    private let scheduledTransactionRegenerator: ScheduledTransactionRegenerator
 
     private enum Constants {
         static let installmentPurgeV1Key = "flux.installment.purge.v1.done"
     }
 
-    init(
-        context: ModelContext,
-        calendar: Calendar = .current,
-        scheduledTransactionRegenerator: ScheduledTransactionRegenerator? = nil
-    ) {
+    init(context: ModelContext, calendar: Calendar = .current) {
         self.context = context
         self.calendar = calendar
-        self.scheduledTransactionRegenerator = scheduledTransactionRegenerator ?? {
-            template,
-            cutoffDate,
-            minimumDate in
-            try RecurringTransactionGenerator(context: context).generateTransactions(
-                from: template,
-                upTo: cutoffDate,
-                notBefore: minimumDate,
-                saveChanges: false
-            )
-        }
     }
 
     // MARK: - Create
@@ -273,7 +251,6 @@ final class TransactionService {
     }
 
     /// Updates a scheduled template and removes future generated entries so they can be regenerated.
-    @discardableResult
     func updateScheduledTemplate(
         _ template: Transaction,
         amount: Decimal,
@@ -285,69 +262,38 @@ final class TransactionService {
         isTravelTransaction: Bool = false,
         travelSnapshot: TravelTransactionSnapshot? = nil,
         category: Category?,
-        planType: ScheduledPlanKind,
-        syncScope: ScheduledTransactionSyncScope = .todayAndFuture,
-        now: Date = .now,
-        regenerateThrough cutoffDate: Date? = nil
-    ) throws -> [Transaction] {
-        guard template.isRecurringTemplate else { return [] }
+        planType: ScheduledPlanKind
+    ) throws {
+        guard template.isRecurringTemplate else { return }
 
         switch planType {
         case .recurring:
             break
         }
 
-        do {
-            let generatedTransactions = try fetchGeneratedTransactions(forTemplateId: template.id)
-            let startOfToday = calendar.startOfDay(for: now)
+        try deleteFutureGeneratedTransactions(forTemplateId: template.id)
 
-            template.amount = travelSnapshot?.accountAmount ?? amount
-            template.type = .expense
-            template.date = startDate
-            template.currencyCode = travelSnapshot?.accountCurrencyCode ?? account.currencyCode
-            template.account = account
-            template.notes = notes
-            template.isTravelTransaction = travelSnapshot != nil ? true : isTravelTransaction
-            template.travelAmount = travelSnapshot?.travelAmount
-            template.travelCurrencyCode = travelSnapshot?.travelCurrencyCode
-            template.travelExchangeRate = travelSnapshot?.exchangeRate
-            template.travelExchangeRateEffectiveDate = travelSnapshot?.effectiveDate
-            template.travelExchangeRateProvider = travelSnapshot?.provider
-            template.category = category
-            template.recurrenceRule = .monthly
-            template.dueDayOfMonth = min(max(dueDayOfMonth, 1), 31)
-            template.reminderLeadDays = max(0, reminderLeadDays)
-            template.schedulePlanType = .recurring
-            template.installmentTotalCount = nil
-            template.installmentSequenceNumber = nil
+        template.amount = travelSnapshot?.accountAmount ?? amount
+        template.type = .expense
+        template.date = startDate
+        template.currencyCode = travelSnapshot?.accountCurrencyCode ?? account.currencyCode
+        template.account = account
+        template.notes = notes
+        template.isTravelTransaction = travelSnapshot != nil ? true : isTravelTransaction
+        template.travelAmount = travelSnapshot?.travelAmount
+        template.travelCurrencyCode = travelSnapshot?.travelCurrencyCode
+        template.travelExchangeRate = travelSnapshot?.exchangeRate
+        template.travelExchangeRateEffectiveDate = travelSnapshot?.effectiveDate
+        template.travelExchangeRateProvider = travelSnapshot?.provider
+        template.category = category
+        template.recurrenceRule = .monthly
+        template.dueDayOfMonth = min(max(dueDayOfMonth, 1), 31)
+        template.reminderLeadDays = max(0, reminderLeadDays)
+        template.schedulePlanType = .recurring
+        template.installmentTotalCount = nil
+        template.installmentSequenceNumber = nil
 
-            if syncScope == .allGenerated {
-                for transaction in generatedTransactions where transaction.date < startOfToday {
-                    synchronizeGeneratedContent(transaction, from: template)
-                }
-            }
-
-            for transaction in generatedTransactions where transaction.date >= startOfToday {
-                context.delete(transaction)
-            }
-
-            let regenerated: [Transaction]
-            if let cutoffDate {
-                regenerated = try scheduledTransactionRegenerator(
-                    template,
-                    cutoffDate,
-                    startOfToday
-                )
-            } else {
-                regenerated = []
-            }
-
-            try context.save()
-            return regenerated
-        } catch {
-            context.rollback()
-            throw error
-        }
+        try context.save()
     }
 
     // MARK: - Delete
@@ -541,37 +487,6 @@ final class TransactionService {
         for generated in futureGenerated {
             context.delete(generated)
         }
-    }
-
-    private func fetchGeneratedTransactions(forTemplateId templateId: UUID) throws -> [Transaction] {
-        let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
-        )
-        return try context.fetch(descriptor)
-    }
-
-    private func synchronizeGeneratedContent(
-        _ transaction: Transaction,
-        from template: Transaction
-    ) {
-        transaction.amount = template.amount
-        transaction.currencyCode = template.currencyCode
-        transaction.type = template.type
-        transaction.notes = template.notes
-        transaction.isTravelTransaction = template.isTravelTransaction
-        transaction.travelAmount = template.travelAmount
-        transaction.travelCurrencyCode = template.travelCurrencyCode
-        transaction.travelExchangeRate = template.travelExchangeRate
-        transaction.travelExchangeRateEffectiveDate = template.travelExchangeRateEffectiveDate
-        transaction.travelExchangeRateProvider = template.travelExchangeRateProvider
-        transaction.account = template.account
-        transaction.category = template.category
-        transaction.recurrenceRule = template.recurrenceRule
-        transaction.schedulePlanType = template.schedulePlanType
-        transaction.dueDayOfMonth = template.dueDayOfMonth
-        transaction.reminderLeadDays = template.reminderLeadDays
-        transaction.installmentTotalCount = template.installmentTotalCount
-        transaction.installmentSequenceNumber = template.installmentSequenceNumber
     }
 
     private func deleteOccurrenceExceptions(forTemplateId templateId: UUID) throws {

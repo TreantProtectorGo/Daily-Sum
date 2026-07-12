@@ -358,17 +358,13 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(template.schedulePlanType, .recurring)
     }
 
-    func testUpdateScheduledTemplateTodayAndFutureUsesCalendarDayBoundary() async throws {
+    func testUpdateScheduledTemplateRemovesFutureGeneratedOnly() async throws {
         let service = TransactionService(context: context)
         let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
         context.insert(account)
         try context.save()
 
-        let now = Calendar.current.date(
-            from: DateComponents(year: 2026, month: 7, day: 12, hour: 12)
-        )!
-        let startOfToday = Calendar.current.startOfDay(for: now)
-        let movedFutureStart = Calendar.current.date(byAdding: .month, value: 2, to: now)!
+        let now = Date.now
         let template = try service.createScheduled(
             amount: 90,
             startDate: Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now,
@@ -380,37 +376,41 @@ final class ServiceTests: XCTestCase {
             planType: .recurring
         )
 
-        let pastGenerated = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.date(byAdding: .month, value: -1, to: now)!
-        )
-        let earlierToday = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.date(byAdding: .hour, value: 1, to: startOfToday)!
-        )
-        let futureGenerated = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.date(byAdding: .month, value: 1, to: now)!
-        )
-        context.insert(pastGenerated)
-        context.insert(earlierToday)
-        context.insert(futureGenerated)
+        let pastGeneratedId: UUID = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: -10, to: now) ?? now
+            )
+            let id = transaction.id
+            context.insert(transaction)
+            return id
+        }()
+        _ = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: 5, to: now) ?? now
+            )
+            context.insert(transaction)
+        }()
+        _ = {
+            let transaction = Transaction.fromTemplate(
+                template,
+                forDate: Calendar.current.date(byAdding: .day, value: 20, to: now) ?? now
+            )
+            context.insert(transaction)
+        }()
         try context.save()
 
-        let cutoff = Calendar.current.date(byAdding: .month, value: 4, to: now)!
         try service.updateScheduledTemplate(
             template,
             amount: 120,
-            startDate: movedFutureStart,
+            startDate: now,
             dueDayOfMonth: 25,
             reminderLeadDays: 3,
             account: account,
             notes: "Updated plan",
             category: nil,
-            planType: .recurring,
-            syncScope: .todayAndFuture,
-            now: now,
-            regenerateThrough: cutoff
+            planType: .recurring
         )
 
         let templateId = template.id
@@ -420,219 +420,12 @@ final class ServiceTests: XCTestCase {
             )
         )
 
-        let retainedHistory = remainingGenerated.filter { $0.date < startOfToday }
-        XCTAssertEqual(retainedHistory.map(\.id), [pastGenerated.id])
-        XCTAssertEqual(retainedHistory.first?.amount, 90)
-        XCTAssertEqual(retainedHistory.first?.notes, "Plan")
+        XCTAssertEqual(remainingGenerated.count, 1)
+        XCTAssertEqual(remainingGenerated.first?.id, pastGeneratedId)
         XCTAssertEqual(template.amount, 120)
         XCTAssertEqual(template.dueDayOfMonth, 25)
         XCTAssertEqual(template.reminderLeadDays, 3)
         XCTAssertEqual(template.notes, "Updated plan")
-
-        let regenerated = try context.fetch(
-            FetchDescriptor<Transaction>(
-                predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
-            )
-        )
-        let dayKeys = regenerated.map { Calendar.current.startOfDay(for: $0.date) }
-        XCTAssertEqual(dayKeys.count, Set(dayKeys).count)
-        XCTAssertTrue(regenerated.filter { $0.id != pastGenerated.id }.allSatisfy {
-            $0.date >= Calendar.current.startOfDay(for: movedFutureStart) && $0.amount == 120
-        })
-    }
-
-    func testUpdateScheduledTemplateAllGeneratedUpdatesHistoryInPlace() async throws {
-        let service = TransactionService(context: context)
-        let oldAccount = Account(name: "Old", type: .cash, currencyCode: "USD")
-        let newAccount = Account(name: "New", type: .cash, currencyCode: "HKD")
-        let oldCategory = Category(
-            nameKey: "Old Category",
-            icon: "cart",
-            colorHex: "#111111",
-            type: .expense
-        )
-        let newCategory = Category(
-            nameKey: "New Category",
-            icon: "house",
-            colorHex: "#222222",
-            type: .expense
-        )
-        context.insert(oldAccount)
-        context.insert(newAccount)
-        context.insert(oldCategory)
-        context.insert(newCategory)
-        try context.save()
-
-        let now = Calendar.current.date(
-            from: DateComponents(year: 2026, month: 7, day: 12, hour: 12)
-        )!
-        let startOfToday = Calendar.current.startOfDay(for: now)
-        let template = try service.createScheduled(
-            amount: 90,
-            startDate: Calendar.current.date(byAdding: .month, value: -2, to: now)!,
-            dueDayOfMonth: 12,
-            reminderLeadDays: 1,
-            account: oldAccount,
-            category: oldCategory,
-            notes: "Old plan",
-            planType: .recurring
-        )
-        let historicalDate = Calendar.current.date(byAdding: .month, value: -1, to: now)!
-        let historicalCreatedAt = Date(timeIntervalSince1970: 1_700_000_000)
-        let historicalID = UUID()
-        let historical = Transaction(
-            id: historicalID,
-            amount: 90,
-            currencyCode: "USD",
-            type: .expense,
-            date: historicalDate,
-            createdAt: historicalCreatedAt,
-            notes: "Old plan",
-            receiptImageData: Data([0x01]),
-            recurringTemplateId: template.id,
-            generatedDate: historicalCreatedAt,
-            account: oldAccount,
-            category: oldCategory
-        )
-        let earlierToday = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.date(byAdding: .hour, value: 1, to: startOfToday)!
-        )
-        let future = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.date(byAdding: .month, value: 1, to: now)!
-        )
-        context.insert(historical)
-        context.insert(earlierToday)
-        context.insert(future)
-        try context.save()
-
-        let cutoff = Calendar.current.date(byAdding: .month, value: 2, to: now)!
-        try service.updateScheduledTemplate(
-            template,
-            amount: 800,
-            startDate: template.date,
-            dueDayOfMonth: 20,
-            reminderLeadDays: 5,
-            account: newAccount,
-            notes: "New plan",
-            category: newCategory,
-            planType: .recurring,
-            syncScope: .allGenerated,
-            now: now,
-            regenerateThrough: cutoff
-        )
-
-        let templateId = template.id
-        let remaining = try context.fetch(
-            FetchDescriptor<Transaction>(
-                predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
-            )
-        )
-        let historicalRows = remaining.filter { $0.date < startOfToday }
-        let preserved = try XCTUnwrap(historicalRows.first)
-        XCTAssertEqual(historicalRows.count, 1)
-        XCTAssertEqual(preserved.id, historicalID)
-        XCTAssertEqual(preserved.date, historicalDate)
-        XCTAssertEqual(preserved.createdAt, historicalCreatedAt)
-        XCTAssertEqual(preserved.generatedDate, historicalCreatedAt)
-        XCTAssertEqual(preserved.receiptImageData, Data([0x01]))
-        XCTAssertEqual(preserved.amount, 800)
-        XCTAssertEqual(preserved.currencyCode, "HKD")
-        XCTAssertEqual(preserved.notes, "New plan")
-        XCTAssertEqual(preserved.account?.id, newAccount.id)
-        XCTAssertEqual(preserved.category?.id, newCategory.id)
-        XCTAssertEqual(preserved.dueDayOfMonth, 20)
-        XCTAssertEqual(preserved.reminderLeadDays, 5)
-
-        let regenerated = try context.fetch(
-            FetchDescriptor<Transaction>(
-                predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
-            )
-        )
-        let dayKeys = regenerated.map { Calendar.current.startOfDay(for: $0.date) }
-        XCTAssertEqual(dayKeys.count, Set(dayKeys).count)
-        XCTAssertEqual(regenerated.filter { $0.date < startOfToday }.map(\.id), [historicalID])
-    }
-
-    func testScheduledTemplateRegenerationFailureRollsBackUpdateAndDeletion() async throws {
-        enum ExpectedFailure: Error {
-            case regeneration
-        }
-
-        let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
-        context.insert(account)
-        try context.save()
-        let now = Calendar.current.date(
-            from: DateComponents(year: 2026, month: 7, day: 12, hour: 12)
-        )!
-        let baseService = TransactionService(context: context)
-        let template = try baseService.createScheduled(
-            amount: 90,
-            startDate: Calendar.current.date(byAdding: .month, value: -1, to: now)!,
-            dueDayOfMonth: 12,
-            reminderLeadDays: 1,
-            account: account,
-            category: nil,
-            notes: "Original",
-            planType: .recurring
-        )
-        let today = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.startOfDay(for: now)
-        )
-        let future = Transaction.fromTemplate(
-            template,
-            forDate: Calendar.current.date(byAdding: .month, value: 1, to: now)!
-        )
-        let generatedIDs = Set([today.id, future.id])
-        context.insert(today)
-        context.insert(future)
-        try context.save()
-
-        let service = TransactionService(
-            context: context,
-            scheduledTransactionRegenerator: { _, _, _ in
-                throw ExpectedFailure.regeneration
-            }
-        )
-
-        XCTAssertThrowsError(
-            try service.updateScheduledTemplate(
-                template,
-                amount: 150,
-                startDate: now,
-                dueDayOfMonth: 20,
-                reminderLeadDays: 3,
-                account: account,
-                notes: "Changed",
-                category: nil,
-                planType: .recurring,
-                syncScope: .todayAndFuture,
-                now: now,
-                regenerateThrough: Calendar.current.date(byAdding: .month, value: 2, to: now)
-            )
-        ) { error in
-            XCTAssertTrue(error is ExpectedFailure)
-        }
-
-        let templateID = template.id
-        let restoredTemplate = try XCTUnwrap(
-            context.fetch(
-                FetchDescriptor<Transaction>(
-                    predicate: #Predicate<Transaction> { $0.id == templateID }
-                )
-            ).first
-        )
-        let restoredGenerated = try context.fetch(
-            FetchDescriptor<Transaction>(
-                predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateID }
-            )
-        )
-        XCTAssertEqual(restoredTemplate.amount, 90)
-        XCTAssertEqual(restoredTemplate.notes, "Original")
-        XCTAssertEqual(restoredTemplate.dueDayOfMonth, 12)
-        XCTAssertEqual(Set(restoredGenerated.map(\.id)), generatedIDs)
     }
 
     func testDeleteScheduledTemplateRemovesFutureGeneratedKeepsPastGenerated() async throws {
