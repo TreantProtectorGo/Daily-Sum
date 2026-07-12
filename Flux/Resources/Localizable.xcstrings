@@ -9531,6 +9531,94 @@
         }
       }
     },
+    "transaction.subscription.sync.allGenerated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync All Generated Transactions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同步所有已生成交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同步所有已建立交易"
+          }
+        }
+      }
+    },
+    "transaction.subscription.sync.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose whether changes apply to today and future transactions only, or also update past generated transactions."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择同步范围：仅更新今天及之后的交易，或一并更新过去已生成的交易。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇同步範圍：只更新今日及日後交易，或連同過往已建立的交易一併更新。"
+          }
+        }
+      }
+    },
+    "transaction.subscription.sync.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Generated Transactions"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同步已生成交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同步已建立交易"
+          }
+        }
+      }
+    },
+    "transaction.subscription.sync.todayAndFuture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Today and Future"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅同步今天及之后的交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只同步今日及日後交易"
+          }
+        }
+      }
+    },
     "transaction.travel" : {
       "extractionState" : "manual",
       "localizations" : {

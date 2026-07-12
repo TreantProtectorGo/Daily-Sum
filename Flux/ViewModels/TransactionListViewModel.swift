@@ -404,9 +404,12 @@ final class TransactionListViewModel {
     }
 
     private static func sortTransactionsForTimeline(_ transactions: [Transaction]) -> [Transaction] {
-        transactions.sorted {
-            if $0.date != $1.date {
-                return $0.date > $1.date
+        let calendar = Calendar.current
+        return transactions.sorted {
+            let lhsDay = calendar.startOfDay(for: $0.date)
+            let rhsDay = calendar.startOfDay(for: $1.date)
+            if lhsDay != rhsDay {
+                return lhsDay > rhsDay
             }
             if $0.createdAt != $1.createdAt {
                 return $0.createdAt > $1.createdAt
@@ -416,9 +419,12 @@ final class TransactionListViewModel {
     }
 
     private static func sortRowsForTimeline(_ rows: [TransactionRowSnapshot]) -> [TransactionRowSnapshot] {
-        rows.sorted {
-            if $0.date != $1.date {
-                return $0.date > $1.date
+        let calendar = Calendar.current
+        return rows.sorted {
+            let lhsDay = calendar.startOfDay(for: $0.date)
+            let rhsDay = calendar.startOfDay(for: $1.date)
+            if lhsDay != rhsDay {
+                return lhsDay > rhsDay
             }
             if $0.createdAt != $1.createdAt {
                 return $0.createdAt > $1.createdAt

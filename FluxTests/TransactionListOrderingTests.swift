@@ -14,12 +14,24 @@ final class TransactionListOrderingTests: XCTestCase {
             colorHex: "#FF9500",
             type: .expense
         )
-        let transactionDate = Date(timeIntervalSince1970: 1_700_000_000)
+        let startOfDay = Calendar.current.startOfDay(
+            for: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let earlierTransactionTime = Calendar.current.date(
+            byAdding: .hour,
+            value: 8,
+            to: startOfDay
+        )!
+        let laterTransactionTime = Calendar.current.date(
+            byAdding: .hour,
+            value: 20,
+            to: startOfDay
+        )!
         let olderTransaction = Transaction(
             amount: 10,
             currencyCode: "USD",
             type: .expense,
-            date: transactionDate,
+            date: laterTransactionTime,
             createdAt: Date(timeIntervalSince1970: 1_800_000_000),
             account: account,
             category: category
@@ -28,7 +40,7 @@ final class TransactionListOrderingTests: XCTestCase {
             amount: 20,
             currencyCode: "USD",
             type: .expense,
-            date: transactionDate,
+            date: earlierTransactionTime,
             createdAt: Date(timeIntervalSince1970: 1_800_000_100),
             account: account,
             category: category
