@@ -42,7 +42,9 @@ struct RecurringTransactionGenerator {
     /// Generates transactions from a single template up to a cutoff date.
     func generateTransactions(
         from template: Transaction,
-        upTo cutoffDate: Date
+        upTo cutoffDate: Date,
+        notBefore minimumDate: Date? = nil,
+        saveChanges: Bool = true
     ) throws -> [Transaction] {
         guard template.isRecurringTemplate,
               let rule = template.recurrenceRule else {
@@ -64,6 +66,17 @@ struct RecurringTransactionGenerator {
 
         var generated: [Transaction] = []
         var currentDate = startDate
+
+        if let minimumDate {
+            let minimumDay = dayKey(for: minimumDate)
+            while dayKey(for: currentDate) < minimumDay {
+                currentDate = nextOccurrenceDate(
+                    after: currentDate,
+                    dueDay: dueDay,
+                    recurrenceRule: rule
+                )
+            }
+        }
 
         while currentDate <= cutoffDate {
             let currentDayKey = dayKey(for: currentDate)
@@ -87,7 +100,7 @@ struct RecurringTransactionGenerator {
             )
         }
 
-        if !generated.isEmpty {
+        if !generated.isEmpty && saveChanges {
             try context.save()
         }
 
@@ -117,27 +130,30 @@ struct RecurringTransactionGenerator {
         dueDay: Int,
         recurrenceRule: RecurrenceRule
     ) -> Date {
-        if let lastGenerated {
-            return nextOccurrenceDate(
-                after: lastGenerated.date,
-                dueDay: dueDay,
-                recurrenceRule: recurrenceRule
-            )
-        }
-
+        let scheduleStart: Date
         if recurrenceRule == .monthly {
             let aligned = clampedMonthlyDate(
                 inMonthOf: template.date,
                 dueDay: dueDay,
                 timeSource: template.date
             )
-            if aligned < template.date {
-                return nextMonthlyDate(after: aligned, dueDay: dueDay)
-            }
-            return aligned
+            scheduleStart = aligned < template.date
+                ? nextMonthlyDate(after: aligned, dueDay: dueDay)
+                : aligned
+        } else {
+            scheduleStart = template.date
         }
 
-        return template.date
+        guard let lastGenerated else {
+            return scheduleStart
+        }
+
+        let afterLastGenerated = nextOccurrenceDate(
+            after: lastGenerated.date,
+            dueDay: dueDay,
+            recurrenceRule: recurrenceRule
+        )
+        return max(scheduleStart, afterLastGenerated)
     }
 
     private func nextOccurrenceDate(

@@ -197,6 +197,7 @@ struct TransactionEntrySheet: View {
     @State private var amountInputSession = AmountInputSession()
     
     @State private var isSaving = false
+    @State private var showSubscriptionSyncScopeDialog = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -266,9 +267,7 @@ struct TransactionEntrySheet: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     IconToolbarButton(systemName: "checkmark", accessibilityLabel: AppLocalization.string("action.apply", defaultValue: "Apply")) {
-                        Task {
-                            await saveTransaction()
-                        }
+                        handleSaveRequest()
                     }
                     .accessibilityIdentifier("transaction.save.button")
                     .disabled(!isFormValid || isSaving)
@@ -304,6 +303,46 @@ struct TransactionEntrySheet: View {
             }
             .task(id: travelPreviewRefreshKey) {
                 await refreshTravelPreviewIfNeeded()
+            }
+            .confirmationDialog(
+                AppLocalization.string(
+                    "transaction.subscription.sync.title",
+                    defaultValue: "Sync generated transactions"
+                ),
+                isPresented: $showSubscriptionSyncScopeDialog,
+                titleVisibility: .visible
+            ) {
+                Button(
+                    AppLocalization.string(
+                        "transaction.subscription.sync.todayAndFuture",
+                        defaultValue: "Sync Today and Future"
+                    )
+                ) {
+                    Task {
+                        await saveTransaction(syncScope: .todayAndFuture)
+                    }
+                }
+                Button(
+                    AppLocalization.string(
+                        "transaction.subscription.sync.allGenerated",
+                        defaultValue: "Sync All Generated Transactions"
+                    )
+                ) {
+                    Task {
+                        await saveTransaction(syncScope: .allGenerated)
+                    }
+                }
+                Button(
+                    AppLocalization.string("action.cancel", defaultValue: "Cancel"),
+                    role: .cancel
+                ) { }
+            } message: {
+                Text(
+                    AppLocalization.string(
+                        "transaction.subscription.sync.message",
+                        defaultValue: "Choose whether changes apply to today and future transactions only, or also update past generated transactions."
+                    )
+                )
             }
             .alert(
                 AppLocalization.string("error.title", defaultValue: "Error"),
@@ -589,6 +628,20 @@ struct TransactionEntrySheet: View {
     
     // MARK: - Actions
 
+    private func handleSaveRequest() {
+        let isEditingSubscription = existingTransaction?.isRecurringTemplate == true ||
+            existingTransaction?.recurringTemplateId != nil
+        let willRemainRecurring = transactionType == .expense && scheduleMode == .recurring
+
+        if isEditingSubscription && willRemainRecurring {
+            showSubscriptionSyncScopeDialog = true
+        } else {
+            Task {
+                await saveTransaction(syncScope: .todayAndFuture)
+            }
+        }
+    }
+
     private func resetFormForNewTransaction() {
         let now = Date()
         transactionType = initialTransactionType
@@ -796,7 +849,9 @@ struct TransactionEntrySheet: View {
         .currentTravelCurrencyCode
     }
     
-    private func saveTransaction() async {
+    private func saveTransaction(
+        syncScope: ScheduledTransactionSyncScope = .todayAndFuture
+    ) async {
         guard isFormValid,
               let account = selectedAccount,
               let selectedCategory else { return }
@@ -829,7 +884,13 @@ struct TransactionEntrySheet: View {
 
                 if let template = templateForScheduledEdit {
                     if transactionType == .expense, scheduleMode != .oneTime {
-                        try service.updateScheduledTemplate(
+                        let syncReferenceDate = Date.now
+                        let cutoffDate = Calendar.current.date(
+                            byAdding: .day,
+                            value: RecurringTransactionGenerator.defaultLookAheadDays,
+                            to: syncReferenceDate
+                        ) ?? syncReferenceDate
+                        let generated = try service.updateScheduledTemplate(
                             template,
                             amount: amount,
                             startDate: date,
@@ -840,15 +901,11 @@ struct TransactionEntrySheet: View {
                             isTravelTransaction: resolvedIsTravelTransaction,
                             travelSnapshot: resolvedTravelSnapshot,
                             category: selectedCategory,
-                            planType: selectedPlanType
+                            planType: selectedPlanType,
+                            syncScope: syncScope,
+                            now: syncReferenceDate,
+                            regenerateThrough: cutoffDate
                         )
-                        let generator = RecurringTransactionGenerator(context: modelContext)
-                        let cutoffDate = Calendar.current.date(
-                            byAdding: .day,
-                            value: RecurringTransactionGenerator.defaultLookAheadDays,
-                            to: .now
-                        ) ?? .now
-                        let generated = try generator.generateTransactions(from: template, upTo: cutoffDate)
                         let reminderScheduler = TransactionReminderScheduler(context: modelContext)
                         Task {
                             await reminderScheduler.removeReminders(forTemplateId: template.id)

@@ -34,6 +34,19 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertFalse(source.contains("presentationDragIndicator(.visible)"))
     }
 
+    func testRecurringEditOffersBothGeneratedTransactionSyncScopes() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+
+        XCTAssertTrue(source.contains("showSubscriptionSyncScopeDialog"))
+        XCTAssertTrue(source.contains(".confirmationDialog("))
+        XCTAssertTrue(source.contains("syncScope: .todayAndFuture"))
+        XCTAssertTrue(source.contains("syncScope: .allGenerated"))
+        XCTAssertTrue(source.contains("transaction.subscription.sync.todayAndFuture"))
+        XCTAssertTrue(source.contains("transaction.subscription.sync.allGenerated"))
+    }
+
     private var repositoryURL: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
