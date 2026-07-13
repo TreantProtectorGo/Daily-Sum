@@ -199,6 +199,7 @@ final class ReportsViewModel {
     private let modelContext: ModelContext
     private let conversionService: CurrencyConversionService
     private let conversionMode: ConversionMode
+    private var loadGeneration = LatestLoadGeneration()
     
     var selectedPeriod: ReportPeriod = .month
     var customStartDate: Date = Date()
@@ -212,6 +213,7 @@ final class ReportsViewModel {
     
     var isLoading = false
     var errorMessage: String?
+    var hasLoadedSuccessfully = false
     
     // MARK: - Computed Properties
     
@@ -261,11 +263,14 @@ final class ReportsViewModel {
     // MARK: - Data Loading
     
     func loadReports() async {
+        let generation = loadGeneration.begin()
+        let selectedDateRange = dateRange
+        let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
         isLoading = true
         errorMessage = nil
         
         do {
-            let (startDate, endDate) = dateRange
+            let (startDate, endDate) = selectedDateRange
             
             // Fetch transactions in period
             let descriptor = FetchDescriptor<Transaction>(
@@ -274,7 +279,10 @@ final class ReportsViewModel {
                 }
             )
             let transactions = try modelContext.fetch(descriptor)
-            let convertedTransactions = try await convertTransactions(transactions)
+            let convertedTransactions = try await convertTransactions(
+                transactions,
+                displayCurrencyCode: displayCurrencyCode
+            )
             let trendDateRange = monthlyTrendDateRange(endingAt: endDate)
             let trendStartDate = trendDateRange.start
             let trendEndDate = trendDateRange.end
@@ -286,14 +294,17 @@ final class ReportsViewModel {
                 }
             )
             let trendTransactions = try modelContext.fetch(trendDescriptor)
-            let convertedTrendTransactions = try await convertTransactions(trendTransactions)
+            let convertedTrendTransactions = try await convertTransactions(
+                trendTransactions,
+                displayCurrencyCode: displayCurrencyCode
+            )
             
             // Calculate totals
-            totalIncome = convertedTransactions
+            let loadedTotalIncome = convertedTransactions
                 .filter { $0.transaction.type == .income }
                 .reduce(Decimal.zero) { $0 + $1.convertedAmount }
             
-            totalExpenses = convertedTransactions
+            let loadedTotalExpenses = convertedTransactions
                 .filter { $0.transaction.type == .expense }
                 .reduce(Decimal.zero) { $0 + $1.convertedAmount }
             
@@ -301,22 +312,44 @@ final class ReportsViewModel {
             let expenseTransactions = convertedTransactions.filter {
                 $0.transaction.type == .expense
             }
-            expensesByCategory = groupByCategory(expenseTransactions, total: totalExpenses)
+            let loadedExpensesByCategory = groupByCategory(
+                expenseTransactions,
+                total: loadedTotalExpenses
+            )
             
             // Group income by category
             let incomeTransactions = convertedTransactions.filter {
                 $0.transaction.type == .income
             }
-            incomeByCategory = groupByCategory(incomeTransactions, total: totalIncome)
+            let loadedIncomeByCategory = groupByCategory(
+                incomeTransactions,
+                total: loadedTotalIncome
+            )
             
             // Calculate monthly trends
-            monthlyTrends = calculateMonthlyTrends(convertedTrendTransactions)
-            
+            let loadedMonthlyTrends = calculateMonthlyTrends(convertedTrendTransactions)
+
+            guard loadGeneration.isCurrent(generation) else { return }
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            totalIncome = loadedTotalIncome
+            totalExpenses = loadedTotalExpenses
+            expensesByCategory = loadedExpensesByCategory
+            incomeByCategory = loadedIncomeByCategory
+            monthlyTrends = loadedMonthlyTrends
+            hasLoadedSuccessfully = true
         } catch {
-            errorMessage = error.localizedDescription
+            guard loadGeneration.isCurrent(generation) else { return }
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
-        
-        isLoading = false
+
+        if loadGeneration.isCurrent(generation) {
+            isLoading = false
+        }
     }
     
     // MARK: - Private Methods
@@ -465,12 +498,11 @@ final class ReportsViewModel {
     }
 
     private func convertTransactions(
-        _ transactions: [Transaction]
+        _ transactions: [Transaction],
+        displayCurrencyCode: String
     ) async throws -> [ConvertedTransaction] {
         var converted: [ConvertedTransaction] = []
         converted.reserveCapacity(transactions.count)
-
-        let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
 
         for transaction in transactions {
             let convertedAmount = try await conversionService.convert(

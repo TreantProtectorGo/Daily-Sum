@@ -31,7 +31,14 @@ struct TransactionListView: View {
     var body: some View {
         Group {
             if let viewModel {
-                transactionContent(viewModel: viewModel)
+                ContentLoadStateView(
+                    isLoading: viewModel.isLoading,
+                    errorMessage: viewModel.errorMessage,
+                    hasLoadedSuccessfully: viewModel.hasLoadedSuccessfully,
+                    retry: { Task { await viewModel.loadTransactions() } }
+                ) {
+                    transactionContent(viewModel: viewModel)
+                }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -354,9 +361,18 @@ struct TransactionListView: View {
         _ row: TransactionRowSnapshot,
         viewModel: TransactionListViewModel
     ) -> some View {
-        TransactionRowView(snapshot: row)
-            .contentShape(Rectangle())
-            .onTapGesture {
+        Button {
+            openTransactionEditor(for: row.id, viewModel: viewModel)
+        } label: {
+            TransactionRowView(snapshot: row)
+                .contentShape(Rectangle())
+        }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(row.accessibilityLabelText)
+            .accessibilityValue(row.accessibilityValueText)
+            .accessibilityHint(row.accessibilityHintText)
+            .accessibilityAction(named: row.accessibilityHintText) {
                 openTransactionEditor(for: row.id, viewModel: viewModel)
             }
             .swipeActions(

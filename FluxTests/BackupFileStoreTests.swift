@@ -23,6 +23,39 @@ final class BackupFileStoreTests: XCTestCase {
         try super.tearDownWithError()
     }
 
+    func testBackupProtectionPolicyUsesCompleteFileProtection() {
+        XCTAssertTrue(
+            BackupFileStore.fileWritingOptions.contains(.completeFileProtection)
+        )
+        XCTAssertEqual(
+            BackupFileStore.directoryAttributes[.protectionKey] as? FileProtectionType,
+            .complete
+        )
+    }
+
+    func testListBackupsMigratesExistingArchiveToCompleteProtection() throws {
+        let archive = Self.makeArchive(
+            archiveId: UUID(uuidString: "13131313-1313-1313-1313-131313131313")!,
+            exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            accounts: 1,
+            transactions: 1
+        )
+        let legacyURL = temporaryDirectory.appendingPathComponent("DailySum_legacy.json")
+        try BackupArchiveCodec.encode(archive).write(to: legacyURL, options: .atomic)
+        let recordingFileManager = ProtectionRecordingFileManager()
+        let store = BackupFileStore(
+            directory: temporaryDirectory,
+            fileManager: recordingFileManager
+        )
+
+        _ = try store.listBackups()
+
+        XCTAssertEqual(
+            recordingFileManager.protectionTypeByPath[legacyURL.path],
+            .complete
+        )
+    }
+
     func testWriteBackupArchivePersistsReadableFileAndListsNewestFirst() throws {
         let olderArchive = Self.makeArchive(
             archiveId: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
@@ -376,5 +409,17 @@ final class BackupFileStoreTests: XCTestCase {
         )
         let encodedArchive = try! BackupArchiveCodec.encode(archive)
         return try! BackupArchiveCodec.decode(encodedArchive)
+    }
+}
+
+private final class ProtectionRecordingFileManager: FileManager, @unchecked Sendable {
+    private(set) var protectionTypeByPath: [String: FileProtectionType] = [:]
+
+    override func setAttributes(
+        _ attributes: [FileAttributeKey: Any],
+        ofItemAtPath path: String
+    ) throws {
+        protectionTypeByPath[path] = attributes[.protectionKey] as? FileProtectionType
+        try super.setAttributes(attributes, ofItemAtPath: path)
     }
 }

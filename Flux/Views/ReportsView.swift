@@ -27,6 +27,7 @@ enum ReportsTab: String, CaseIterable, Identifiable {
 
 struct ReportsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
     @AppStorage(ReportsCategoryRowLimitPreference.storageKey) private var categoryRowLimit = ReportsCategoryRowLimitPreference.defaultValue
     @State private var selectedTab: ReportsTab = .reports
@@ -76,7 +77,7 @@ struct ReportsView: View {
                     .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
                 }
             }
-            .task {
+            .task(id: preferredCurrencyCode) {
                 if reportsViewModel == nil {
                     reportsViewModel = ReportsViewModel(modelContext: modelContext)
                 }
@@ -84,18 +85,13 @@ struct ReportsView: View {
                     budgetViewModel = BudgetListViewModel(modelContext: modelContext)
                 }
                 await reportsViewModel?.loadReports()
+                guard !Task.isCancelled else { return }
                 await budgetViewModel?.loadBudgets()
             }
             .refreshable {
                 if selectedTab == .reports {
                     await reportsViewModel?.loadReports()
                 } else {
-                    await budgetViewModel?.loadBudgets()
-                }
-            }
-            .onChange(of: preferredCurrencyCode) { _, _ in
-                Task {
-                    await reportsViewModel?.loadReports()
                     await budgetViewModel?.loadBudgets()
                 }
             }
@@ -150,14 +146,28 @@ struct ReportsView: View {
         switch selectedTab {
         case .reports:
             if let viewModel = reportsViewModel {
-                reportsContent(viewModel: viewModel)
+                ContentLoadStateView(
+                    isLoading: viewModel.isLoading,
+                    errorMessage: viewModel.errorMessage,
+                    hasLoadedSuccessfully: viewModel.hasLoadedSuccessfully,
+                    retry: { Task { await viewModel.loadReports() } }
+                ) {
+                    reportsContent(viewModel: viewModel)
+                }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         case .budgets:
             if let viewModel = budgetViewModel {
-                budgetContent(viewModel: viewModel)
+                ContentLoadStateView(
+                    isLoading: viewModel.isLoading,
+                    errorMessage: viewModel.errorMessage,
+                    hasLoadedSuccessfully: viewModel.hasLoadedSuccessfully,
+                    retry: { Task { await viewModel.loadBudgets() } }
+                ) {
+                    budgetContent(viewModel: viewModel)
+                }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -226,17 +236,35 @@ struct ReportsView: View {
     
     @ViewBuilder
     private func periodSelector(viewModel: ReportsViewModel) -> some View {
-        Picker("", selection: periodSelectionBinding(viewModel: viewModel)) {
-            ForEach([
-                ReportsViewModel.ReportPeriod.month,
-                ReportsViewModel.ReportPeriod.quarter,
-                ReportsViewModel.ReportPeriod.year,
-                ReportsViewModel.ReportPeriod.all
-            ], id: \.id) { period in
-                Text(period.localizedName).tag(period)
+        if ReportsLayoutPolicy.usesMenuPeriodPicker(
+            dynamicTypeSize: dynamicTypeSize
+        ) {
+            LabeledContent(
+                AppLocalization.string("reports.period", defaultValue: "Period")
+            ) {
+                Picker("", selection: periodSelectionBinding(viewModel: viewModel)) {
+                    periodPickerOptions
+                }
+                .pickerStyle(.menu)
             }
+        } else {
+            Picker("", selection: periodSelectionBinding(viewModel: viewModel)) {
+                periodPickerOptions
+            }
+            .pickerStyle(.segmented)
         }
-        .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder
+    private var periodPickerOptions: some View {
+        ForEach([
+            ReportsViewModel.ReportPeriod.month,
+            ReportsViewModel.ReportPeriod.quarter,
+            ReportsViewModel.ReportPeriod.year,
+            ReportsViewModel.ReportPeriod.all
+        ], id: \.id) { period in
+            Text(period.localizedName).tag(period)
+        }
     }
     
     private func periodSelectionBinding(viewModel: ReportsViewModel) -> Binding<ReportsViewModel.ReportPeriod> {
@@ -258,92 +286,88 @@ struct ReportsView: View {
     
     @ViewBuilder
     private func summarySection(viewModel: ReportsViewModel) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                GlassCard(cornerRadius: 16, padding: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.down.circle.fill")
-                                .foregroundStyle(AppColors.Finance.income)
-                            Text(AppLocalization.string("reports.totalIncome", defaultValue: "Total Income"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Text(currency: viewModel.totalIncome, code: displayCurrencyCode)
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .allowsTightening(true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                
-                GlassCard(cornerRadius: 16, padding: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .foregroundStyle(AppColors.Finance.expense)
-                            Text(AppLocalization.string("reports.totalExpenses", defaultValue: "Total Expenses"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Text(currency: viewModel.totalExpenses, code: displayCurrencyCode)
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .allowsTightening(true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+        LazyVGrid(columns: summaryGridColumns, spacing: 12) {
+            reportSummaryCard(
+                title: AppLocalization.string("reports.totalIncome", defaultValue: "Total Income"),
+                systemImage: "arrow.down.circle.fill",
+                tint: AppColors.Finance.income
+            ) {
+                Text(currency: viewModel.totalIncome, code: displayCurrencyCode)
+                    .font(.title3)
+                    .fontWeight(.bold)
             }
-            
-            HStack(spacing: 12) {
-                GlassCard(cornerRadius: 16, padding: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(AppLocalization.string("reports.netIncome", defaultValue: "Net Income"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        AmountText(
-                            viewModel.netIncome,
-                            currencyCode: displayCurrencyCode,
-                            showSign: true,
-                            font: .title3,
-                            fontWeight: .bold
+
+            reportSummaryCard(
+                title: AppLocalization.string("reports.totalExpenses", defaultValue: "Total Expenses"),
+                systemImage: "arrow.up.circle.fill",
+                tint: AppColors.Finance.expense
+            ) {
+                Text(currency: viewModel.totalExpenses, code: displayCurrencyCode)
+                    .font(.title3)
+                    .fontWeight(.bold)
+            }
+
+            reportSummaryCard(
+                title: AppLocalization.string("reports.netIncome", defaultValue: "Net Income")
+            ) {
+                AmountText(
+                    viewModel.netIncome,
+                    currencyCode: displayCurrencyCode,
+                    showSign: true,
+                    font: .title3,
+                    fontWeight: .bold
+                )
+            }
+
+            reportSummaryCard(
+                title: AppLocalization.string("reports.savingsRate", defaultValue: "Savings Rate")
+            ) {
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(viewModel.savingsRate, format: .number.precision(.fractionLength(1)))
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            viewModel.savingsRate >= 0
+                                ? AppColors.Finance.income
+                                : AppColors.Finance.expense
                         )
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .allowsTightening(true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                
-                GlassCard(cornerRadius: 16, padding: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(AppLocalization.string("reports.savingsRate", defaultValue: "Savings Rate"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        HStack(alignment: .firstTextBaseline, spacing: 2) {
-                            Text(viewModel.savingsRate, format: .number.precision(.fractionLength(1)))
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundStyle(viewModel.savingsRate >= 0 ? AppColors.Finance.income : AppColors.Finance.expense)
-                            Text("%")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .allowsTightening(true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("%")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
+        }
+    }
+
+    private var summaryGridColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+            count: ReportsLayoutPolicy.summaryColumnCount(
+                dynamicTypeSize: dynamicTypeSize
+            )
+        )
+    }
+
+    private func reportSummaryCard<Value: View>(
+        title: String,
+        systemImage: String? = nil,
+        tint: Color = .secondary,
+        @ViewBuilder value: () -> Value
+    ) -> some View {
+        GlassCard(cornerRadius: 16, padding: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if let systemImage {
+                        Image(systemName: systemImage)
+                            .foregroundStyle(tint)
+                    }
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                value()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     
@@ -962,11 +986,39 @@ struct MonthlyTrendLineChart: View {
 struct MonthlyTrendRow: View {
     let trend: ReportsViewModel.MonthlyTrend
     let currencyCode: String
-    
-    @Environment(\.regionalSettings) private var regionalSettings
-    
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(spacing: 8) {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(DateFormatterUtility.shared.formatReportMonth(trend.month))
+                    .font(.headline)
+                LabeledContent(
+                    AppLocalization.string("reports.income", defaultValue: "Income")
+                ) {
+                    Text(currency: trend.income, code: currencyCode)
+                        .foregroundStyle(AppColors.Finance.income)
+                }
+                LabeledContent(
+                    AppLocalization.string("reports.expenses", defaultValue: "Expenses")
+                ) {
+                    Text(currency: trend.expenses, code: currencyCode)
+                        .foregroundStyle(AppColors.Finance.expense)
+                }
+                LabeledContent(
+                    AppLocalization.string("reports.net", defaultValue: "Net")
+                ) {
+                    AmountText(
+                        trend.net,
+                        currencyCode: currencyCode,
+                        showSign: true,
+                        fontWeight: .semibold
+                    )
+                }
+            }
+        } else {
+            HStack(spacing: 8) {
             Text(DateFormatterUtility.shared.formatReportMonth(trend.month))
                 .font(.subheadline)
                 .lineLimit(1)
@@ -1015,6 +1067,7 @@ struct MonthlyTrendRow: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
+            }
         }
     }
 }

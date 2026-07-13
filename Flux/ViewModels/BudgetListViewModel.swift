@@ -9,6 +9,7 @@ final class BudgetListViewModel {
     private let budgetService: BudgetService
     private let conversionService: CurrencyConversionService
     private let conversionMode: ConversionMode
+    private var loadGeneration = LatestLoadGeneration()
     
     var budgets: [Budget] = []
     var activeBudgets: [Budget] = []
@@ -19,6 +20,7 @@ final class BudgetListViewModel {
     
     var isLoading = false
     var errorMessage: String?
+    var hasLoadedSuccessfully = false
     
     var overallProgress: Double {
         guard totalBudgeted > 0 else { return 0 }
@@ -49,6 +51,8 @@ final class BudgetListViewModel {
     }
     
     func loadBudgets() async {
+        let generation = loadGeneration.begin()
+        let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
         isLoading = true
         errorMessage = nil
         
@@ -56,21 +60,39 @@ final class BudgetListViewModel {
             let descriptor = FetchDescriptor<Budget>(
                 sortBy: [SortDescriptor(\Budget.createdAt, order: .reverse)]
             )
-            budgets = try modelContext.fetch(descriptor)
-            budgetStatusesByID = try await budgetService.statuses(for: budgets)
+            let loadedBudgets = try modelContext.fetch(descriptor)
+            let loadedStatuses = try await budgetService.statuses(for: loadedBudgets)
             
             // Active state is no longer user-facing; treat all budgets as visible.
-            activeBudgets = budgets
+            let loadedActiveBudgets = loadedBudgets
+            let activeStatuses = loadedActiveBudgets.compactMap { loadedStatuses[$0.id] }
+            let totals = try await calculateConvertedTotals(
+                for: activeStatuses,
+                displayCurrencyCode: displayCurrencyCode
+            )
+
+            guard loadGeneration.isCurrent(generation) else { return }
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            budgets = loadedBudgets
+            budgetStatusesByID = loadedStatuses
+            activeBudgets = loadedActiveBudgets
             inactiveBudgets = []
-            let totals = try await calculateConvertedTotals(for: activeBudgetStatuses)
             totalBudgeted = totals.budgeted
             totalSpent = totals.spent
-            
+            hasLoadedSuccessfully = true
         } catch {
-            errorMessage = error.localizedDescription
+            guard loadGeneration.isCurrent(generation) else { return }
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
-        
-        isLoading = false
+
+        if loadGeneration.isCurrent(generation) {
+            isLoading = false
+        }
     }
     
     func deleteBudget(_ budget: Budget) async throws {
@@ -87,12 +109,11 @@ final class BudgetListViewModel {
     }
 
     private func calculateConvertedTotals(
-        for statuses: [BudgetService.BudgetStatus]
+        for statuses: [BudgetService.BudgetStatus],
+        displayCurrencyCode: String
     ) async throws -> (budgeted: Decimal, spent: Decimal) {
         var totalBudgeted: Decimal = 0
         var totalSpent: Decimal = 0
-        let displayCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
-
         for status in statuses {
             let convertedLimit = try await conversionService.convert(
                 status.limit,

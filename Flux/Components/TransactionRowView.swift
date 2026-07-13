@@ -83,6 +83,29 @@ struct TransactionRowSnapshot: Identifiable {
         }
         return "\(chargedAmountText) • \(dateText)"
     }
+
+    var accessibilityLabelText: String {
+        categoryDisplayName
+    }
+
+    var accessibilityValueText: String {
+        var parts = [
+            CurrencyFormatter.shared.format(
+                primarySignedAmount,
+                currencyCode: primaryCurrencyCode,
+                showSign: true
+            ),
+            trailingSecondaryText
+        ]
+        if let notes, !notes.isEmpty {
+            parts.append(notes)
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    var accessibilityHintText: String {
+        AppLocalization.string("transaction.accessibility.editHint", defaultValue: "Edit transaction")
+    }
 }
 
 /// A row displaying a single transaction in a list
@@ -216,6 +239,10 @@ struct GlassTransactionRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(snapshot.accessibilityLabelText)
+        .accessibilityValue(snapshot.accessibilityValueText)
+        .accessibilityHint(snapshot.accessibilityHintText)
         .glassBackground(cornerRadius: 12, isInteractive: true, style: .row)
         .glassSurfaceHierarchy(style: .row, cornerRadius: 12)
     }

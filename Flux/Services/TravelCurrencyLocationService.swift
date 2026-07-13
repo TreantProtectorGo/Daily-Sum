@@ -2,11 +2,60 @@ import CoreLocation
 import Foundation
 import MapKit
 
-enum TravelLocationAuthorizationStatus {
+enum TravelLocationAuthorizationStatus: Equatable {
     case notDetermined
     case denied
     case restricted
     case authorized
+}
+
+@MainActor
+final class OneShotRequestBroker<Value> {
+    private var continuations: [UUID: CheckedContinuation<Value?, Never>] = [:]
+    private var isRequestInFlight = false
+    private(set) var requestStartCount = 0
+    var waiterCount: Int { continuations.count }
+
+    func wait(start: () -> Void) async -> Value? {
+        let requestID = UUID()
+        let value: Value? = await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                let shouldStartRequest = !isRequestInFlight
+                continuations[requestID] = continuation
+                if shouldStartRequest {
+                    isRequestInFlight = true
+                    requestStartCount += 1
+                    start()
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancel(requestID)
+            }
+        }
+        return Task.isCancelled ? nil : value
+    }
+
+    func resolve(_ value: Value?) {
+        isRequestInFlight = false
+        let pendingContinuations = continuations.values
+        continuations.removeAll()
+        for continuation in pendingContinuations {
+            continuation.resume(returning: value)
+        }
+    }
+
+    private func cancel(_ requestID: UUID) {
+        guard let continuation = continuations.removeValue(forKey: requestID) else {
+            return
+        }
+        continuation.resume(returning: nil)
+    }
 }
 
 @MainActor
@@ -20,8 +69,8 @@ protocol TravelCurrencyLocationServicing {
 final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServicing {
     private let locationManager: CLLocationManager
 
-    private var authorizationContinuation: CheckedContinuation<TravelLocationAuthorizationStatus, Never>?
-    private var locationContinuation: CheckedContinuation<CLLocation?, Never>?
+    private let authorizationBroker = OneShotRequestBroker<TravelLocationAuthorizationStatus>()
+    private let locationBroker = OneShotRequestBroker<CLLocation>()
 
     init(locationManager: CLLocationManager = CLLocationManager()) {
         self.locationManager = locationManager
@@ -39,10 +88,9 @@ final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServi
             return currentStatus
         }
 
-        return await withCheckedContinuation { continuation in
-            authorizationContinuation = continuation
+        return await authorizationBroker.wait {
             locationManager.requestWhenInUseAuthorization()
-        }
+        } ?? authorizationStatus()
     }
 
     func detectLocalCurrency() async -> SupportedCurrency? {
@@ -62,8 +110,7 @@ final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServi
     }
 
     private func requestLocation() async -> CLLocation? {
-        await withCheckedContinuation { continuation in
-            locationContinuation = continuation
+        await locationBroker.wait {
             locationManager.requestLocation()
         }
     }
@@ -101,40 +148,24 @@ final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServi
 
 extension TravelCurrencyLocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        guard let continuation = authorizationContinuation else {
-            return
-        }
-
         let status = authorizationStatus()
         guard status != .notDetermined else {
             return
         }
-
-        authorizationContinuation = nil
-        continuation.resume(returning: status)
+        authorizationBroker.resolve(status)
     }
 
     func locationManager(
         _ manager: CLLocationManager,
         didUpdateLocations locations: [CLLocation]
     ) {
-        guard let continuation = locationContinuation else {
-            return
-        }
-
-        locationContinuation = nil
-        continuation.resume(returning: locations.last)
+        locationBroker.resolve(locations.last)
     }
 
     func locationManager(
         _ manager: CLLocationManager,
         didFailWithError error: Error
     ) {
-        guard let continuation = locationContinuation else {
-            return
-        }
-
-        locationContinuation = nil
-        continuation.resume(returning: nil)
+        locationBroker.resolve(nil)
     }
 }

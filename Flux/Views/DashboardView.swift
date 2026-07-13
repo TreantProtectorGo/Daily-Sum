@@ -31,28 +31,20 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    if let viewModel {
-                        BalanceOverviewCard(
-                            totalBalance: viewModel.totalBalance,
-                            accountCount: viewModel.accounts.count,
-                            hasAccounts: viewModel.hasAccounts,
-                            currencyCode: displayCurrencyCode
-                        )
-                        
-                        accountsSection(viewModel: viewModel)
-                        
-                        recentTransactionsSection(viewModel: viewModel)
-                        
-                        budgetOverviewSection(viewModel: viewModel)
-                    } else {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Group {
+                if let viewModel {
+                    ContentLoadStateView(
+                        isLoading: viewModel.isLoading,
+                        errorMessage: viewModel.errorMessage,
+                        hasLoadedSuccessfully: viewModel.hasLoadedSuccessfully,
+                        retry: { Task { await viewModel.loadData() } }
+                    ) {
+                        dashboardContent(viewModel: viewModel)
                     }
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding()
-                .padding(.bottom, 80)
             }
             .navigationTitle(AppLocalization.string("dashboard.title", defaultValue: "主頁"))
             .toolbar {
@@ -69,16 +61,11 @@ struct DashboardView: View {
             .refreshable {
                 await viewModel?.refresh()
             }
-            .task {
+            .task(id: preferredCurrencyCode) {
                 if viewModel == nil {
                     viewModel = DashboardViewModel(modelContext: modelContext)
                 }
                 await viewModel?.loadData()
-            }
-            .onChange(of: preferredCurrencyCode) { _, _ in
-                Task {
-                    await viewModel?.loadData()
-                }
             }
             .sheet(isPresented: $showAddTransaction) {
                 TransactionEntrySheet(onSave: {
@@ -128,6 +115,25 @@ struct DashboardView: View {
                 .padding(.trailing, 25)
                 .padding(.bottom, 20)
             }
+        }
+    }
+
+    private func dashboardContent(viewModel: DashboardViewModel) -> some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                BalanceOverviewCard(
+                    totalBalance: viewModel.totalBalance,
+                    accountCount: viewModel.accounts.count,
+                    hasAccounts: viewModel.hasAccounts,
+                    currencyCode: displayCurrencyCode
+                )
+
+                accountsSection(viewModel: viewModel)
+                recentTransactionsSection(viewModel: viewModel)
+                budgetOverviewSection(viewModel: viewModel)
+            }
+            .padding()
+            .padding(.bottom, 80)
         }
     }
     // MARK: - Accounts Section

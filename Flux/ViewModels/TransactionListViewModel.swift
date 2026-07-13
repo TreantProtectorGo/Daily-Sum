@@ -64,6 +64,7 @@ final class TransactionListViewModel {
     
     private let modelContext: ModelContext
     private let transactionService: TransactionService
+    private var loadGeneration = LatestLoadGeneration()
     
     var transactions: [Transaction] = []
     var transactionRows: [TransactionRowSnapshot] = []
@@ -85,6 +86,7 @@ final class TransactionListViewModel {
     
     var isLoading = false
     var errorMessage: String?
+    var hasLoadedSuccessfully = false
     
     // MARK: - Computed Properties
     
@@ -179,6 +181,7 @@ final class TransactionListViewModel {
     // MARK: - Data Loading
     
     func loadTransactions() async {
+        let generation = loadGeneration.begin()
         isLoading = true
         errorMessage = nil
         
@@ -187,14 +190,26 @@ final class TransactionListViewModel {
                 predicate: #Predicate<Transaction> { !$0.isRecurringTemplate },
                 sortBy: Self.timelineSortDescriptors
             )
-            transactions = try modelContext.fetch(descriptor)
-            transactionRows = transactions.map(TransactionRowSnapshot.init(transaction:))
+            let loadedTransactions = try modelContext.fetch(descriptor)
+            guard loadGeneration.isCurrent(generation) else { return }
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            transactions = loadedTransactions
+            transactionRows = loadedTransactions.map(TransactionRowSnapshot.init(transaction:))
             applyFilters()
+            hasLoadedSuccessfully = true
         } catch {
-            errorMessage = error.localizedDescription
+            guard loadGeneration.isCurrent(generation) else { return }
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
-        
-        isLoading = false
+
+        if loadGeneration.isCurrent(generation) {
+            isLoading = false
+        }
     }
     
     // MARK: - Filtering

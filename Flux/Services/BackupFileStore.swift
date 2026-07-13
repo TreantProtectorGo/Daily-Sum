@@ -122,6 +122,14 @@ extension BackupFileStoring {
 
 @MainActor
 final class BackupFileStore: BackupFileStoring {
+    static let fileWritingOptions: Data.WritingOptions = [
+        .atomic,
+        .completeFileProtection
+    ]
+    static let directoryAttributes: [FileAttributeKey: Any] = [
+        .protectionKey: FileProtectionType.complete
+    ]
+
     private struct ResolvedBackupDirectory {
         var url: URL
         var storageLocation: BackupStorageLocation
@@ -185,7 +193,7 @@ final class BackupFileStore: BackupFileStoring {
         let filename = makeFilename(exportedAt: archive.exportedAt, kind: kind)
         let fileURL = uniqueFileURL(in: directory.url, filename: filename)
         let data = try BackupArchiveCodec.encode(archive)
-        try data.write(to: fileURL, options: [.atomic])
+        try data.write(to: fileURL, options: Self.fileWritingOptions)
         return try makeSummary(for: fileURL, storageLocation: directory.storageLocation)
     }
 
@@ -229,8 +237,28 @@ final class BackupFileStore: BackupFileStoring {
     private func ensureDirectoryExists(_ directory: URL) throws {
         try fileManager.createDirectory(
             at: directory,
-            withIntermediateDirectories: true
+            withIntermediateDirectories: true,
+            attributes: Self.directoryAttributes
         )
+        try fileManager.setAttributes(
+            Self.directoryAttributes,
+            ofItemAtPath: directory.path
+        )
+        try protectExistingBackupFiles(in: directory)
+    }
+
+    private func protectExistingBackupFiles(in directory: URL) throws {
+        let existingFiles = try fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )
+        for fileURL in existingFiles where fileURL.pathExtension.lowercased() == "json" {
+            try fileManager.setAttributes(
+                Self.directoryAttributes,
+                ofItemAtPath: fileURL.path
+            )
+        }
     }
 
     private func makeSummary(
