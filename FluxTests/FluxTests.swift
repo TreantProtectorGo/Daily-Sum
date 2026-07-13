@@ -126,6 +126,164 @@ final class FluxTests: XCTestCase {
         originalAppLanguage = nil
     }
 
+    func testLatestLoadGenerationRejectsOlderResults() {
+        var generation = LatestLoadGeneration()
+
+        let older = generation.begin()
+        let latest = generation.begin()
+
+        XCTAssertFalse(generation.isCurrent(older))
+        XCTAssertTrue(generation.isCurrent(latest))
+    }
+
+    @MainActor
+    func testContentLoadPhasePreservesSuccessfulContentDuringRefreshAndFailure() {
+        XCTAssertEqual(
+            ContentLoadPhase.resolve(
+                isLoading: true,
+                errorMessage: nil,
+                hasLoadedSuccessfully: false
+            ),
+            .initialLoading
+        )
+        XCTAssertEqual(
+            ContentLoadPhase.resolve(
+                isLoading: true,
+                errorMessage: nil,
+                hasLoadedSuccessfully: true
+            ),
+            .refreshing
+        )
+        XCTAssertEqual(
+            ContentLoadPhase.resolve(
+                isLoading: false,
+                errorMessage: "Offline",
+                hasLoadedSuccessfully: true
+            ),
+            .staleContent("Offline")
+        )
+        XCTAssertEqual(
+            ContentLoadPhase.resolve(
+                isLoading: false,
+                errorMessage: "Offline",
+                hasLoadedSuccessfully: false
+            ),
+            .initialFailure("Offline")
+        )
+    }
+
+    func testReportsLayoutPolicyUsesSingleColumnAndMenuAtAccessibilitySizes() {
+        XCTAssertEqual(
+            ReportsLayoutPolicy.summaryColumnCount(dynamicTypeSize: .large),
+            2
+        )
+        XCTAssertEqual(
+            ReportsLayoutPolicy.summaryColumnCount(dynamicTypeSize: .xxLarge),
+            1
+        )
+        XCTAssertFalse(ReportsLayoutPolicy.usesMenuPeriodPicker(dynamicTypeSize: .large))
+        XCTAssertTrue(ReportsLayoutPolicy.usesMenuPeriodPicker(dynamicTypeSize: .xxLarge))
+        XCTAssertTrue(ReportsLayoutPolicy.usesMenuPeriodPicker(dynamicTypeSize: .accessibility1))
+    }
+
+    @MainActor
+    func testOneShotRequestBrokerCoalescesConcurrentWaiters() async {
+        let broker = OneShotRequestBroker<Int>()
+
+        let first = Task { await broker.wait {} }
+        let second = Task { await broker.wait {} }
+        for _ in 0..<100 where broker.waiterCount < 2 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(broker.waiterCount, 2)
+        guard broker.waiterCount == 2 else {
+            first.cancel()
+            second.cancel()
+            return
+        }
+        XCTAssertEqual(broker.requestStartCount, 1)
+        broker.resolve(42)
+        let values = await (first.value, second.value)
+        XCTAssertEqual(values.0, 42)
+        XCTAssertEqual(values.1, 42)
+    }
+
+    @MainActor
+    func testOneShotRequestBrokerCancelsOnlyTheCancelledWaiter() async {
+        let broker = OneShotRequestBroker<Int>()
+        let first = Task {
+            await broker.wait {}
+        }
+        for _ in 0..<100 where broker.waiterCount < 1 {
+            await Task.yield()
+        }
+        let second = Task {
+            await broker.wait {}
+        }
+        for _ in 0..<100 where broker.waiterCount < 2 {
+            await Task.yield()
+        }
+        XCTAssertEqual(broker.waiterCount, 2)
+        guard broker.waiterCount == 2 else {
+            first.cancel()
+            second.cancel()
+            return
+        }
+
+        first.cancel()
+        for _ in 0..<100 where broker.waiterCount > 1 {
+            await Task.yield()
+        }
+        broker.resolve(7)
+
+        let cancelledValue = await first.value
+        let activeValue = await second.value
+        XCTAssertNil(cancelledValue)
+        XCTAssertEqual(activeValue, 7)
+        XCTAssertEqual(broker.requestStartCount, 1)
+    }
+
+    @MainActor
+    func testOneShotRequestBrokerDoesNotRestartRequestAfterAllWaitersCancel() async {
+        let broker = OneShotRequestBroker<Int>()
+        let cancelledWaiter = Task { await broker.wait {} }
+        for _ in 0..<100 where broker.waiterCount < 1 {
+            await Task.yield()
+        }
+        cancelledWaiter.cancel()
+        for _ in 0..<100 where broker.waiterCount > 0 {
+            await Task.yield()
+        }
+
+        let replacementWaiter = Task { await broker.wait {} }
+        for _ in 0..<100 where broker.waiterCount < 1 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(broker.requestStartCount, 1)
+        broker.resolve(9)
+        let cancelledValue = await cancelledWaiter.value
+        let replacementValue = await replacementWaiter.value
+        XCTAssertNil(cancelledValue)
+        XCTAssertEqual(replacementValue, 9)
+    }
+
+    @MainActor
+    func testOneShotRequestBrokerDropsValueWhenCancellationRacesResolution() async {
+        let broker = OneShotRequestBroker<Int>()
+        let waiter = Task { await broker.wait {} }
+        for _ in 0..<100 where broker.waiterCount < 1 {
+            await Task.yield()
+        }
+
+        waiter.cancel()
+        broker.resolve(11)
+
+        let value = await waiter.value
+        XCTAssertNil(value)
+    }
+
     func testTravelCurrencyPreferencePersistsSource() {
         TravelCurrencyPreference.source = .manual
         XCTAssertEqual(TravelCurrencyPreference.source, .manual)
@@ -376,6 +534,32 @@ final class FluxTests: XCTestCase {
         XCTAssertEqual(snapshot.primarySignedAmount, -1200)
         XCTAssertEqual(snapshot.primaryCurrencyCode, "JPY")
         XCTAssertNotNil(snapshot.chargedAmountText)
+    }
+
+    func testTransactionRowSnapshotProvidesCombinedAccessibilityContent() {
+        let account = Account(name: "Cash", type: .cash, currencyCode: "HKD")
+        let category = Category(
+            nameKey: "category.expense.food",
+            icon: "fork.knife",
+            colorHex: "#FF3B30",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let transaction = Transaction(
+            amount: 88,
+            currencyCode: "HKD",
+            type: .expense,
+            notes: "Lunch",
+            account: account,
+            category: category
+        )
+
+        let snapshot = TransactionRowSnapshot(transaction: transaction)
+
+        XCTAssertEqual(snapshot.accessibilityLabelText, category.displayName)
+        XCTAssertTrue(snapshot.accessibilityValueText.contains("Lunch"))
+        XCTAssertTrue(snapshot.accessibilityValueText.contains(snapshot.trailingSecondaryText))
+        XCTAssertFalse(snapshot.accessibilityHintText.isEmpty)
     }
 
     @MainActor

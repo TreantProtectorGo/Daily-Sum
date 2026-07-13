@@ -14,6 +14,7 @@ final class DashboardViewModel {
     private let conversionService: CurrencyConversionService
     private let budgetService: BudgetService
     private let conversionMode: ConversionMode
+    private var loadGeneration = LatestLoadGeneration()
 
     var totalBalance: Decimal = 0
     var monthlyIncome: Decimal = 0
@@ -25,6 +26,7 @@ final class DashboardViewModel {
     
     var isLoading = false
     var errorMessage: String?
+    var hasLoadedSuccessfully = false
     
     // MARK: - Computed Properties
     
@@ -74,6 +76,8 @@ final class DashboardViewModel {
     // MARK: - Data Loading
     
     func loadData() async {
+        let generation = loadGeneration.begin()
+        let displayCurrencyCode = defaultCurrencyCode
         isLoading = true
         errorMessage = nil
         
@@ -82,10 +86,13 @@ final class DashboardViewModel {
             let accountDescriptor = FetchDescriptor<Account>(
                 sortBy: [SortDescriptor(\Account.createdAt, order: .reverse)]
             )
-            accounts = try modelContext.fetch(accountDescriptor)
+            let loadedAccounts = try modelContext.fetch(accountDescriptor)
             
             // Calculate total balance
-            totalBalance = try await convertedAccountTotal(accounts)
+            let loadedTotalBalance = try await convertedAccountTotal(
+                loadedAccounts,
+                displayCurrencyCode: displayCurrencyCode
+            )
             
             // Fetch recent transactions (non-recurring templates, last 10)
             let currentDate = Date.now
@@ -97,7 +104,9 @@ final class DashboardViewModel {
             )
             transactionDescriptor.fetchLimit = 10
             let recentTransactions = try modelContext.fetch(transactionDescriptor)
-            recentTransactionRows = recentTransactions.map(TransactionRowSnapshot.init(transaction:))
+            let loadedRecentTransactionRows = recentTransactions.map(
+                TransactionRowSnapshot.init(transaction:)
+            )
             
             // Calculate monthly totals
             let calendar = Calendar.current
@@ -114,22 +123,46 @@ final class DashboardViewModel {
             let incomeTransactions = monthlyTransactions.filter { $0.type == .income }
             let expenseTransactions = monthlyTransactions.filter { $0.type == .expense }
 
-            monthlyIncome = try await convertedTransactionTotal(incomeTransactions)
-            monthlyExpenses = try await convertedTransactionTotal(expenseTransactions)
+            let loadedMonthlyIncome = try await convertedTransactionTotal(
+                incomeTransactions,
+                displayCurrencyCode: displayCurrencyCode
+            )
+            let loadedMonthlyExpenses = try await convertedTransactionTotal(
+                expenseTransactions,
+                displayCurrencyCode: displayCurrencyCode
+            )
             
             // Fetch budgets (top 3)
             var budgetDescriptor = FetchDescriptor<Budget>(
                 sortBy: [SortDescriptor(\Budget.createdAt, order: .reverse)]
             )
             budgetDescriptor.fetchLimit = 3
-            topBudgets = try modelContext.fetch(budgetDescriptor)
-            budgetStatusesByID = try await budgetService.statuses(for: topBudgets)
-            
+            let loadedTopBudgets = try modelContext.fetch(budgetDescriptor)
+            let loadedBudgetStatuses = try await budgetService.statuses(for: loadedTopBudgets)
+
+            guard loadGeneration.isCurrent(generation) else { return }
+            guard !Task.isCancelled else {
+                isLoading = false
+                return
+            }
+            accounts = loadedAccounts
+            totalBalance = loadedTotalBalance
+            recentTransactionRows = loadedRecentTransactionRows
+            monthlyIncome = loadedMonthlyIncome
+            monthlyExpenses = loadedMonthlyExpenses
+            topBudgets = loadedTopBudgets
+            budgetStatusesByID = loadedBudgetStatuses
+            hasLoadedSuccessfully = true
         } catch {
-            errorMessage = error.localizedDescription
+            guard loadGeneration.isCurrent(generation) else { return }
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
-        
-        isLoading = false
+
+        if loadGeneration.isCurrent(generation) {
+            isLoading = false
+        }
     }
     
     // MARK: - Actions
@@ -140,14 +173,17 @@ final class DashboardViewModel {
 
     // MARK: - Conversion
 
-    private func convertedAccountTotal(_ accounts: [Account]) async throws -> Decimal {
+    private func convertedAccountTotal(
+        _ accounts: [Account],
+        displayCurrencyCode: String
+    ) async throws -> Decimal {
         var total: Decimal = 0
 
         for account in accounts where account.includeInTotal {
             let convertedBalance = try await conversionService.convert(
                 account.currentBalance,
                 from: account.currencyCode,
-                to: defaultCurrencyCode,
+                to: displayCurrencyCode,
                 on: .now,
                 mode: conversionMode
             )
@@ -157,14 +193,17 @@ final class DashboardViewModel {
         return total
     }
 
-    private func convertedTransactionTotal(_ transactions: [Transaction]) async throws -> Decimal {
+    private func convertedTransactionTotal(
+        _ transactions: [Transaction],
+        displayCurrencyCode: String
+    ) async throws -> Decimal {
         var total: Decimal = 0
 
         for transaction in transactions {
             let convertedAmount = try await conversionService.convert(
                 transaction.amount,
                 from: transaction.currencyCode,
-                to: defaultCurrencyCode,
+                to: displayCurrencyCode,
                 on: transaction.date,
                 mode: conversionMode
             )

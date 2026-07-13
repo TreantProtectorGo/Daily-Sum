@@ -48,29 +48,45 @@ final class ActionButtonShortcutTests: XCTestCase {
 
     func testSharedControlIntentIsAvailableToAppAndExtensionTargets() throws {
         let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
-        let controlTarget = try targetBlock(
-            identifier: "C0DA00072F50000000C0DA07",
-            name: "DailySumControls",
-            in: project
-        )
-        let appTarget = try targetBlock(
-            identifier: "D1473B7C2F39023C00F93BDF",
-            name: "Flux",
-            in: project
-        )
 
-        XCTAssertTrue(project.contains("SharedAppIntents"))
-        XCTAssertTrue(controlTarget.contains("C0DA00042F50000000C0DA04 /* DailySumControls */"))
-        XCTAssertTrue(controlTarget.contains("C0DA000F2F50000000C0DA0F /* SharedAppIntents */"))
-        XCTAssertTrue(appTarget.contains("D1473B7F2F39023C00F93BDF /* Flux */"))
-        XCTAssertTrue(appTarget.contains("C0DA000F2F50000000C0DA0F /* SharedAppIntents */"))
+        XCTAssertTrue(
+            try synchronizedGroupNames(forTarget: "DailySumControls", in: project)
+                .contains("SharedAppIntents")
+        )
+        XCTAssertTrue(
+            try synchronizedGroupNames(forTarget: "Flux", in: project)
+                .contains("SharedAppIntents")
+        )
     }
 
     func testControlWidgetExtensionVersionMatchesContainingApp() throws {
         let project = try sourceContents(at: "Flux.xcodeproj/project.pbxproj")
 
-        XCTAssertEqual(project.components(separatedBy: "CURRENT_PROJECT_VERSION = 73;").count - 1, 4)
-        XCTAssertEqual(project.components(separatedBy: "MARKETING_VERSION = 1.11;").count - 1, 4)
+        let appBuildVersions = try buildSettingValues(
+            named: "CURRENT_PROJECT_VERSION",
+            forTarget: "Flux",
+            in: project
+        )
+        let extensionBuildVersions = try buildSettingValues(
+            named: "CURRENT_PROJECT_VERSION",
+            forTarget: "DailySumControls",
+            in: project
+        )
+        let appMarketingVersions = try buildSettingValues(
+            named: "MARKETING_VERSION",
+            forTarget: "Flux",
+            in: project
+        )
+        let extensionMarketingVersions = try buildSettingValues(
+            named: "MARKETING_VERSION",
+            forTarget: "DailySumControls",
+            in: project
+        )
+
+        XCTAssertFalse(appBuildVersions.isEmpty)
+        XCTAssertFalse(appMarketingVersions.isEmpty)
+        XCTAssertEqual(Set(appBuildVersions), Set(extensionBuildVersions))
+        XCTAssertEqual(Set(appMarketingVersions), Set(extensionMarketingVersions))
     }
 
     func testShortcutCopyUsesDailySumBranding() throws {
@@ -206,6 +222,90 @@ final class ActionButtonShortcutTests: XCTestCase {
         )
     }
 
+    private func synchronizedGroupNames(
+        forTarget targetName: String,
+        in project: String
+    ) throws -> Set<String> {
+        let escapedTarget = NSRegularExpression.escapedPattern(for: targetName)
+        let targetPattern = "(?s)[A-F0-9]+ /\\* \(escapedTarget) \\*/ = \\{.*?isa\\s*=\\s*PBXNativeTarget;.*?\\n\\s*\\};"
+        let targetExpression = try NSRegularExpression(pattern: targetPattern)
+        let projectRange = NSRange(project.startIndex..<project.endIndex, in: project)
+        let targetMatch = try XCTUnwrap(targetExpression.firstMatch(in: project, range: projectRange))
+        let targetBlockRange = try XCTUnwrap(Range(targetMatch.range, in: project))
+        let targetBlock = String(project[targetBlockRange])
+
+        let groupsPattern = "(?s)fileSystemSynchronizedGroups\\s*=\\s*\\((.*?)\\);"
+        let groupsExpression = try NSRegularExpression(pattern: groupsPattern)
+        let targetRange = NSRange(targetBlock.startIndex..<targetBlock.endIndex, in: targetBlock)
+        let groupsMatch = try XCTUnwrap(
+            groupsExpression.firstMatch(in: targetBlock, range: targetRange)
+        )
+        let namesRange = try XCTUnwrap(Range(groupsMatch.range(at: 1), in: targetBlock))
+        let namesSource = String(targetBlock[namesRange])
+        let nameExpression = try NSRegularExpression(pattern: "/\\*\\s*(.*?)\\s*\\*/")
+        let sourceRange = NSRange(namesSource.startIndex..<namesSource.endIndex, in: namesSource)
+
+        return Set(nameExpression.matches(in: namesSource, range: sourceRange).compactMap { match in
+            guard let range = Range(match.range(at: 1), in: namesSource) else { return nil }
+            return String(namesSource[range])
+        })
+    }
+
+    private func buildSettingValues(
+        named name: String,
+        forTarget targetName: String,
+        in project: String
+    ) throws -> [String] {
+        let escapedTarget = NSRegularExpression.escapedPattern(for: targetName)
+        let configurationListExpression = try NSRegularExpression(
+            pattern: "(?s)[A-F0-9]+ /\\* Build configuration list for PBXNativeTarget \"\(escapedTarget)\" \\*/ = \\{.*?buildConfigurations\\s*=\\s*\\((.*?)\\);"
+        )
+        let projectRange = NSRange(project.startIndex..<project.endIndex, in: project)
+        let listMatch = try XCTUnwrap(
+            configurationListExpression.firstMatch(in: project, range: projectRange)
+        )
+        let identifiersRange = try XCTUnwrap(Range(listMatch.range(at: 1), in: project))
+        let identifiersSource = String(project[identifiersRange])
+        let identifierExpression = try NSRegularExpression(pattern: "([A-F0-9]+)\\s*/\\*")
+        let sourceRange = NSRange(
+            identifiersSource.startIndex..<identifiersSource.endIndex,
+            in: identifiersSource
+        )
+        let identifiers = identifierExpression.matches(
+            in: identifiersSource,
+            range: sourceRange
+        ).compactMap { match -> String? in
+            guard let range = Range(match.range(at: 1), in: identifiersSource) else { return nil }
+            return String(identifiersSource[range])
+        }
+
+        let escapedName = NSRegularExpression.escapedPattern(for: name)
+        return try identifiers.compactMap { identifier in
+            let escapedIdentifier = NSRegularExpression.escapedPattern(for: identifier)
+            let configurationExpression = try NSRegularExpression(
+                pattern: "(?s)\(escapedIdentifier) /\\* .*? \\*/ = \\{.*?buildSettings\\s*=\\s*\\{(.*?)\\};"
+            )
+            guard let configurationMatch = configurationExpression.firstMatch(
+                in: project,
+                range: projectRange
+            ), let settingsRange = Range(configurationMatch.range(at: 1), in: project) else {
+                return nil
+            }
+            let settings = String(project[settingsRange])
+            let settingExpression = try NSRegularExpression(
+                pattern: "\\b\(escapedName)\\s*=\\s*([^;]+);"
+            )
+            let settingsNSRange = NSRange(settings.startIndex..<settings.endIndex, in: settings)
+            guard let settingMatch = settingExpression.firstMatch(
+                in: settings,
+                range: settingsNSRange
+            ), let valueRange = Range(settingMatch.range(at: 1), in: settings) else {
+                return nil
+            }
+            return settings[valueRange].trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
     private func localizedValue(
         in localizations: [String: Any],
         locale: String
@@ -215,15 +315,4 @@ final class ActionButtonShortcutTests: XCTestCase {
         return stringUnit?["value"] as? String
     }
 
-    private func targetBlock(
-        identifier: String,
-        name: String,
-        in project: String
-    ) throws -> Substring {
-        let marker = "\t\t\(identifier) /* \(name) */ = {\n\t\t\tisa = PBXNativeTarget;"
-        let start = try XCTUnwrap(project.range(of: marker))
-        let remainder = project[start.lowerBound...]
-        let end = try XCTUnwrap(remainder.range(of: "\n\t\t};"))
-        return project[start.lowerBound..<end.upperBound]
-    }
 }
