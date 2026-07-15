@@ -4,6 +4,7 @@ import SwiftData
 struct TransactionListView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: TransactionListViewModel?
+    @State private var transactionDataChanges = TransactionDataChangeStore.shared
     
     private let filterAccount: Account?
     private let externalSearchText: Binding<String>?
@@ -66,7 +67,7 @@ struct TransactionListView: View {
                 .accessibilityLabel(AppLocalization.string("tab.settings", defaultValue: "Settings"))
             }
         }
-        .task {
+        .task(id: transactionDataChanges.revision) {
             if viewModel == nil {
                 viewModel = TransactionListViewModel(modelContext: modelContext)
                 viewModel?.selectedAccount = filterAccount
@@ -85,14 +86,10 @@ struct TransactionListView: View {
             await viewModel?.loadTransactions()
         }
         .sheet(isPresented: $showAddTransaction) {
-            TransactionEntrySheet(onSave: {
-                Task { await viewModel?.loadTransactions() }
-            })
+            TransactionEntrySheet(onSave: {})
         }
         .sheet(item: $selectedTransaction) { selection in
-            TransactionEntrySheet(transactionId: selection.id, onSave: {
-                Task { await viewModel?.loadTransactions() }
-            })
+            TransactionEntrySheet(transactionId: selection.id, onSave: {})
         }
         .sheet(isPresented: $showFilters) {
             if let viewModel {

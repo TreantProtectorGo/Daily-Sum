@@ -9642,6 +9642,29 @@
         }
       }
     },
+    "transaction.travel.currency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foreign Currency"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外币"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外幣"
+          }
+        }
+      }
+    },
     "transaction.travel.badge" : {
       "extractionState" : "manual",
       "localizations" : {

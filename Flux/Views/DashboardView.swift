@@ -4,6 +4,7 @@ import SwiftData
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: DashboardViewModel?
+    @State private var transactionDataChanges = TransactionDataChangeStore.shared
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
     let onViewAllTransactions: (() -> Void)?
     let onViewAllBudgets: (() -> Void)?
@@ -27,6 +28,10 @@ struct DashboardView: View {
         UserCurrencyPreference.resolvedDisplayCurrencyCode(
             preferredCurrencyCode: preferredCurrencyCode
         )
+    }
+
+    private var dataLoadKey: String {
+        "\(preferredCurrencyCode)|\(transactionDataChanges.revision)"
     }
     
     var body: some View {
@@ -61,16 +66,14 @@ struct DashboardView: View {
             .refreshable {
                 await viewModel?.refresh()
             }
-            .task(id: preferredCurrencyCode) {
+            .task(id: dataLoadKey) {
                 if viewModel == nil {
                     viewModel = DashboardViewModel(modelContext: modelContext)
                 }
                 await viewModel?.loadData()
             }
             .sheet(isPresented: $showAddTransaction) {
-                TransactionEntrySheet(onSave: {
-                    Task { await viewModel?.refresh() }
-                })
+                TransactionEntrySheet(onSave: {})
             }
             .sheet(isPresented: $showAddAccount) {
                 AccountEntrySheet(onSave: {
@@ -83,9 +86,7 @@ struct DashboardView: View {
                 })
             }
             .sheet(item: $selectedTransaction) { selection in
-                TransactionEntrySheet(transactionId: selection.id, onSave: {
-                    Task { await viewModel?.refresh() }
-                })
+                TransactionEntrySheet(transactionId: selection.id, onSave: {})
             }
             .sheet(item: $selectedBudget) { budget in
                 BudgetEntrySheet(budget: budget, onSave: {

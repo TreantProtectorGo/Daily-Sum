@@ -163,6 +163,7 @@ final class ExchangeCalculatorViewModelTests: XCTestCase {
             conversionService: conversionService,
             locationService: locationService,
             preferredCurrencyCode: "USD",
+            isTravelCurrencyModeEnabled: true,
             travelCurrencySource: .automatic,
             debounceDuration: .milliseconds(1)
         )

@@ -185,6 +185,8 @@ struct TransactionEntrySheet: View {
     @State private var notes: String = ""
     @State private var isTravelTransaction = false
     @State private var hasTravelTransactionOverride = false
+    @State private var manualTransactionCurrencyCode: String?
+    @State private var isConvertingTravelCurrency = false
     @State private var travelPreview: TravelTransactionSnapshot?
     @State private var scheduleMode: ScheduleFormMode = .oneTime
     @State private var dueDayOfMonth: Int = Calendar.current.component(.day, from: .now)
@@ -469,6 +471,41 @@ struct TransactionEntrySheet: View {
                         set: handleTravelTransactionToggleChange
                     )
                 )
+
+                if existingTravelSnapshot == nil, isTravelTransaction {
+                    Picker(
+                        AppLocalization.string(
+                            "transaction.travel.currency",
+                            defaultValue: "Foreign Currency"
+                        ),
+                        selection: Binding(
+                            get: {
+                                manualTransactionCurrencyCode
+                                    ?? resolvedCurrentTravelCurrencyCode
+                            },
+                            set: handleManualTransactionCurrencySelection
+                        )
+                    ) {
+                        Text(
+                            AppLocalization.string(
+                                "settings.exchangeRate.manualTravelCurrency.placeholder",
+                                defaultValue: "Select Currency"
+                            )
+                        )
+                        .tag(String?.none)
+
+                        ForEach(availableTransactionTravelCurrencies, id: \.self) { currency in
+                            Text(
+                                "\(currency.symbol) \(currency.rawValue) - \(currency.localizedName)"
+                            )
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .tag(Optional(currency.rawValue))
+                        }
+                    }
+                    .tint(AppColors.UI.interactiveText)
+                    .disabled(isConvertingTravelCurrency)
+                }
             }
         } header: {
             Text(AppLocalization.string("transaction.details", defaultValue: "Details"))
@@ -553,15 +590,12 @@ struct TransactionEntrySheet: View {
             amount: amount,
             selectedAccount: selectedAccount,
             selectedCategory: selectedCategory
-        ) && (!isTravelTransaction || travelInputCurrencyCode != nil)
+        ) && (!isTravelTransaction || travelInputCurrencyCode != nil) &&
+            !isConvertingTravelCurrency
     }
 
     private var shouldShowTravelTransactionToggle: Bool {
-        guard transactionType == .expense else {
-            return false
-        }
-
-        return existingTravelSnapshot != nil || resolvedCurrentTravelCurrencyCode != nil
+        return transactionType == .expense
     }
 
     private var existingTravelSnapshot: TravelTransactionSnapshot? {
@@ -569,10 +603,20 @@ struct TransactionEntrySheet: View {
     }
 
     private var travelInputCurrencyCode: String? {
-        TravelTransactionSnapshots.inputCurrencyCode(
+        let selectedCurrencyCode =
+            manualTransactionCurrencyCode ?? resolvedCurrentTravelCurrencyCode
+        return TravelTransactionSnapshots.inputCurrencyCode(
             existingTransaction: existingTransaction,
             isTravelTransaction: isTravelTransaction,
-            currentTravelCurrencyCode: resolvedCurrentTravelCurrencyCode
+            currentTravelCurrencyCode: selectedCurrencyCode
+        )
+    }
+
+    private var availableTransactionTravelCurrencies: [SupportedCurrency] {
+        TravelCurrencyManualSelection.availableCurrencies(
+            defaultCurrencyCode: UserCurrencyPreference.resolvedDisplayCurrencyCode(
+                preferredCurrencyCode: preferredCurrencyCode
+            )
         )
     }
 
@@ -658,6 +702,8 @@ struct TransactionEntrySheet: View {
         notes = ""
         isTravelTransaction = false
         hasTravelTransactionOverride = false
+        manualTransactionCurrencyCode = nil
+        isConvertingTravelCurrency = false
         travelPreview = nil
         scheduleMode = .oneTime
         dueDayOfMonth = Calendar.current.component(.day, from: now)
@@ -782,6 +828,56 @@ struct TransactionEntrySheet: View {
 
         reconcileSelectedAccountWithAvailableAccounts()
         travelPreview = nil
+    }
+
+    private func handleManualTransactionCurrencySelection(_ currencyCode: String?) {
+        let previousCurrencyCode = travelInputCurrencyCode
+        let previousManualCurrencyCode = manualTransactionCurrencyCode
+        let selectedCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(currencyCode)
+        let amountBeforeSelection = amount
+
+        manualTransactionCurrencyCode = selectedCurrencyCode
+        guard isTravelTransaction,
+              let account = selectedAccount,
+              amountBeforeSelection > 0 else {
+            return
+        }
+
+        let selection = TravelTransactionCurrencySelection.resolve(
+            selectedCurrencyCode: selectedCurrencyCode,
+            fallbackInputCurrencyCode: resolvedCurrentTravelCurrencyCode,
+            accountCurrencyCode: account.currencyCode
+        )
+        let previousConversionCurrencyCode = previousCurrencyCode
+            ?? TravelCurrencyState.normalizedCurrencyCode(account.currencyCode)
+            ?? account.currencyCode.uppercased()
+        guard selection.conversionCurrencyCode != previousConversionCurrencyCode else {
+            return
+        }
+
+        isConvertingTravelCurrency = true
+        Task {
+            defer { isConvertingTravelCurrency = false }
+            let conversionService = CurrencyConversionService(context: modelContext)
+            do {
+                let convertedAmount = try await
+                    TravelTransactionCurrencyChange.convertInputAmountPreservingAccountValue(
+                        currentInputAmount: amountBeforeSelection,
+                        previousInputCurrencyCode: previousCurrencyCode,
+                        nextInputCurrencyCode: selection.conversionCurrencyCode,
+                        accountCurrencyCode: account.currencyCode,
+                        date: date,
+                        conversionService: conversionService
+                    )
+                guard manualTransactionCurrencyCode == selectedCurrencyCode,
+                      travelInputCurrencyCode == selection.inputCurrencyCode,
+                      isTravelTransaction else { return }
+                amount = convertedAmount
+            } catch {
+                guard manualTransactionCurrencyCode == selectedCurrencyCode else { return }
+                manualTransactionCurrencyCode = previousManualCurrencyCode
+            }
+        }
     }
 
     private func handleTravelTransactionToggleChange(_ newValue: Bool) {
@@ -1016,6 +1112,7 @@ struct TransactionEntrySheet: View {
                 }
             }
             
+            TransactionDataChangeStore.shared.markChanged()
             onSave()
             if TransactionAccountPreference.rememberLastUsedAccount {
                 TransactionAccountPreference.lastUsedAccountId = account.id

@@ -82,6 +82,82 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertLessThan(refreshIndex, throttleIndex)
     }
 
+    func testExpenseEntryKeepsManualForeignCurrencyControlsWhenAutomaticCurrencyIsUnavailable() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+
+        XCTAssertTrue(
+            source.contains(
+                "return transactionType == .expense"
+            )
+        )
+        XCTAssertTrue(source.contains("manualTransactionCurrencyCode"))
+        XCTAssertTrue(source.contains("transaction.travel.currency"))
+        XCTAssertTrue(
+            source.contains(
+                "if existingTravelSnapshot == nil, isTravelTransaction"
+            )
+        )
+        XCTAssertTrue(
+            source.contains(
+                "manualTransactionCurrencyCode ?? resolvedCurrentTravelCurrencyCode"
+            )
+        )
+        XCTAssertTrue(
+            source.contains(
+                "convertInputAmountPreservingAccountValue"
+            )
+        )
+    }
+
+    func testTravelCurrencyDetectionUsesRecentCoarseLocationBeforeRequestingANewFix() throws {
+        let source = try sourceContents(
+            at: "Flux/Services/TravelCurrencyLocationService.swift"
+        )
+
+        XCTAssertTrue(source.contains("locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers"))
+        XCTAssertTrue(source.contains("locationManager.location"))
+        XCTAssertTrue(source.contains("TravelCurrencyLocationSelection.isRecent"))
+        XCTAssertTrue(
+            source.contains(
+                "horizontalAccuracy <= kCLLocationAccuracyThreeKilometers"
+            )
+        )
+    }
+
+    func testSuccessfulSaveInvalidatesEveryMountedTransactionSurface() throws {
+        let entrySource = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+        let listSource = try sourceContents(
+            at: "Flux/Views/TransactionListView.swift"
+        )
+        let dashboardSource = try sourceContents(
+            at: "Flux/Views/DashboardView.swift"
+        )
+
+        XCTAssertTrue(
+            entrySource.contains("TransactionDataChangeStore.shared.markChanged()")
+        )
+        XCTAssertTrue(
+            listSource.contains(
+                "@State private var transactionDataChanges = TransactionDataChangeStore.shared"
+            )
+        )
+        XCTAssertTrue(
+            listSource.contains(".task(id: transactionDataChanges.revision)")
+        )
+        XCTAssertTrue(
+            dashboardSource.contains(
+                "@State private var transactionDataChanges = TransactionDataChangeStore.shared"
+            )
+        )
+        XCTAssertTrue(
+            dashboardSource.contains("transactionDataChanges.revision")
+        )
+    }
+
     private var repositoryURL: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

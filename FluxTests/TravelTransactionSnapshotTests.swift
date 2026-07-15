@@ -70,6 +70,47 @@ final class TravelTransactionSnapshotTests: XCTestCase {
         XCTAssertEqual(snapshot.provider, "identity")
     }
 
+    func testChangingInputCurrencyUsesCurrentEditedAccountValue() async throws {
+        let convertedAmount = try await
+            TravelTransactionCurrencyChange.convertInputAmountPreservingAccountValue(
+                currentInputAmount: 150,
+                previousInputCurrencyCode: nil,
+                nextInputCurrencyCode: "JPY",
+                accountCurrencyCode: "HKD",
+                date: .now,
+                conversionService: MockQuoteProvider(
+                    convertedAmount: 3_000,
+                    rate: 20,
+                    effectiveDate: .now,
+                    provider: "mock"
+                )
+            )
+
+        XCTAssertEqual(convertedAmount, 3_000)
+    }
+
+    func testClearingInputCurrencyWithoutFallbackTargetsAccountCurrency() {
+        let selection = TravelTransactionCurrencySelection.resolve(
+            selectedCurrencyCode: nil,
+            fallbackInputCurrencyCode: nil,
+            accountCurrencyCode: "hkd"
+        )
+
+        XCTAssertNil(selection.inputCurrencyCode)
+        XCTAssertEqual(selection.conversionCurrencyCode, "HKD")
+    }
+
+    func testClearingInputCurrencyUsesAutomaticFallbackWhenAvailable() {
+        let selection = TravelTransactionCurrencySelection.resolve(
+            selectedCurrencyCode: nil,
+            fallbackInputCurrencyCode: "usd",
+            accountCurrencyCode: "HKD"
+        )
+
+        XCTAssertEqual(selection.inputCurrencyCode, "USD")
+        XCTAssertEqual(selection.conversionCurrencyCode, "USD")
+    }
+
     func testRecomputeLockedSnapshotUsesStoredRate() {
         let snapshot = TravelTransactionSnapshot(
             travelAmount: 3000,

@@ -6,6 +6,7 @@
 //
 
 import XCTest
+import CoreLocation
 import SwiftData
 import SwiftUI
 import UIKit
@@ -290,6 +291,56 @@ final class FluxTests: XCTestCase {
 
         TravelCurrencyPreference.source = .automatic
         XCTAssertEqual(TravelCurrencyPreference.source, .automatic)
+    }
+
+    func testTravelCurrencyLocationSelectionAcceptsRecentValidLocation() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let location = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 22.3193, longitude: 114.1694),
+            altitude: 0,
+            horizontalAccuracy: 100,
+            verticalAccuracy: 100,
+            timestamp: now.addingTimeInterval(-30)
+        )
+
+        XCTAssertTrue(
+            TravelCurrencyLocationSelection.isRecent(location, now: now)
+        )
+    }
+
+    func testTravelCurrencyLocationSelectionRejectsStaleOrInvalidLocation() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        let staleLocation = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 22.3193, longitude: 114.1694),
+            altitude: 0,
+            horizontalAccuracy: 100,
+            verticalAccuracy: 100,
+            timestamp: now.addingTimeInterval(-121)
+        )
+        let invalidLocation = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 22.3193, longitude: 114.1694),
+            altitude: 0,
+            horizontalAccuracy: -1,
+            verticalAccuracy: 100,
+            timestamp: now
+        )
+        let inaccurateLocation = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 22.3193, longitude: 114.1694),
+            altitude: 0,
+            horizontalAccuracy: kCLLocationAccuracyThreeKilometers + 1,
+            verticalAccuracy: 100,
+            timestamp: now
+        )
+
+        XCTAssertFalse(
+            TravelCurrencyLocationSelection.isRecent(staleLocation, now: now)
+        )
+        XCTAssertFalse(
+            TravelCurrencyLocationSelection.isRecent(invalidLocation, now: now)
+        )
+        XCTAssertFalse(
+            TravelCurrencyLocationSelection.isRecent(inaccurateLocation, now: now)
+        )
     }
 
     func testTravelCurrencyPreferenceDefaultsEnabledAndPersistsModeToggle() {

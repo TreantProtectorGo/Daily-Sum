@@ -20,6 +20,81 @@ enum TravelTransactionRounding {
     }
 }
 
+struct TravelTransactionCurrencySelection: Equatable {
+    let inputCurrencyCode: String?
+    let conversionCurrencyCode: String
+
+    static func resolve(
+        selectedCurrencyCode: String?,
+        fallbackInputCurrencyCode: String?,
+        accountCurrencyCode: String
+    ) -> TravelTransactionCurrencySelection {
+        let inputCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+            selectedCurrencyCode
+        ) ?? TravelCurrencyState.normalizedCurrencyCode(fallbackInputCurrencyCode)
+        let accountCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+            accountCurrencyCode
+        ) ?? accountCurrencyCode.uppercased()
+
+        return TravelTransactionCurrencySelection(
+            inputCurrencyCode: inputCurrencyCode,
+            conversionCurrencyCode: inputCurrencyCode ?? accountCurrencyCode
+        )
+    }
+}
+
+enum TravelTransactionCurrencyChange {
+    static func convertInputAmountPreservingAccountValue(
+        currentInputAmount: Decimal,
+        previousInputCurrencyCode: String?,
+        nextInputCurrencyCode: String,
+        accountCurrencyCode: String,
+        date: Date,
+        conversionService: any CurrencyQuoteProviding
+    ) async throws -> Decimal {
+        let accountCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+            accountCurrencyCode
+        ) ?? accountCurrencyCode.uppercased()
+        let nextInputCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+            nextInputCurrencyCode
+        ) ?? nextInputCurrencyCode.uppercased()
+
+        let accountAmount: Decimal
+        if let previousInputCurrencyCode = TravelCurrencyState.normalizedCurrencyCode(
+            previousInputCurrencyCode
+        ), previousInputCurrencyCode != accountCurrencyCode {
+            accountAmount = try await conversionService.convertWithQuote(
+                currentInputAmount,
+                from: previousInputCurrencyCode,
+                to: accountCurrencyCode,
+                on: date,
+                mode: .historical
+            ).convertedAmount
+        } else {
+            accountAmount = currentInputAmount
+        }
+
+        guard nextInputCurrencyCode != accountCurrencyCode else {
+            return TravelTransactionRounding.round(
+                accountAmount,
+                currencyCode: accountCurrencyCode
+            )
+        }
+
+        let quote = try await conversionService.convertWithQuote(
+            accountAmount,
+            from: accountCurrencyCode,
+            to: nextInputCurrencyCode,
+            on: date,
+            mode: .historical
+        )
+        return TravelTransactionRounding.round(
+            quote.convertedAmount,
+            currencyCode: nextInputCurrencyCode
+        )
+    }
+}
+
 enum TravelTransactionSnapshots {
     static func snapshot(from transaction: Transaction) -> TravelTransactionSnapshot? {
         guard transaction.isTravelTransaction == true,

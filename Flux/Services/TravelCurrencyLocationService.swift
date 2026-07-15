@@ -9,6 +9,24 @@ enum TravelLocationAuthorizationStatus: Equatable {
     case authorized
 }
 
+enum TravelCurrencyLocationSelection {
+    static let maximumCachedLocationAge: TimeInterval = 2 * 60
+
+    static func isRecent(
+        _ location: CLLocation,
+        now: Date = .now,
+        maximumAge: TimeInterval = maximumCachedLocationAge
+    ) -> Bool {
+        let age = now.timeIntervalSince(location.timestamp)
+        let horizontalAccuracy = location.horizontalAccuracy
+        return horizontalAccuracy.isFinite &&
+            horizontalAccuracy >= 0 &&
+            horizontalAccuracy <= kCLLocationAccuracyThreeKilometers &&
+            age >= 0 &&
+            age <= maximumAge
+    }
+}
+
 @MainActor
 final class OneShotRequestBroker<Value> {
     private var continuations: [UUID: CheckedContinuation<Value?, Never>] = [:]
@@ -76,6 +94,7 @@ final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServi
         self.locationManager = locationManager
         super.init()
         self.locationManager.delegate = self
+        self.locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
     }
 
     func authorizationStatus() -> TravelLocationAuthorizationStatus {
@@ -110,7 +129,12 @@ final class TravelCurrencyLocationService: NSObject, TravelCurrencyLocationServi
     }
 
     private func requestLocation() async -> CLLocation? {
-        await locationBroker.wait {
+        if let cachedLocation = locationManager.location,
+           TravelCurrencyLocationSelection.isRecent(cachedLocation) {
+            return cachedLocation
+        }
+
+        return await locationBroker.wait {
             locationManager.requestLocation()
         }
     }
