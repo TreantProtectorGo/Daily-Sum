@@ -82,18 +82,18 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertLessThan(refreshIndex, throttleIndex)
     }
 
-    func testExpenseEntryKeepsManualForeignCurrencyControlsWhenAutomaticCurrencyIsUnavailable() throws {
+    func testIncomeAndExpenseEntriesExposeIndependentForeignCurrencyControls() throws {
         let source = try sourceContents(
             at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
         )
-
-        XCTAssertTrue(
-            source.contains(
-                "return transactionType == .expense"
-            )
+        let pickerSource = try sourceContents(
+            at: "Flux/Components/Inputs/TransactionCurrencyPickerView.swift"
         )
+
         XCTAssertTrue(source.contains("manualTransactionCurrencyCode"))
-        XCTAssertTrue(source.contains("transaction.travel.currency"))
+        XCTAssertTrue(pickerSource.contains("transaction.travel.currency"))
+        XCTAssertTrue(source.contains("private var availableTransactionCurrencies"))
+        XCTAssertTrue(source.contains("SupportedCurrency.allCases"))
         XCTAssertTrue(
             source.contains(
                 "if existingTravelSnapshot == nil, isTravelTransaction"
@@ -109,6 +109,29 @@ final class TransactionEntryPresentationTests: XCTestCase {
                 "convertInputAmountPreservingAccountValue"
             )
         )
+        XCTAssertFalse(source.contains("guard transactionType == .expense else { return }"))
+        XCTAssertFalse(
+            source.contains(
+                "guard transactionType == .expense,\n              isTravelTransaction"
+            )
+        )
+    }
+
+    func testTransactionCurrencyPickerSupportsSuggestedRecentAndSearchableCurrencies() throws {
+        let entrySource = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+        let pickerSource = try sourceContents(
+            at: "Flux/Components/Inputs/TransactionCurrencyPickerView.swift"
+        )
+
+        XCTAssertTrue(entrySource.contains("TransactionCurrencyPickerView("))
+        XCTAssertTrue(entrySource.contains("suggestedTransactionCurrencyCode"))
+        XCTAssertTrue(pickerSource.contains(".searchable("))
+        XCTAssertTrue(pickerSource.contains("transaction.currencyPicker.suggested"))
+        XCTAssertTrue(pickerSource.contains("transaction.currencyPicker.recent"))
+        XCTAssertTrue(pickerSource.contains("transaction.currencyPicker.all"))
+        XCTAssertTrue(pickerSource.contains("RecentTransactionCurrencyPreference.record"))
     }
 
     func testTravelCurrencyDetectionUsesRecentCoarseLocationBeforeRequestingANewFix() throws {

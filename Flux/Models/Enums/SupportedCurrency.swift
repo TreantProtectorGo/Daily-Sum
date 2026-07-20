@@ -18,6 +18,7 @@ enum SupportedCurrency: String, Codable, CaseIterable, Hashable, Identifiable {
     case SGD
     case AUD
     case CAD
+    case CHF
     
     var id: SupportedCurrency { self }
     
@@ -33,6 +34,7 @@ enum SupportedCurrency: String, Codable, CaseIterable, Hashable, Identifiable {
         .SGD: CurrencyConfig(symbol: "S$", nameKey: "currency.SGD", decimalPlaces: 2),
         .AUD: CurrencyConfig(symbol: "A$", nameKey: "currency.AUD", decimalPlaces: 2),
         .CAD: CurrencyConfig(symbol: "C$", nameKey: "currency.CAD", decimalPlaces: 2),
+        .CHF: CurrencyConfig(symbol: "CHF", nameKey: "currency.CHF", decimalPlaces: 2),
     ]
     
     private static let regionToCurrency: [String: SupportedCurrency] = [
@@ -72,6 +74,8 @@ enum SupportedCurrency: String, Codable, CaseIterable, Hashable, Identifiable {
         "SG": .SGD,
         "AU": .AUD,
         "NZ": .AUD, // NZD not supported, fallback to AUD
+        "CH": .CHF,
+        "LI": .CHF,
     ]
     
     private var config: CurrencyConfig {

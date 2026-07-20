@@ -224,6 +224,44 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(account.currentBalance, 843.7)
     }
 
+    func testTransactionServiceCreatePersistsForeignCurrencyIncomeSnapshot() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(
+            name: "HK Account",
+            type: .bank,
+            currencyCode: "HKD",
+            initialBalance: 1000
+        )
+        context.insert(account)
+        try context.save()
+
+        let snapshot = TravelTransactionSnapshot(
+            travelAmount: 100,
+            travelCurrencyCode: "USD",
+            accountAmount: 780,
+            accountCurrencyCode: "HKD",
+            exchangeRate: 7.8,
+            effectiveDate: .now,
+            provider: "mock"
+        )
+
+        let transaction = try service.create(
+            amount: 100,
+            type: .income,
+            isTravelTransaction: true,
+            travelSnapshot: snapshot,
+            account: account,
+            category: nil
+        )
+
+        XCTAssertEqual(transaction.type, .income)
+        XCTAssertEqual(transaction.amount, 780)
+        XCTAssertEqual(transaction.currencyCode, "HKD")
+        XCTAssertEqual(transaction.travelAmount, 100)
+        XCTAssertEqual(transaction.travelCurrencyCode, "USD")
+        XCTAssertEqual(account.currentBalance, 1780)
+    }
+
     func testRecurringGeneratorMonthlyDayAnchorsToMonthEnd() throws {
         let account = Account(name: "Bills", type: .cash, currencyCode: "USD")
         context.insert(account)

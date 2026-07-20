@@ -826,7 +826,7 @@ final class FluxTests: XCTestCase {
         )
     }
 
-    func testProgrammaticTypeChangeClearsTravelTransactionForIncome() {
+    func testProgrammaticTypeChangeKeepsManualForeignCurrencyForIncome() {
         let resolvedCategory = TransactionEntryCategorySelection.resolvedCategory(
             currentCategory: nil,
             previousType: .expense,
@@ -835,7 +835,7 @@ final class FluxTests: XCTestCase {
         )
 
         XCTAssertNil(resolvedCategory)
-        XCTAssertFalse(
+        XCTAssertTrue(
             TransactionTravelDefaults.resolveIsTravelTransaction(
                 transactionType: .income,
                 currentTravelCurrencyCode: "JPY",
@@ -1663,6 +1663,32 @@ final class FluxTests: XCTestCase {
 
         XCTAssertEqual(firstCategories.count, secondCategories.count)
         XCTAssertEqual(firstIDs, secondIDs)
+    }
+
+    @MainActor
+    func testDefaultDataSeederAddsMissingSupportedCurrenciesForExistingUsers() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        context.insert(
+            Currency(
+                code: "USD",
+                exchangeRateToBase: 1,
+                isBaseCurrency: true
+            )
+        )
+        try context.save()
+
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+        try await seeder.seedIfNeeded()
+
+        let currencies = try context.fetch(FetchDescriptor<Currency>())
+        XCTAssertEqual(
+            Set(currencies.map { $0.code }),
+            Set(SupportedCurrency.allCases.map(\.rawValue))
+        )
+        XCTAssertEqual(currencies.filter { $0.code == "CHF" }.count, 1)
+        XCTAssertEqual(currencies.filter(\.isBaseCurrency).map(\.code), ["USD"])
     }
 
     @MainActor

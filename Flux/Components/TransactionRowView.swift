@@ -69,8 +69,8 @@ struct TransactionRowSnapshot: Identifiable {
         }
 
         let chargedPrefix = AppLocalization.string(
-            "transaction.travel.chargedAs",
-            defaultValue: "Charged as"
+            "transaction.travel.settledAs",
+            defaultValue: "Settled as"
         )
         let formatted = CurrencyFormatter.shared.format(abs(signedAmount), currencyCode: currencyCode)
         return "\(chargedPrefix) \(formatted)"

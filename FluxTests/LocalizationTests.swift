@@ -101,6 +101,11 @@ final class LocalizationTests: XCTestCase {
         XCTAssertTrue(SupportedCurrency.allCases.contains(defaultCurrency))
     }
 
+    func testSwissRegionsResolveToSwissFranc() {
+        XCTAssertEqual(SupportedCurrency.currency(forRegionCode: "CH"), .CHF)
+        XCTAssertEqual(SupportedCurrency.currency(forRegionCode: "LI"), .CHF)
+    }
+
     // MARK: - App Language Tests
 
     func testAppLanguageLocaleIdentifierMapping() {
@@ -133,10 +138,15 @@ final class LocalizationTests: XCTestCase {
         AppLanguagePreference.language = .english
         XCTAssertEqual(TransactionType.income.localizedName, "Income")
         XCTAssertEqual(SupportedCurrency.USD.localizedName, "US Dollar")
+        XCTAssertEqual(SupportedCurrency.CHF.localizedName, "Swiss Franc")
 
         AppLanguagePreference.language = .simplifiedChinese
         XCTAssertEqual(TransactionType.income.localizedName, "收入")
         XCTAssertEqual(SupportedCurrency.USD.localizedName, "美元")
+        XCTAssertEqual(SupportedCurrency.CHF.localizedName, "瑞士法郎")
+
+        AppLanguagePreference.language = .traditionalChinese
+        XCTAssertEqual(SupportedCurrency.CHF.localizedName, "瑞士法郎")
     }
 
     func testThemeCopyMatchesCurrentWordingAcrossLanguages() {
@@ -370,8 +380,13 @@ final class LocalizationTests: XCTestCase {
                 "transaction.travel": "Foreign Currency Transaction",
                 "transaction.travel.currency": "Foreign Currency",
                 "transaction.travel.badge": "Foreign",
-                "transaction.travel.chargedAs": "Charged as",
+                "transaction.travel.settledAs": "Settled as",
                 "transaction.travel.modeHelper": "Foreign currency mode on — amount is entered in %@",
+                "transaction.currencyPicker.title": "Select Currency",
+                "transaction.currencyPicker.search": "Search code or currency name",
+                "transaction.currencyPicker.suggested": "Suggested by Location",
+                "transaction.currencyPicker.recent": "Recently Used",
+                "transaction.currencyPicker.all": "All Currencies",
                 "filter.advanced": "Advanced Filters",
                 "filter.travelTransactions": "Show Foreign Currency Transactions Only",
                 "filter.showUpcomingScheduled": "Include Upcoming Subscriptions",
@@ -401,8 +416,13 @@ final class LocalizationTests: XCTestCase {
                 "transaction.travel": "外币交易",
                 "transaction.travel.currency": "外币",
                 "transaction.travel.badge": "外币",
-                "transaction.travel.chargedAs": "入账为",
+                "transaction.travel.settledAs": "结算为",
                 "transaction.travel.modeHelper": "外币模式已开启，金额会以 %@ 输入",
+                "transaction.currencyPicker.title": "选择货币",
+                "transaction.currencyPicker.search": "搜索代码或货币名称",
+                "transaction.currencyPicker.suggested": "定位建议",
+                "transaction.currencyPicker.recent": "最近使用",
+                "transaction.currencyPicker.all": "所有货币",
                 "filter.advanced": "进阶筛选",
                 "filter.travelTransactions": "仅显示外币交易",
                 "filter.showUpcomingScheduled": "显示即将到期的订阅交易",
@@ -432,8 +452,13 @@ final class LocalizationTests: XCTestCase {
                 "transaction.travel": "外幣交易",
                 "transaction.travel.currency": "外幣",
                 "transaction.travel.badge": "外幣",
-                "transaction.travel.chargedAs": "入帳為",
+                "transaction.travel.settledAs": "結算為",
                 "transaction.travel.modeHelper": "外幣模式已開啟，金額會以 %@ 輸入",
+                "transaction.currencyPicker.title": "選擇貨幣",
+                "transaction.currencyPicker.search": "搜尋代碼或貨幣名稱",
+                "transaction.currencyPicker.suggested": "定位建議",
+                "transaction.currencyPicker.recent": "最近使用",
+                "transaction.currencyPicker.all": "所有貨幣",
                 "filter.advanced": "進階篩選",
                 "filter.travelTransactions": "僅顯示外幣交易",
                 "filter.showUpcomingScheduled": "顯示即將到期的訂閱交易",

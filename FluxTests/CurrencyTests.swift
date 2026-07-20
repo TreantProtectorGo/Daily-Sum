@@ -111,6 +111,7 @@ final class CurrencyTests: XCTestCase {
         XCTAssertEqual(SupportedCurrency.USD.decimalPlaces, 2)
         XCTAssertEqual(SupportedCurrency.TWD.decimalPlaces, 0) // TWD doesn't use decimals
         XCTAssertEqual(SupportedCurrency.CNY.decimalPlaces, 2)
+        XCTAssertEqual(SupportedCurrency.CHF.decimalPlaces, 2)
     }
 
     func testCurrencyConversionServiceUsesHistoricalRateForDate() async throws {

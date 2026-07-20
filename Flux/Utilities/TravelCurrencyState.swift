@@ -66,12 +66,12 @@ enum TransactionTravelDefaults {
         currentTravelCurrencyCode: String?,
         userOverride: Bool?
     ) -> Bool {
-        guard transactionType == .expense else {
-            return false
-        }
-
         if let userOverride {
             return userOverride
+        }
+
+        guard transactionType == .expense else {
+            return false
         }
 
         return TravelCurrencyState.normalizedCurrencyCode(

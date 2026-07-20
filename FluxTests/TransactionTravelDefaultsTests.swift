@@ -32,11 +32,21 @@ final class TransactionTravelDefaultsTests: XCTestCase {
         XCTAssertFalse(value)
     }
 
-    func testIncomeNeverDefaultsToTravelTransaction() {
+    func testIncomeAllowsManualForeignCurrencyOverride() {
         let value = TransactionTravelDefaults.resolveIsTravelTransaction(
             transactionType: .income,
             currentTravelCurrencyCode: "JPY",
             userOverride: true
+        )
+
+        XCTAssertTrue(value)
+    }
+
+    func testIncomeDoesNotAutomaticallyDefaultToForeignCurrency() {
+        let value = TransactionTravelDefaults.resolveIsTravelTransaction(
+            transactionType: .income,
+            currentTravelCurrencyCode: "JPY",
+            userOverride: nil
         )
 
         XCTAssertFalse(value)

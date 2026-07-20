@@ -60,6 +60,8 @@ struct DefaultDataSeeder {
         
         if currencyCount == 0 {
             try seedCurrencies()
+        } else {
+            try seedMissingSupportedCurrencies()
         }
         
         if categoryCount == 0 {
@@ -105,6 +107,23 @@ struct DefaultDataSeeder {
                 isBaseCurrency: currency == defaultCurrency
             )
             context.insert(currencyModel)
+        }
+    }
+
+    private func seedMissingSupportedCurrencies() throws {
+        let currencies = try context.fetch(FetchDescriptor<Currency>())
+        let existingCurrencyCodes = Set(currencies.map { $0.code.uppercased() })
+
+        for currency in SupportedCurrency.allCases
+            where !existingCurrencyCodes.contains(currency.rawValue) {
+            context.insert(
+                Currency(
+                    code: currency.rawValue,
+                    exchangeRateToBase: 0,
+                    lastUpdated: .now,
+                    isBaseCurrency: false
+                )
+            )
         }
     }
     
