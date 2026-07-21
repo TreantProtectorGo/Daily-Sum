@@ -437,7 +437,7 @@ struct TransactionEntrySheet: View {
     }
     
     private var amountSection: some View {
-        Section(AppLocalization.string("transaction.amount", defaultValue: "Amount")) {
+        Section {
             if travelInputCurrencyCode != nil {
                 VStack(spacing: 0) {
                     AmountInputView(
@@ -526,8 +526,6 @@ struct TransactionEntrySheet: View {
                 }
                 .disabled(isConvertingTravelCurrency)
             }
-        } header: {
-            Text(AppLocalization.string("transaction.details", defaultValue: "Details"))
         }
     }
 
@@ -579,8 +577,6 @@ struct TransactionEntrySheet: View {
                 }
             }
 
-        } header: {
-            Text(AppLocalization.string("transaction.schedule.header", defaultValue: "Subscription"))
         } footer: {
             if scheduleMode != .oneTime {
                 Text(AppLocalization.string(
@@ -592,7 +588,7 @@ struct TransactionEntrySheet: View {
     }
     
     private var notesSection: some View {
-        Section(AppLocalization.string("transaction.notes", defaultValue: "Notes")) {
+        Section {
             TextField(
                 AppLocalization.string("transaction.notes.placeholder", defaultValue: "Add notes..."),
                 text: $notes,

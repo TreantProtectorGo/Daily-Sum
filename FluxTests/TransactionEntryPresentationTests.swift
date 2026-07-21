@@ -134,6 +134,31 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertTrue(pickerSource.contains("RecentTransactionCurrencyPreference.record"))
     }
 
+    func testTransactionEntryOmitsSectionTitlesToPreserveKeyboardSpace() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+
+        XCTAssertFalse(
+            source.contains(
+                "Section(AppLocalization.string(\"transaction.amount\""
+            )
+        )
+        XCTAssertFalse(
+            source.contains(
+                "Text(AppLocalization.string(\"transaction.details\""
+            )
+        )
+        XCTAssertFalse(source.contains("\"transaction.schedule.header\""))
+        XCTAssertFalse(
+            source.contains(
+                "Section(AppLocalization.string(\"transaction.notes\""
+            )
+        )
+        XCTAssertTrue(source.contains("\"transaction.schedule.footer\""))
+        XCTAssertTrue(source.contains("\"transaction.notes.placeholder\""))
+    }
+
     func testTravelCurrencyDetectionUsesRecentCoarseLocationBeforeRequestingANewFix() throws {
         let source = try sourceContents(
             at: "Flux/Services/TravelCurrencyLocationService.swift"
