@@ -496,15 +496,6 @@ struct TransactionEntrySheet: View {
                 )
             }
 
-            DatePicker(
-                AppLocalization.string("transaction.date", defaultValue: "Date"),
-                selection: $date,
-                displayedComponents: .date
-            )
-            .onChange(of: date) { _, newValue in
-                dueDayOfMonth = Calendar.current.component(.day, from: newValue)
-            }
-
             Toggle(
                 AppLocalization.string(
                     "transaction.travel",
@@ -525,6 +516,15 @@ struct TransactionEntrySheet: View {
                     handleManualTransactionCurrencySelection(selectedCurrencyCode)
                 }
                 .disabled(isConvertingTravelCurrency)
+            }
+
+            DatePicker(
+                AppLocalization.string("transaction.date", defaultValue: "Date"),
+                selection: $date,
+                displayedComponents: .date
+            )
+            .onChange(of: date) { _, newValue in
+                dueDayOfMonth = Calendar.current.component(.day, from: newValue)
             }
         }
     }

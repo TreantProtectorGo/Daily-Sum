@@ -159,6 +159,27 @@ final class TransactionEntryPresentationTests: XCTestCase {
         XCTAssertTrue(source.contains("\"transaction.notes.placeholder\""))
     }
 
+    func testTransactionDateAppearsBelowForeignCurrencyControls() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+        let detailsStart = try XCTUnwrap(
+            source.range(of: "private var detailsSection")
+        ).lowerBound
+        let detailsEnd = try XCTUnwrap(
+            source.range(of: "private var scheduleSection", range: detailsStart..<source.endIndex)
+        ).lowerBound
+        let detailsSource = source[detailsStart..<detailsEnd]
+        let currencyPicker = try XCTUnwrap(
+            detailsSource.range(of: "TransactionCurrencyPickerView(")
+        ).lowerBound
+        let datePicker = try XCTUnwrap(
+            detailsSource.range(of: "DatePicker(")
+        ).lowerBound
+
+        XCTAssertLessThan(currencyPicker, datePicker)
+    }
+
     func testTravelCurrencyDetectionUsesRecentCoarseLocationBeforeRequestingANewFix() throws {
         let source = try sourceContents(
             at: "Flux/Services/TravelCurrencyLocationService.swift"
