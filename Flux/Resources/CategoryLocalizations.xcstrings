@@ -47,43 +47,6 @@
         }
       }
     },
-    "category.expense.electronics" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Electronics" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电子产品" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "電子產品" } }
-      }
-    },
-    "category.expense.family" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Family" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "家庭" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "家庭" } }
-      }
-    },
-    "category.expense.home" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Household"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "家居"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "家居"
-          }
-        }
-      }
-    },
     "category.expense.dining" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -130,6 +93,29 @@
         }
       }
     },
+    "category.expense.electronics" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Electronics"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "电子产品"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電子產品"
+          }
+        }
+      }
+    },
     "category.expense.entertainment" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -149,6 +135,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "娛樂"
+          }
+        }
+      }
+    },
+    "category.expense.family" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Family"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "家庭"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "家庭"
           }
         }
       }
@@ -245,48 +254,25 @@
         }
       }
     },
-    "category.expense.medical" : {
+    "category.expense.home" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Medical"
+            "value" : "Household"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "医疗"
+            "value" : "家居"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "醫療"
-          }
-        }
-      }
-    },
-    "category.expense.insurance" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Insurance"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保险"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保險"
+            "value" : "家居"
           }
         }
       }
@@ -314,6 +300,98 @@
         }
       }
     },
+    "category.expense.insurance" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insurance"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保险"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保險"
+          }
+        }
+      }
+    },
+    "category.expense.learning" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learning"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "学习"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "學習"
+          }
+        }
+      }
+    },
+    "category.expense.medical" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medical"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "医疗"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "醫療"
+          }
+        }
+      }
+    },
+    "category.expense.miscellaneous" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miscellaneous"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "杂费"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "雜費"
+          }
+        }
+      }
+    },
     "category.expense.personalCare" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -333,6 +411,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "個人護理"
+          }
+        }
+      }
+    },
+    "category.expense.pet" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pets"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "宠物"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "寵物"
+          }
+        }
+      }
+    },
+    "category.expense.phone" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phone Bill"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "电话费"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電話費"
           }
         }
       }
@@ -360,6 +484,29 @@
         }
       }
     },
+    "category.expense.sports" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sports"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运动"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "運動"
+          }
+        }
+      }
+    },
     "category.expense.subscriptions" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -381,20 +528,6 @@
             "value" : "訂閱"
           }
         }
-      }
-    },
-    "category.expense.phone" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Phone Bill" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电话费" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "電話費" } }
-      }
-    },
-    "category.expense.sports" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sports" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "运动" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "運動" } }
       }
     },
     "category.expense.tax" : {
@@ -466,13 +599,6 @@
         }
       }
     },
-    "category.expense.utilities" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Utilities" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "水电燃气" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "水電煤" } }
-      }
-    },
     "category.expense.upskilling" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -496,78 +622,25 @@
         }
       }
     },
-    "category.expense.learning" : {
+    "category.expense.utilities" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Learning"
+            "value" : "Utilities"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "学习"
+            "value" : "水电燃气"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "學習"
-          }
-        }
-      }
-    },
-    "category.expense.miscellaneous" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Miscellaneous" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "杂费" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "雜費" } }
-      }
-    },
-    "category.expense.pet" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pets"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "宠物"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "寵物"
-          }
-        }
-      }
-    },
-    "category.income.freelance" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freelance"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自由职业收入"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自由工作收入"
+            "value" : "水電煤"
           }
         }
       }
@@ -595,6 +668,29 @@
         }
       }
     },
+    "category.income.freelance" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freelance"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自由职业收入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自由工作收入"
+          }
+        }
+      }
+    },
     "category.income.gift" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -614,52 +710,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "禮金"
-          }
-        }
-      }
-    },
-    "category.income.investment" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Investment"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "投资收益"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "投資收益"
-          }
-        }
-      }
-    },
-    "category.income.interest" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Interest"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "利息"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "利息"
           }
         }
       }
@@ -687,25 +737,48 @@
         }
       }
     },
-    "category.income.secondHandSale" : {
+    "category.income.interest" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Second-hand Sale"
+            "value" : "Interest"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "二手转卖"
+            "value" : "利息"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "二手轉售"
+            "value" : "利息"
+          }
+        }
+      }
+    },
+    "category.income.investment" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Investment"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "投资收益"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "投資收益"
           }
         }
       }
@@ -752,6 +825,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "薪金"
+          }
+        }
+      }
+    },
+    "category.income.secondHandSale" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Second-hand Sale"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "二手转卖"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "二手轉售"
           }
         }
       }

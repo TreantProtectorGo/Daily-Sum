@@ -172,7 +172,454 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
     }
 
     @MainActor
-    func testOneTimeUpgradeModernizesOnlyPreviouslyShippedIcons() async throws {
+    func testLateCanonicalCategoryModernizesAfterStoreAppearanceMarker() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        context.insert(AppMigrationState(key: ExpenseCategoryMigration.versionedMigrationKey))
+        context.insert(AppMigrationState(key: ExpenseCategoryMigration.appearanceMigrationKey))
+        let phone = Category(
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+    }
+
+    @MainActor
+    func testPerCategoryMarkerPreservesLaterUserChoiceMatchingPriorDefaults() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phone = Category(
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+
+        phone.icon = "wifi"
+        phone.colorHex = "#06B6D4"
+        try context.save()
+
+        XCTAssertFalse(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        XCTAssertEqual(phone.icon, "wifi")
+        XCTAssertEqual(phone.colorHex, "#06B6D4")
+    }
+
+    @MainActor
+    func testMarkedCanonicalTargetPreservesAppearanceWhenDuplicateArrives() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let canonical = Category(
+            id: UUID(uuidString: "F0000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(canonical)
+        try context.save()
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        canonical.icon = "wifi"
+        canonical.colorHex = "#06B6D4"
+        let lateDuplicate = Category(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.phone",
+            icon: "star.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(lateDuplicate)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        let phones = try context.fetch(FetchDescriptor<Flux.Category>()).filter {
+            $0.isSystemDefault && $0.nameKey == "category.expense.phone"
+        }
+        XCTAssertEqual(phones.count, 1)
+        XCTAssertTrue(phones[0] === canonical)
+        XCTAssertEqual(canonical.icon, "wifi")
+        XCTAssertEqual(canonical.colorHex, "#06B6D4")
+    }
+
+    @MainActor
+    func testMarkedLegacyAliasWinsOverUnmarkedCanonicalAndKeepsPostMigrationAppearance() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let markedAlias = Category(
+            id: UUID(uuidString: "F0000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.education",
+            icon: "graduationcap.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(markedAlias)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: markedAlias,
+            in: context
+        ))
+
+        // These deliberately look like historical defaults, but are a post-migration user choice.
+        markedAlias.nameKey = "category.expense.education"
+        markedAlias.icon = "book.fill"
+        markedAlias.colorHex = "#14B8A6"
+        let unmarkedCanonical = Category(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.learning",
+            icon: "star.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(unmarkedCanonical)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        let learning = try XCTUnwrap(context.fetch(FetchDescriptor<Flux.Category>()).first {
+            $0.isSystemDefault && $0.nameKey == "category.expense.learning"
+        })
+        XCTAssertEqual(learning.id, markedAlias.id)
+        XCTAssertEqual(learning.icon, "book.fill")
+        XCTAssertEqual(learning.colorHex, "#14B8A6")
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Flux.Category>()), 1)
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: learning,
+            in: context
+        ))
+        XCTAssertFalse(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: unmarkedCanonical,
+            in: context
+        ))
+    }
+
+    @MainActor
+    func testAppearanceMarkerReconciliationDeduplicatesAndPrunesMalformedKeys() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phone = Category(
+            nameKey: "category.expense.phone",
+            icon: "phone.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+        try context.save()
+
+        let original = try XCTUnwrap(appearanceMarkers(in: context).first)
+        let olderDuplicate = AppMigrationState(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            key: original.key,
+            completedAt: Date(timeIntervalSince1970: 1)
+        )
+        let prefix = String(original.key.dropLast(phone.id.uuidString.count))
+        let malformed = AppMigrationState(
+            key: prefix + "not-a-uuid"
+        )
+        context.insert(olderDuplicate)
+        context.insert(malformed)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        let markers = appearanceMarkers(in: context)
+        XCTAssertEqual(markers.count, 1)
+        XCTAssertEqual(markers[0].id, olderDuplicate.id)
+        XCTAssertEqual(markers[0].key, original.key)
+    }
+
+    @MainActor
+    func testAppearanceMarkerSurvivesCategoryArrivingLaterAndProtectsItsAppearance() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phoneID = UUID(uuidString: "82000000-0000-0000-0000-000000000000")!
+        let markerKey = "flux.expenseCategories.v3Appearance.category.\(phoneID.uuidString.lowercased())"
+        context.insert(AppMigrationState(key: markerKey))
+        try context.save()
+
+        XCTAssertFalse(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+        XCTAssertEqual(appearanceMarkers(in: context).map(\.key), [markerKey])
+
+        let phone = Category(
+            id: phoneID,
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try context.save()
+
+        XCTAssertFalse(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        XCTAssertEqual(phone.icon, "wifi")
+        XCTAssertEqual(phone.colorHex, "#06B6D4")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+    }
+
+    @MainActor
+    func testMergeRemovesEveryAppearanceMarkerForDeletedSourceIdentity() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let winner = Category(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.phone",
+            icon: "phone.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let source = Category(
+            id: UUID(uuidString: "20000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.phone",
+            icon: "phone.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(winner)
+        context.insert(source)
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+        try context.save()
+        XCTAssertEqual(appearanceMarkers(in: context).count, 2)
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Flux.Category>()).map(\.id), [winner.id])
+        XCTAssertEqual(appearanceMarkers(in: context).count, 1)
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: winner,
+            in: context
+        ))
+        XCTAssertFalse(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: source,
+            in: context
+        ))
+    }
+
+    @MainActor
+    func testCategoryServiceDeleteRemovesAppearanceMarker() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        try await DefaultDataSeeder(context: context).seedIfNeeded()
+        let phone = try XCTUnwrap(context.fetch(FetchDescriptor<Flux.Category>()).first {
+            $0.nameKey == "category.expense.phone" && $0.isSystemDefault
+        })
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+
+        try CategoryService(context: context).delete(phone)
+
+        XCTAssertFalse(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+    }
+
+    @MainActor
+    func testExplicitCategoryResetReplacesOldPerIDMarkersWithoutAccumulating() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+        let oldMarkerKeys = Set(appearanceMarkers(in: context).map(\.key))
+        XCTAssertEqual(oldMarkerKeys.count, 23)
+
+        for category in try context.fetch(FetchDescriptor<Flux.Category>()) {
+            context.delete(category)
+        }
+        try context.save()
+        try seeder.seedCategoriesForExplicitReset()
+        try context.save()
+
+        let newMarkerKeys = Set(appearanceMarkers(in: context).map(\.key))
+        XCTAssertEqual(newMarkerKeys.count, 23)
+        XCTAssertTrue(oldMarkerKeys.isDisjoint(with: newMarkerKeys))
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(in: context))
+    }
+
+    @MainActor
+    func testUnmarkedReusedLegacyAliasModernizesAndRecordsCompletion() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        context.insert(AppMigrationState(key: ExpenseCategoryMigration.appearanceMigrationKey))
+        let bills = Category(
+            nameKey: "category.expense.bills",
+            icon: "doc.text.fill",
+            colorHex: "#64748B",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(bills)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        XCTAssertEqual(bills.nameKey, "category.expense.miscellaneous")
+        XCTAssertEqual(bills.icon, "ellipsis.circle.fill")
+        XCTAssertEqual(bills.colorHex, "#64748B")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: bills,
+            in: context
+        ))
+    }
+
+    @MainActor
+    func testPerCategoryAppearanceMigrationIsIdempotent() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phone = Category(
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+        XCTAssertFalse(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        XCTAssertFalse(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+    }
+
+    @MainActor
+    func testPersonalCareHistoricalAliasesResolveAndMergeAsSystemDefaults() throws {
+        for alias in [
+            "Personal Care", "個人護理", "个人护理",
+            "Beauty & Personal Care", "美容護理", "美容护理"
+        ] {
+            XCTAssertEqual(
+                Category.resolveSystemCategoryKey(alias),
+                "category.expense.personalCare"
+            )
+        }
+
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let english = Category(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            nameKey: "Beauty & Personal Care",
+            icon: "shower.fill",
+            colorHex: "#F43F5E",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let traditionalChinese = Category(
+            id: UUID(uuidString: "20000000-0000-0000-0000-000000000000")!,
+            nameKey: "美容護理",
+            icon: "shower.fill",
+            colorHex: "#F43F5E",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let simplifiedChinese = Category(
+            id: UUID(uuidString: "30000000-0000-0000-0000-000000000000")!,
+            nameKey: "美容护理",
+            icon: "shower.fill",
+            colorHex: "#F43F5E",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let customSameName = Category(
+            nameKey: "個人護理",
+            icon: "heart.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: false
+        )
+        let transactions = [english, traditionalChinese, simplifiedChinese].map {
+            transaction(category: $0)
+        }
+        [english, traditionalChinese, simplifiedChinese, customSameName].forEach(context.insert)
+        transactions.forEach(context.insert)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let systemCategories = categories.filter(\.isSystemDefault)
+        XCTAssertEqual(systemCategories.count, 1)
+        XCTAssertTrue(systemCategories[0] === english)
+        XCTAssertEqual(english.nameKey, "category.expense.personalCare")
+        XCTAssertEqual(english.icon, "comb")
+        XCTAssertEqual(english.colorHex, "#F43F5E")
+        XCTAssertTrue(transactions.allSatisfy { $0.category === english })
+        XCTAssertEqual(customSameName.nameKey, "個人護理")
+        XCTAssertEqual(customSameName.icon, "heart.fill")
+        XCTAssertEqual(customSameName.colorHex, "#123456")
+    }
+
+    @MainActor
+    func testPersonalCareLegacyAliasPreservesCustomizedAppearance() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let personalCare = Category(
+            nameKey: "個人護理",
+            icon: "heart.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(personalCare)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+
+        XCTAssertEqual(personalCare.nameKey, "category.expense.personalCare")
+        XCTAssertEqual(personalCare.icon, "heart.fill")
+        XCTAssertEqual(personalCare.colorHex, "#123456")
+    }
+
+    @MainActor
+    func testOneTimeUpgradeModernizesOnlyPreviouslyShippedAppearance() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
         context.insert(Currency(code: "HKD", exchangeRateToBase: 1, isBaseCurrency: true))
@@ -190,8 +637,33 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
             type: .expense,
             isSystemDefault: true
         )
+        let phone = Category(
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let customizedPhoneIcon = Category(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.phone",
+            icon: "star.fill",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: false
+        )
+        let home = Category(
+            nameKey: "category.expense.home",
+            icon: "house.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true
+        )
         context.insert(personalCare)
         context.insert(entertainment)
+        context.insert(phone)
+        context.insert(customizedPhoneIcon)
+        context.insert(home)
         try context.save()
 
         try await DefaultDataSeeder(context: context).seedIfNeeded()
@@ -200,6 +672,82 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         XCTAssertEqual(personalCare.colorHex, "#F43F5E")
         XCTAssertEqual(entertainment.icon, "gamecontroller.fill")
         XCTAssertEqual(entertainment.colorHex, "#112233")
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+        XCTAssertEqual(customizedPhoneIcon.icon, "star.fill")
+        XCTAssertEqual(customizedPhoneIcon.colorHex, "#06B6D4")
+        XCTAssertEqual(home.icon, "sofa.fill")
+        XCTAssertEqual(home.colorHex, "#123456")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(in: context))
+    }
+
+    @MainActor
+    func testAppearanceUpgradeRunsAfterV2WithoutRecreatingDeletedCategories() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        context.insert(Currency(code: "HKD", exchangeRateToBase: 1, isBaseCurrency: true))
+        context.insert(AppMigrationState(key: ExpenseCategoryMigration.versionedMigrationKey))
+        let phone = Category(
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let customizedEntertainment = Category(
+            nameKey: "category.expense.entertainment",
+            icon: "gamecontroller.fill",
+            colorHex: "#112233",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        context.insert(customizedEntertainment)
+        try context.save()
+
+        try await DefaultDataSeeder(context: context).seedIfNeeded()
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        XCTAssertEqual(categories.filter { $0.type == .expense }.count, 2)
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+        XCTAssertEqual(customizedEntertainment.icon, "gamecontroller.fill")
+        XCTAssertEqual(customizedEntertainment.colorHex, "#112233")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(in: context))
+    }
+
+    @MainActor
+    func testMergingLegacyAliasCarriesCustomizedAppearanceOntoDefaultTarget() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let learning = Category(
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.learning",
+            icon: "books.vertical.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        let customizedEducation = Category(
+            id: UUID(uuidString: "20000000-0000-0000-0000-000000000000")!,
+            nameKey: "category.expense.education",
+            icon: "star.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(learning)
+        context.insert(customizedEducation)
+        try context.save()
+
+        XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
+        try context.save()
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        XCTAssertEqual(categories.count, 1)
+        XCTAssertTrue(categories[0] === learning)
+        XCTAssertEqual(learning.icon, "star.fill")
+        XCTAssertEqual(learning.colorHex, "#123456")
     }
 
     @MainActor
@@ -381,6 +929,13 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         )
     }
 
+    @MainActor
+    private func appearanceMarkers(in context: ModelContext) throws -> [AppMigrationState] {
+        try context.fetch(FetchDescriptor<AppMigrationState>()).filter {
+            $0.key.hasPrefix("flux.expenseCategories.v3Appearance.category.")
+        }
+    }
+
     private func makeDefaults() -> UserDefaults {
         let suiteName = "ExpenseCategoryMigrationTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -390,5 +945,6 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
 
     private func clear(_ defaults: UserDefaults) {
         defaults.removeObject(forKey: ExpenseCategoryMigration.versionedMigrationKey)
+        defaults.removeObject(forKey: ExpenseCategoryMigration.appearanceMigrationKey)
     }
 }

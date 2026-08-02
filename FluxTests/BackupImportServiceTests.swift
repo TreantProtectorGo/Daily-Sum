@@ -347,8 +347,260 @@ final class BackupImportServiceTests: XCTestCase {
         try assertLegacyCategoryRelationshipsNormalize(mode: .replace)
     }
 
+    func testReplaceImportInvalidatesOldAppearanceMarkersAndDoesNotAccumulateRows() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        try await DefaultDataSeeder(context: context).seedIfNeeded()
+        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 23)
+
+        let service = BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        )
+        let data = try BackupArchiveCodec.encode(
+            Self.makeLegacyCategoryArchive(includeCanonicalTargets: true)
+        )
+
+        _ = try service.applyImport(
+            data: data,
+            mode: .replace,
+            scope: .financialDataOnly,
+            context: context
+        )
+        let firstKeys = appearanceMarkerKeys(in: context)
+        XCTAssertEqual(firstKeys.count, 2)
+
+        _ = try service.applyImport(
+            data: data,
+            mode: .replace,
+            scope: .financialDataOnly,
+            context: context
+        )
+        let secondKeys = appearanceMarkerKeys(in: context)
+        XCTAssertEqual(secondKeys, firstKeys)
+        XCTAssertEqual(secondKeys.count, 2)
+        XCTAssertEqual(
+            try context.fetch(FetchDescriptor<AppMigrationState>()).filter {
+                $0.key == ExpenseCategoryMigration.appearanceMigrationKey
+            }.count,
+            1
+        )
+    }
+
     func testApplyImportMergeNormalizesLegacyCategoryRelationships() throws {
         try assertLegacyCategoryRelationshipsNormalize(mode: .merge)
+    }
+
+    func testMergeImportModernizesChangedSameIDSystemAppearanceOnce() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phoneID = UUID(uuidString: "90000000-0000-0000-0000-000000000000")!
+        let phone = Flux.Category(
+            id: phoneID,
+            nameKey: "category.expense.phone",
+            icon: "phone.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+        try context.save()
+
+        var archive = Self.makeArchive()
+        archive.financialData.categories = [
+            BackupCategoryRecord(
+                id: phoneID,
+                nameKey: "category.expense.phone",
+                icon: "wifi",
+                colorHex: "#06B6D4",
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: 0,
+                parentCategoryId: nil
+            )
+        ]
+        archive.integrityMetadata.recordCounts.categories = 1
+
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: try BackupArchiveCodec.encode(archive),
+            mode: .merge,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+    }
+
+    func testMergeImportModernizesIncomingSameIDSystemCategoryOverExistingMarkedCustomization() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phoneID = UUID(uuidString: "90500000-0000-0000-0000-000000000000")!
+        let phone = Flux.Category(
+            id: phoneID,
+            nameKey: "My phone category",
+            icon: "heart.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: false
+        )
+        context.insert(phone)
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+        context.insert(AppMigrationState(
+            key: "flux.expenseCategories.v3Appearance.category.\(phoneID.uuidString.lowercased())"
+        ))
+        try context.save()
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+
+        var archive = Self.makeArchive()
+        archive.financialData.categories = [
+            BackupCategoryRecord(
+                id: phoneID,
+                nameKey: "category.expense.phone",
+                icon: "wifi",
+                colorHex: "#06B6D4",
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: 0,
+                parentCategoryId: nil
+            )
+        ]
+        archive.integrityMetadata.recordCounts.categories = 1
+
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: try BackupArchiveCodec.encode(archive),
+            mode: .merge,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        XCTAssertEqual(phone.nameKey, "category.expense.phone")
+        XCTAssertEqual(phone.icon, "phone.fill")
+        XCTAssertEqual(phone.colorHex, "#3B82F6")
+        XCTAssertTrue(phone.isSystemDefault)
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+    }
+
+    func testMergeImportKeepsAppearanceCompletionForSameStableCategoryID() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phoneID = UUID(uuidString: "91000000-0000-0000-0000-000000000000")!
+        let phone = Flux.Category(
+            id: phoneID,
+            nameKey: "category.expense.phone",
+            icon: "wifi",
+            colorHex: "#06B6D4",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try context.save()
+        try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
+        try context.save()
+
+        // A user can deliberately choose values that happen to match old Flux defaults.
+        phone.icon = "wifi"
+        phone.colorHex = "#06B6D4"
+        try context.save()
+
+        var archive = Self.makeArchive()
+        archive.financialData.categories = [
+            BackupCategoryRecord(
+                id: phoneID,
+                nameKey: "category.expense.phone",
+                icon: "wifi",
+                colorHex: "#06B6D4",
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: 0,
+                parentCategoryId: nil
+            )
+        ]
+        archive.integrityMetadata.recordCounts.categories = 1
+
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: try BackupArchiveCodec.encode(archive),
+            mode: .merge,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        XCTAssertEqual(phone.icon, "wifi")
+        XCTAssertEqual(phone.colorHex, "#06B6D4")
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+    }
+
+    func testMergeImportPreservesChangedSameIDNonSystemCustomization() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let phoneID = UUID(uuidString: "92000000-0000-0000-0000-000000000000")!
+        let phone = Flux.Category(
+            id: phoneID,
+            nameKey: "category.expense.phone",
+            icon: "phone.fill",
+            colorHex: "#3B82F6",
+            type: .expense,
+            isSystemDefault: true
+        )
+        context.insert(phone)
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+        try context.save()
+
+        var archive = Self.makeArchive()
+        archive.financialData.categories = [
+            BackupCategoryRecord(
+                id: phoneID,
+                nameKey: "My phone category",
+                icon: "heart.fill",
+                colorHex: "#123456",
+                type: .expense,
+                isSystemDefault: false,
+                sortOrder: 0,
+                parentCategoryId: nil
+            )
+        ]
+        archive.integrityMetadata.recordCounts.categories = 1
+
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: try BackupArchiveCodec.encode(archive),
+            mode: .merge,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        XCTAssertEqual(phone.nameKey, "My phone category")
+        XCTAssertEqual(phone.icon, "heart.fill")
+        XCTAssertEqual(phone.colorHex, "#123456")
+        XCTAssertFalse(phone.isSystemDefault)
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
+            for: phone,
+            in: context
+        ))
+        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
     }
 
     func testApplyImportMergeReportsRecordLevelFailureForMissingReference() throws {
@@ -701,6 +953,12 @@ final class BackupImportServiceTests: XCTestCase {
         archive.integrityMetadata.recordCounts.transactions = 3
         archive.integrityMetadata.recordCounts.budgets = 3
         return archive
+    }
+
+    private func appearanceMarkerKeys(in context: ModelContext) throws -> Set<String> {
+        Set(try context.fetch(FetchDescriptor<AppMigrationState>()).compactMap {
+            $0.key.hasPrefix("flux.expenseCategories.v3Appearance.category.") ? $0.key : nil
+        })
     }
 
     private static func canonicalCategory(id: UUID, key: String) -> Flux.Category {

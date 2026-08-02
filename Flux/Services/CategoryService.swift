@@ -140,6 +140,10 @@ final class CategoryService {
     
     /// Deletes a category (transactions will have category set to nil)
     func delete(_ category: Category) throws {
+        try ExpenseCategoryMigration.removeAppearanceMarkers(
+            for: category.id,
+            in: context
+        )
         context.delete(category)
         try context.save()
     }

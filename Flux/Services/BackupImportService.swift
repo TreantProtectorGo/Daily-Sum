@@ -341,7 +341,7 @@ final class BackupImportService: BackupImportServicing {
             state: &state,
             accumulator: &accumulator
         )
-        mergeCategories(
+        try mergeCategories(
             archive.financialData.categories,
             into: context,
             state: &state,
@@ -383,6 +383,9 @@ final class BackupImportService: BackupImportServicing {
             accumulator: &accumulator
         )
 
+        // Unchanged same-ID records keep their appearance marker, protecting post-migration user
+        // customization. A changed system-default identity or appearance invalidates its marker
+        // during merge so normalization can modernize old shipped values exactly once.
         try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
         try context.save()
         applyPreferences(from: archive.preferences, scope: scope)
@@ -397,6 +400,10 @@ final class BackupImportService: BackupImportServicing {
     }
 
     private func clearSupportedLocalRecords(in context: ModelContext) throws {
+        // A replace archive does not contain AppMigrationState rows. Invalidate only the
+        // per-category appearance markers before rebuilding category identities; normalization
+        // below establishes fresh markers while retaining the store-wide v3 history marker.
+        try ExpenseCategoryMigration.removeAllAppearanceCategoryMarkers(in: context)
         try deleteAll(Transaction.self, from: context)
         try deleteAll(Budget.self, from: context)
         try deleteAll(ScheduledOccurrenceException.self, from: context)
@@ -725,7 +732,7 @@ final class BackupImportService: BackupImportServicing {
         into context: ModelContext,
         state: inout MergeState,
         accumulator: inout MergeAccumulator
-    ) {
+    ) throws {
         for record in records {
             if let existing = state.categories[record.id] {
                 if categoryMatches(existing, record: record) {
@@ -741,6 +748,15 @@ final class BackupImportService: BackupImportServicing {
                         )
                     )
                 } else {
+                    if shouldInvalidateAppearanceMarker(
+                        whenOverwriting: existing,
+                        with: record
+                    ) {
+                        try ExpenseCategoryMigration.removeAppearanceMarkers(
+                            for: existing.id,
+                            in: context
+                        )
+                    }
                     existing.nameKey = record.nameKey
                     existing.icon = record.icon
                     existing.colorHex = record.colorHex
@@ -785,6 +801,26 @@ final class BackupImportService: BackupImportServicing {
                 )
             )
         }
+    }
+
+    /// A same-ID archive update can replace any existing category with an older shipped system
+    /// identity or appearance. Eligibility is based on the incoming record because the overwrite
+    /// also replaces type and ownership. A non-system import remains user-owned and is never made
+    /// eligible for appearance modernization here.
+    private func shouldInvalidateAppearanceMarker(
+        whenOverwriting category: Category,
+        with record: BackupCategoryRecord
+    ) -> Bool {
+        guard record.type == .expense,
+              record.isSystemDefault else {
+            return false
+        }
+
+        return category.nameKey != record.nameKey ||
+            category.icon != record.icon ||
+            category.colorHex != record.colorHex ||
+            category.type != record.type ||
+            category.isSystemDefault != record.isSystemDefault
     }
 
     private func resolveCategoryParents(

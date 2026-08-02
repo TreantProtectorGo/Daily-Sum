@@ -91,6 +91,7 @@ struct DefaultDataSeeder {
     func seedCategoriesForExplicitReset() throws {
         let categoryCount = try context.fetchCount(FetchDescriptor<Category>())
         guard categoryCount == 0 else { return }
+        try ExpenseCategoryMigration.removeAllAppearanceCategoryMarkers(in: context)
         try seedCategories()
         try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
     }
@@ -99,6 +100,7 @@ struct DefaultDataSeeder {
     /// therefore commit the deletions and replacement records atomically in one context save.
     /// Debug sample transactions and budgets are intentionally excluded from an explicit reset.
     func seedDataForExplicitReset() throws {
+        try ExpenseCategoryMigration.removeAllAppearanceCategoryMarkers(in: context)
         try seedCurrencies()
         try seedCategories()
         try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)

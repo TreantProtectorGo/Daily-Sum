@@ -1055,8 +1055,8 @@ final class LocalizationTests: XCTestCase {
             "category.expense.transport": ("tram.fill", "#14B8A6"),
             "category.expense.housing": ("building.2.fill", "#3B82F6"),
             "category.expense.utilities": ("bolt.fill", "#F59E0B"),
-            "category.expense.phone": ("wifi", "#06B6D4"),
-            "category.expense.home": ("sofa.fill", "#06B6D4"),
+            "category.expense.phone": ("phone.fill", "#3B82F6"),
+            "category.expense.home": ("sofa.fill", "#14B8A6"),
             "category.expense.shopping": ("bag.fill", "#06B6D4"),
             "category.expense.electronics": ("desktopcomputer", "#6366F1"),
             "category.expense.personalCare": ("comb", "#F43F5E"),
@@ -1069,7 +1069,7 @@ final class LocalizationTests: XCTestCase {
             "category.expense.travel": ("airplane", "#F59E0B"),
             "category.expense.gifts": ("gift.fill", "#EF4444"),
             "category.expense.pet": ("pawprint.fill", "#A16207"),
-            "category.expense.insurance": ("shield.fill", "#A855F7"),
+            "category.expense.insurance": ("shield.fill", "#64748B"),
             "category.expense.tax": ("building.columns.fill", "#F59E0B"),
             "category.expense.miscellaneous": ("ellipsis.circle.fill", "#64748B")
         ]
@@ -1081,6 +1081,23 @@ final class LocalizationTests: XCTestCase {
             XCTAssertNotNil(UIImage(systemName: category.icon), "\(key) must use a valid SF Symbol")
         }
 
+        let editablePalette: Set<String> = [
+            "#22C55E", "#14B8A6", "#06B6D4", "#3B82F6", "#6366F1", "#A855F7",
+            "#EC4899", "#F43F5E", "#EF4444", "#F59E0B", "#A16207", "#64748B"
+        ]
+        XCTAssertTrue(expectations.values.allSatisfy { editablePalette.contains($0.colorHex) })
+        XCTAssertEqual(Set([
+            expectations["category.expense.phone"]!.colorHex,
+            expectations["category.expense.home"]!.colorHex,
+            expectations["category.expense.shopping"]!.colorHex,
+            expectations["category.expense.electronics"]!.colorHex
+        ]).count, 4)
+        XCTAssertNotEqual(
+            expectations["category.expense.entertainment"]!.colorHex,
+            expectations["category.expense.subscriptions"]!.colorHex
+        )
+
         XCTAssertTrue(SFSymbolCatalog.all.contains("ellipsis.circle.fill"))
+        XCTAssertTrue(SFSymbolCatalog.all.contains("phone.fill"))
     }
 }
