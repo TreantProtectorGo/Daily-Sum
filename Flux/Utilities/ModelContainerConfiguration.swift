@@ -12,7 +12,8 @@ enum ModelContainerConfiguration {
         Account.self,
         Transaction.self,
         ScheduledOccurrenceException.self,
-        Budget.self
+        Budget.self,
+        AppMigrationState.self
     ]
     
     @MainActor

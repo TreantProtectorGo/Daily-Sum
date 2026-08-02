@@ -1032,16 +1032,22 @@ final class SettingsViewModel {
     }
     
     func clearAllData() async throws {
-        try modelContext.delete(model: Transaction.self)
-        try modelContext.delete(model: Budget.self)
-        try modelContext.delete(model: Account.self)
-        try modelContext.delete(model: Category.self)
-        try modelContext.delete(model: Currency.self)
-        try modelContext.delete(model: ExchangeRate.self)
+        do {
+            try modelContext.delete(model: Transaction.self)
+            try modelContext.delete(model: Budget.self)
+            try modelContext.delete(model: Account.self)
+            try modelContext.delete(model: Category.self)
+            try modelContext.delete(model: Currency.self)
+            try modelContext.delete(model: ExchangeRate.self)
+
+            let seeder = DefaultDataSeeder(context: modelContext)
+            try seeder.seedDataForExplicitReset()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+
         ExchangeRateSyncPreference.lastSuccessfulSyncDate = nil
-        
-        let seeder = DefaultDataSeeder(context: modelContext)
-        try await seeder.seedIfNeeded()
         
         await loadSettings()
     }

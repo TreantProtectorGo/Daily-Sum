@@ -1775,6 +1775,38 @@ final class ServiceTests: XCTestCase {
         }
     }
 
+    func testInactiveBudgetDoesNotBlockNewActiveBudgetButCannotReactivateIntoCollision() async throws {
+        let category = try CategoryService(context: context).create(
+            name: "Transport",
+            icon: "tram.fill",
+            colorHex: "#14B8A6",
+            type: .expense
+        )
+        let budgetService = BudgetService(context: context)
+
+        let inactive = try budgetService.create(
+            category: category,
+            limitAmount: 100,
+            currencyCode: "USD",
+            period: .monthly,
+            isActive: false
+        )
+        let active = try budgetService.create(
+            category: category,
+            limitAmount: 200,
+            currencyCode: "USD",
+            period: .monthly
+        )
+
+        XCTAssertFalse(inactive.isActive)
+        XCTAssertTrue(active.isActive)
+        XCTAssertThrowsError(try budgetService.reactivate(inactive)) { error in
+            XCTAssertEqual(error as? BudgetService.BudgetError, .duplicateBudget)
+        }
+        XCTAssertFalse(inactive.isActive)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Budget>()), 2)
+    }
+
     func testBudgetServiceRejectsDuplicateAllCategoriesAndPeriod() async throws {
         let budgetService = BudgetService(context: context)
 

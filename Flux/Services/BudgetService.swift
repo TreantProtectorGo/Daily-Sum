@@ -35,11 +35,13 @@ final class BudgetService {
                 throw BudgetError.incomeCategory
             }
 
-            try ensureUniqueCategoryBudget(
-                category: category,
-                period: period
-            )
-        } else {
+            if isActive {
+                try ensureUniqueCategoryBudget(
+                    category: category,
+                    period: period
+                )
+            }
+        } else if isActive {
             try ensureUniqueAllCategoriesBudget(period: period)
         }
         
@@ -111,13 +113,14 @@ final class BudgetService {
 
         let finalCategory = shouldUpdateCategory ? category : budget.category
         let finalPeriod = period ?? budget.period
-        if let finalCategory {
+        let finalIsActive = isActive ?? budget.isActive
+        if finalIsActive, let finalCategory {
             try ensureUniqueCategoryBudget(
                 category: finalCategory,
                 period: finalPeriod,
                 excluding: budget
             )
-        } else {
+        } else if finalIsActive {
             try ensureUniqueAllCategoriesBudget(
                 period: finalPeriod,
                 excluding: budget
@@ -143,6 +146,21 @@ final class BudgetService {
     
     /// Reactivates a budget
     func reactivate(_ budget: Budget) throws {
+        if let category = budget.category {
+            guard category.type == .expense else {
+                throw BudgetError.incomeCategory
+            }
+            try ensureUniqueCategoryBudget(
+                category: category,
+                period: budget.period,
+                excluding: budget
+            )
+        } else {
+            try ensureUniqueAllCategoriesBudget(
+                period: budget.period,
+                excluding: budget
+            )
+        }
         budget.isActive = true
         try context.save()
     }
@@ -320,7 +338,9 @@ final class BudgetService {
             predicate: #Predicate { $0.category?.id == categoryId }
         )
 
-        let existingBudgets = try context.fetch(descriptor).filter { $0.period == period }
+        let existingBudgets = try context.fetch(descriptor).filter {
+            $0.isActive && $0.period == period
+        }
         let hasDuplicate = existingBudgets.contains { existingBudget in
             guard let currentBudget else { return true }
             return existingBudget.id != currentBudget.id
@@ -339,7 +359,9 @@ final class BudgetService {
             predicate: #Predicate { $0.category == nil }
         )
 
-        let existingBudgets = try context.fetch(descriptor).filter { $0.period == period }
+        let existingBudgets = try context.fetch(descriptor).filter {
+            $0.isActive && $0.period == period
+        }
         let hasDuplicate = existingBudgets.contains { existingBudget in
             guard let currentBudget else { return true }
             return existingBudget.id != currentBudget.id

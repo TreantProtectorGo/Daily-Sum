@@ -1,28 +1,34 @@
 import XCTest
 import SwiftUI
 import SwiftData
+import UIKit
 @testable import Flux
 
 final class LocalizationTests: XCTestCase {
     private let defaultExpenseCategoryKeys = [
         "category.expense.dining",
+        "category.expense.coffee",
         "category.expense.groceries",
         "category.expense.transport",
-        "category.expense.shopping",
-        "category.expense.bills",
         "category.expense.housing",
-        "category.expense.subscriptions",
+        "category.expense.utilities",
+        "category.expense.phone",
+        "category.expense.home",
+        "category.expense.shopping",
+        "category.expense.electronics",
+        "category.expense.personalCare",
+        "category.expense.sports",
         "category.expense.medical",
         "category.expense.entertainment",
-        "category.expense.personalCare",
-        "category.expense.home",
-        "category.expense.travel",
-        "category.expense.education",
+        "category.expense.subscriptions",
         "category.expense.learning",
+        "category.expense.family",
+        "category.expense.travel",
         "category.expense.gifts",
         "category.expense.pet",
         "category.expense.insurance",
-        "category.expense.tax"
+        "category.expense.tax",
+        "category.expense.miscellaneous"
     ]
 
     private func expenseCategoryDisplayNames() -> [String] {
@@ -231,23 +237,28 @@ final class LocalizationTests: XCTestCase {
         AppLanguagePreference.language = .english
         XCTAssertEqual(expenseCategoryDisplayNames(), [
             "Dining",
+            "Drinks",
             "Groceries",
             "Transport",
-            "Shopping",
-            "Bills",
             "Housing",
-            "Subscriptions",
+            "Utilities",
+            "Phone Bill",
+            "Household",
+            "Shopping",
+            "Electronics",
+            "Personal Care",
+            "Sports",
             "Medical",
             "Entertainment",
-            "Personal Care",
-            "Household",
-            "Travel",
-            "Education",
+            "Subscriptions",
             "Learning",
+            "Family",
+            "Travel",
             "Gifts",
             "Pets",
             "Insurance",
-            "Taxes"
+            "Taxes",
+            "Miscellaneous"
         ])
         XCTAssertEqual(
             AppLocalization.string(key: "category.income.gift", table: "CategoryLocalizations"),
@@ -846,23 +857,28 @@ final class LocalizationTests: XCTestCase {
         AppLanguagePreference.language = .traditionalChinese
         XCTAssertEqual(expenseCategoryDisplayNames(), [
             "餐飲",
+            "飲品",
             "超市",
             "交通",
-            "購物",
-            "帳單",
             "住屋",
-            "訂閱",
+            "水電煤",
+            "電話費",
+            "家居",
+            "購物",
+            "電子產品",
+            "個人護理",
+            "運動",
             "醫療",
             "娛樂",
-            "個人護理",
-            "家居",
+            "訂閱",
+            "學習",
+            "家庭",
             "旅遊",
-            "教育",
-            "進修",
             "禮物",
             "寵物",
             "保險",
-            "稅務"
+            "稅務",
+            "雜費"
         ])
     }
 
@@ -922,23 +938,28 @@ final class LocalizationTests: XCTestCase {
         AppLanguagePreference.language = .simplifiedChinese
         XCTAssertEqual(expenseCategoryDisplayNames(), [
             "餐饮",
+            "饮品",
             "超市",
             "交通",
-            "购物",
-            "账单",
             "住房",
-            "订阅",
+            "水电燃气",
+            "电话费",
+            "家居",
+            "购物",
+            "电子产品",
+            "个人护理",
+            "运动",
             "医疗",
             "娱乐",
-            "个人护理",
-            "家居",
-            "旅行",
-            "教育",
+            "订阅",
             "学习",
+            "家庭",
+            "旅游",
             "礼物",
             "宠物",
             "保险",
-            "税务"
+            "税费",
+            "杂费"
         ])
     }
 
@@ -971,6 +992,12 @@ final class LocalizationTests: XCTestCase {
             "category.expense.groceries",
             "category.expense.dining",
             "category.expense.coffee",
+            "category.expense.utilities",
+            "category.expense.phone",
+            "category.expense.electronics",
+            "category.expense.sports",
+            "category.expense.family",
+            "category.expense.miscellaneous",
             "category.expense.subscriptions",
             "category.expense.housing",
             "category.expense.personalCare",
@@ -1023,30 +1050,37 @@ final class LocalizationTests: XCTestCase {
         let categories = try context.fetch(FetchDescriptor<Flux.Category>())
         let expectations: [String: (icon: String, colorHex: String)] = [
             "category.expense.dining": ("fork.knife", "#F59E0B"),
+            "category.expense.coffee": ("cup.and.saucer.fill", "#A16207"),
             "category.expense.groceries": ("cart.fill", "#22C55E"),
             "category.expense.transport": ("tram.fill", "#14B8A6"),
-            "category.expense.shopping": ("bag.fill", "#06B6D4"),
-            "category.expense.bills": ("doc.text.fill", "#64748B"),
             "category.expense.housing": ("building.2.fill", "#3B82F6"),
-            "category.expense.subscriptions": ("repeat", "#A855F7"),
+            "category.expense.utilities": ("bolt.fill", "#F59E0B"),
+            "category.expense.phone": ("wifi", "#06B6D4"),
+            "category.expense.home": ("sofa.fill", "#06B6D4"),
+            "category.expense.shopping": ("bag.fill", "#06B6D4"),
+            "category.expense.electronics": ("desktopcomputer", "#6366F1"),
+            "category.expense.personalCare": ("comb", "#F43F5E"),
+            "category.expense.sports": ("dumbbell.fill", "#14B8A6"),
             "category.expense.medical": ("cross.case.fill", "#EC4899"),
-            "category.expense.entertainment": ("tv.fill", "#6366F1"),
-            "category.expense.personalCare": ("shower.fill", "#F43F5E"),
-            "category.expense.home": ("house.fill", "#06B6D4"),
+            "category.expense.entertainment": ("ticket.fill", "#6366F1"),
+            "category.expense.subscriptions": ("repeat", "#A855F7"),
+            "category.expense.learning": ("books.vertical.fill", "#3B82F6"),
+            "category.expense.family": ("person.3.fill", "#EF4444"),
             "category.expense.travel": ("airplane", "#F59E0B"),
-            "category.expense.education": ("book.fill", "#3B82F6"),
-            "category.expense.learning": ("graduationcap.fill", "#14B8A6"),
             "category.expense.gifts": ("gift.fill", "#EF4444"),
             "category.expense.pet": ("pawprint.fill", "#A16207"),
             "category.expense.insurance": ("shield.fill", "#A855F7"),
-            "category.expense.tax": ("building.columns.fill", "#F59E0B")
+            "category.expense.tax": ("building.columns.fill", "#F59E0B"),
+            "category.expense.miscellaneous": ("ellipsis.circle.fill", "#64748B")
         ]
 
         for (key, expectation) in expectations {
             let category = try XCTUnwrap(categories.first { $0.nameKey == key })
-            XCTAssertFalse(category.icon.contains("circle"), "\(key) should not use a circle icon")
             XCTAssertEqual(category.icon, expectation.icon, "\(key) icon")
             XCTAssertEqual(category.colorHex, expectation.colorHex, "\(key) color")
+            XCTAssertNotNil(UIImage(systemName: category.icon), "\(key) must use a valid SF Symbol")
         }
+
+        XCTAssertTrue(SFSymbolCatalog.all.contains("ellipsis.circle.fill"))
     }
 }

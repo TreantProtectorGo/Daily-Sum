@@ -562,7 +562,8 @@ enum SFSymbolCatalog {
         "square.grid.2x2.fill", "list.bullet", "slider.horizontal.3", "gear",
         "gearshape", "gearshape.fill", "star", "star.fill", "flag", "flag.fill",
         "pin", "pin.fill", "bell", "bell.fill", "exclamationmark.triangle",
-        "exclamationmark.triangle.fill", "info.circle", "info.circle.fill"
+        "exclamationmark.triangle.fill", "info.circle", "info.circle.fill",
+        "ellipsis.circle", "ellipsis.circle.fill"
     ])
 
     static func search(_ query: String) -> [String] {

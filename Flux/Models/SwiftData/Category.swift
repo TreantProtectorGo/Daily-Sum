@@ -125,6 +125,12 @@ final class Category {
         "category.expense.groceries",
         "category.expense.dining",
         "category.expense.coffee",
+        "category.expense.utilities",
+        "category.expense.phone",
+        "category.expense.electronics",
+        "category.expense.sports",
+        "category.expense.family",
+        "category.expense.miscellaneous",
         "category.expense.subscriptions",
         "category.expense.housing",
         "category.expense.personalCare",
@@ -169,8 +175,29 @@ final class Category {
         return map
     }()
 
-    private static func resolveSystemCategoryKey(_ value: String) -> String {
+    static func resolveSystemCategoryKey(_ value: String) -> String {
         let normalizedValue = normalizedLookupKey(for: value)
+        let explicitLegacyAliases: [String: String] = [
+            "category.expense.health": "category.expense.medical",
+            "health": "category.expense.medical",
+            "健康": "category.expense.medical",
+            "category.expense.education": "category.expense.learning",
+            "category.expense.upskilling": "category.expense.learning",
+            "education": "category.expense.learning",
+            "upskilling": "category.expense.learning",
+            "教育": "category.expense.learning",
+            "学习": "category.expense.learning",
+            "學習": "category.expense.learning",
+            "进修": "category.expense.learning",
+            "進修": "category.expense.learning",
+            "category.expense.bills": "category.expense.miscellaneous",
+            "bills": "category.expense.miscellaneous",
+            "账单": "category.expense.miscellaneous",
+            "帳單": "category.expense.miscellaneous"
+        ]
+        if let canonical = explicitLegacyAliases[normalizedValue] {
+            return canonical
+        }
         if let canonical = legacyNameToKey[normalizedValue] {
             return canonical
         }

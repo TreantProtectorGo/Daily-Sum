@@ -299,6 +299,7 @@ final class BackupImportService: BackupImportServicing {
             try restoreSessionMarkerStore.save(marker)
 
             resolveRelationships(in: archive, with: importedObjects)
+            try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
             try context.save()
         } catch {
             context.rollback()
@@ -382,6 +383,7 @@ final class BackupImportService: BackupImportServicing {
             accumulator: &accumulator
         )
 
+        try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
         try context.save()
         applyPreferences(from: archive.preferences, scope: scope)
         restoreSessionMarkerStore.clear()

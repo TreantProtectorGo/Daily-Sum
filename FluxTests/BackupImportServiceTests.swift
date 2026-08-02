@@ -343,6 +343,14 @@ final class BackupImportServiceTests: XCTestCase {
         XCTAssertEqual(report.entries.map(\.action), [.skipped, .skipped])
     }
 
+    func testApplyImportReplaceNormalizesLegacyCategoryRelationships() throws {
+        try assertLegacyCategoryRelationshipsNormalize(mode: .replace)
+    }
+
+    func testApplyImportMergeNormalizesLegacyCategoryRelationships() throws {
+        try assertLegacyCategoryRelationshipsNormalize(mode: .merge)
+    }
+
     func testApplyImportMergeReportsRecordLevelFailureForMissingReference() throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
@@ -504,6 +512,276 @@ final class BackupImportServiceTests: XCTestCase {
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: original) as? [String: Any])
         mutate(&json)
         return try JSONSerialization.data(withJSONObject: json, options: [.sortedKeys])
+    }
+
+    private func assertLegacyCategoryRelationshipsNormalize(
+        mode: BackupRestoreMode
+    ) throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let learningTargetID = UUID(uuidString: "71000000-0000-0000-0000-000000000000")!
+        let miscellaneousTargetID = UUID(uuidString: "72000000-0000-0000-0000-000000000000")!
+
+        if mode == .merge {
+            context.insert(Self.canonicalCategory(
+                id: learningTargetID,
+                key: "category.expense.learning"
+            ))
+            context.insert(Self.canonicalCategory(
+                id: miscellaneousTargetID,
+                key: "category.expense.miscellaneous"
+            ))
+            try context.save()
+        }
+
+        let archive = Self.makeLegacyCategoryArchive(
+            includeCanonicalTargets: mode == .replace
+        )
+        let data = try BackupArchiveCodec.encode(archive)
+
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: data,
+            mode: mode,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        let categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let learning = try XCTUnwrap(categories.first {
+            $0.isSystemDefault && $0.nameKey == "category.expense.learning"
+        })
+        let miscellaneous = try XCTUnwrap(categories.first {
+            $0.isSystemDefault && $0.nameKey == "category.expense.miscellaneous"
+        })
+        XCTAssertEqual(learning.id, learningTargetID)
+        XCTAssertEqual(miscellaneous.id, miscellaneousTargetID)
+        XCTAssertEqual(learning.icon, "star.fill")
+        XCTAssertEqual(miscellaneous.icon, "star.fill")
+        XCTAssertEqual(learning.colorHex, "#123456")
+        XCTAssertEqual(miscellaneous.colorHex, "#123456")
+        XCTAssertFalse(categories.contains {
+            $0.isSystemDefault && [
+                "category.expense.education",
+                "category.expense.upskilling",
+                "category.expense.bills"
+            ].contains($0.nameKey)
+        })
+
+        let transactions = try context.fetch(FetchDescriptor<Transaction>())
+        let ordinary = try XCTUnwrap(transactions.first {
+            $0.id == UUID(uuidString: "a1000000-0000-0000-0000-000000000000")!
+        })
+        let template = try XCTUnwrap(transactions.first {
+            $0.id == UUID(uuidString: "a2000000-0000-0000-0000-000000000000")!
+        })
+        let generated = try XCTUnwrap(transactions.first {
+            $0.id == UUID(uuidString: "a3000000-0000-0000-0000-000000000000")!
+        })
+        XCTAssertTrue(ordinary.category === learning)
+        XCTAssertTrue(template.isRecurringTemplate)
+        XCTAssertTrue(template.category === learning)
+        XCTAssertEqual(generated.recurringTemplateId, template.id)
+        XCTAssertTrue(generated.category === miscellaneous)
+
+        let budgets = try context.fetch(FetchDescriptor<Budget>())
+        XCTAssertEqual(budgets.count, 3)
+        XCTAssertEqual(budgets.filter { $0.category === learning }.count, 2)
+        XCTAssertEqual(budgets.filter { $0.category === learning && $0.isActive }.count, 1)
+        XCTAssertEqual(budgets.filter { $0.category === miscellaneous }.count, 1)
+
+        let child = try XCTUnwrap(categories.first { $0.nameKey == "Course materials" })
+        XCTAssertTrue(child.parentCategory === learning)
+    }
+
+    private static func makeLegacyCategoryArchive(
+        includeCanonicalTargets: Bool
+    ) -> BackupArchive {
+        var archive = makeArchive()
+        let educationID = UUID(uuidString: "81000000-0000-0000-0000-000000000000")!
+        let upskillingID = UUID(uuidString: "82000000-0000-0000-0000-000000000000")!
+        let billsID = UUID(uuidString: "83000000-0000-0000-0000-000000000000")!
+        let childID = UUID(uuidString: "84000000-0000-0000-0000-000000000000")!
+        let accountID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        let templateID = UUID(uuidString: "a2000000-0000-0000-0000-000000000000")!
+
+        var categories = [
+            BackupCategoryRecord(
+                id: educationID,
+                nameKey: "category.expense.education",
+                icon: "graduationcap.fill",
+                colorHex: "#3B82F6",
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: 1,
+                parentCategoryId: nil
+            ),
+            BackupCategoryRecord(
+                id: upskillingID,
+                nameKey: "category.expense.upskilling",
+                icon: "book.fill",
+                colorHex: "#3B82F6",
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: 2,
+                parentCategoryId: nil
+            ),
+            BackupCategoryRecord(
+                id: billsID,
+                nameKey: "category.expense.bills",
+                icon: "doc.text.fill",
+                colorHex: "#64748B",
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: 3,
+                parentCategoryId: nil
+            ),
+            BackupCategoryRecord(
+                id: childID,
+                nameKey: "Course materials",
+                icon: "book",
+                colorHex: "#111111",
+                type: .expense,
+                isSystemDefault: false,
+                sortOrder: 0,
+                parentCategoryId: educationID
+            )
+        ]
+        if includeCanonicalTargets {
+            categories.append(contentsOf: [
+                canonicalCategoryRecord(
+                    id: UUID(uuidString: "71000000-0000-0000-0000-000000000000")!,
+                    key: "category.expense.learning",
+                    sortOrder: 4
+                ),
+                canonicalCategoryRecord(
+                    id: UUID(uuidString: "72000000-0000-0000-0000-000000000000")!,
+                    key: "category.expense.miscellaneous",
+                    sortOrder: 5
+                )
+            ])
+        }
+        archive.financialData.categories = categories
+        archive.financialData.transactions = [
+            legacyTransaction(
+                id: UUID(uuidString: "a1000000-0000-0000-0000-000000000000")!,
+                accountID: accountID,
+                categoryID: educationID
+            ),
+            legacyTransaction(
+                id: templateID,
+                accountID: accountID,
+                categoryID: upskillingID,
+                isRecurringTemplate: true,
+                recurrenceRule: .monthly
+            ),
+            legacyTransaction(
+                id: UUID(uuidString: "a3000000-0000-0000-0000-000000000000")!,
+                accountID: accountID,
+                categoryID: billsID,
+                recurringTemplateID: templateID
+            )
+        ]
+        archive.financialData.budgets = [
+            legacyBudget(
+                id: UUID(uuidString: "b1000000-0000-0000-0000-000000000000")!,
+                categoryID: educationID
+            ),
+            legacyBudget(
+                id: UUID(uuidString: "b2000000-0000-0000-0000-000000000000")!,
+                categoryID: upskillingID
+            ),
+            legacyBudget(
+                id: UUID(uuidString: "b3000000-0000-0000-0000-000000000000")!,
+                categoryID: billsID
+            )
+        ]
+        archive.integrityMetadata.recordCounts.categories = categories.count
+        archive.integrityMetadata.recordCounts.transactions = 3
+        archive.integrityMetadata.recordCounts.budgets = 3
+        return archive
+    }
+
+    private static func canonicalCategory(id: UUID, key: String) -> Flux.Category {
+        Flux.Category(
+            id: id,
+            nameKey: key,
+            icon: "star.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true
+        )
+    }
+
+    private static func canonicalCategoryRecord(
+        id: UUID,
+        key: String,
+        sortOrder: Int
+    ) -> BackupCategoryRecord {
+        BackupCategoryRecord(
+            id: id,
+            nameKey: key,
+            icon: "star.fill",
+            colorHex: "#123456",
+            type: .expense,
+            isSystemDefault: true,
+            sortOrder: sortOrder,
+            parentCategoryId: nil
+        )
+    }
+
+    private static func legacyTransaction(
+        id: UUID,
+        accountID: UUID,
+        categoryID: UUID,
+        isRecurringTemplate: Bool = false,
+        recurrenceRule: RecurrenceRule? = nil,
+        recurringTemplateID: UUID? = nil
+    ) -> BackupTransactionRecord {
+        BackupTransactionRecord(
+            id: id,
+            amount: 25,
+            currencyCode: "USD",
+            type: .expense,
+            date: Date(timeIntervalSince1970: 1_700_000_500),
+            notes: "Legacy category",
+            isTravelTransaction: false,
+            travelAmount: nil,
+            travelCurrencyCode: nil,
+            travelExchangeRate: nil,
+            travelExchangeRateEffectiveDate: nil,
+            travelExchangeRateProvider: nil,
+            receiptImageData: nil,
+            isRecurringTemplate: isRecurringTemplate,
+            recurrenceRule: recurrenceRule,
+            schedulePlanTypeRawValue: nil,
+            dueDayOfMonth: nil,
+            reminderLeadDays: nil,
+            installmentTotalCount: nil,
+            installmentSequenceNumber: nil,
+            recurringTemplateId: recurringTemplateID,
+            generatedDate: recurringTemplateID == nil ? nil : Date(timeIntervalSince1970: 1_700_000_500),
+            accountId: accountID,
+            categoryId: categoryID
+        )
+    }
+
+    private static func legacyBudget(id: UUID, categoryID: UUID) -> BackupBudgetRecord {
+        BackupBudgetRecord(
+            id: id,
+            limitAmount: 100,
+            currencyCode: "USD",
+            period: .monthly,
+            alertThreshold: 0.8,
+            alertsEnabled: true,
+            alertTrackingPeriodStart: nil,
+            hasSentWarningAlertInTrackedPeriod: false,
+            hasSentExceededAlertInTrackedPeriod: false,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            isActive: true,
+            categoryId: categoryID
+        )
     }
 
     private static func makeArchive() -> BackupArchive {

@@ -16,6 +16,7 @@ struct FluxApp: App {
     @State private var containerGeneration = 0
     @State private var isLoading = true
     @State private var loadError: Error?
+    @State private var expenseCategoryMaintenanceTask: Task<Void, Never>?
     @AppStorage(AppLanguagePreference.storageKey) private var appLanguageCode = AppLanguage.system.rawValue
     @AppStorage(AppThemePreference.storageKey) private var appThemeCode = AppTheme.system.rawValue
     private let cloudSyncSettingsStore: any CloudSyncSettingsStoring
@@ -58,6 +59,9 @@ struct FluxApp: App {
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
                 Task { @MainActor in
+                    // Category normalization is cheap when there is nothing to merge and must not
+                    // inherit the 15-minute throttle used by heavier activation maintenance.
+                    maintainExpenseCategories(in: container)
                     await refreshTravelCurrencyPreferenceIfNeeded()
                     guard activationMaintenancePolicy.claimRun() else { return }
                     try? await activationMaintenancePolicy.waitForInteractionGracePeriod()
@@ -106,6 +110,8 @@ struct FluxApp: App {
         }
 
         let previousContainer = container
+        expenseCategoryMaintenanceTask?.cancel()
+        expenseCategoryMaintenanceTask = nil
         isLoading = true
         loadError = nil
 
@@ -118,6 +124,8 @@ struct FluxApp: App {
             container = newContainer
 
             isLoading = false
+            maintainExpenseCategories(in: newContainer)
+            scheduleExpenseCategoryMaintenanceRetries(in: newContainer)
 
             if let container {
                 activationMaintenancePolicy.recordRun()
@@ -166,6 +174,43 @@ struct FluxApp: App {
     private func runAutomaticBackupIfNeeded(in container: ModelContainer) {
         let scheduler = AutomaticBackupScheduler(context: container.mainContext)
         scheduler.runIfNeeded()
+    }
+
+    /// Idempotently handles legacy categories that arrive after launch through CloudKit.
+    @MainActor
+    private func maintainExpenseCategories(in container: ModelContainer) {
+        let maintenanceContext = ModelContext(container)
+        maintenanceContext.autosaveEnabled = false
+        do {
+            let changed = try ExpenseCategoryMigration.normalizeLegacySystemCategories(
+                in: maintenanceContext
+            )
+            if changed {
+                try maintenanceContext.save()
+            }
+        } catch {
+            maintenanceContext.rollback()
+            print("Expense category maintenance failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// SwiftData does not expose an initial CloudKit-import completion signal through this
+    /// repository's current data-layer abstraction. These bounded retries cover common late
+    /// arrivals; subsequent foreground activations provide another idempotent opportunity.
+    @MainActor
+    private func scheduleExpenseCategoryMaintenanceRetries(in container: ModelContainer) {
+        expenseCategoryMaintenanceTask?.cancel()
+        expenseCategoryMaintenanceTask = Task { @MainActor in
+            for delay in [Duration.seconds(2), .seconds(8), .seconds(20)] {
+                do {
+                    try await Task.sleep(for: delay)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                maintainExpenseCategories(in: container)
+            }
+        }
     }
 
     @MainActor

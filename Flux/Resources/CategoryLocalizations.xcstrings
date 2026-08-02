@@ -47,6 +47,20 @@
         }
       }
     },
+    "category.expense.electronics" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Electronics" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电子产品" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "電子產品" } }
+      }
+    },
+    "category.expense.family" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Family" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "家庭" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "家庭" } }
+      }
+    },
     "category.expense.home" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -369,6 +383,20 @@
         }
       }
     },
+    "category.expense.phone" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Phone Bill" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "电话费" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "電話費" } }
+      }
+    },
+    "category.expense.sports" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sports" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "运动" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "運動" } }
+      }
+    },
     "category.expense.tax" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -381,7 +409,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "税务"
+            "value" : "税费"
           }
         },
         "zh-Hant" : {
@@ -427,7 +455,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "旅行"
+            "value" : "旅游"
           }
         },
         "zh-Hant" : {
@@ -436,6 +464,13 @@
             "value" : "旅遊"
           }
         }
+      }
+    },
+    "category.expense.utilities" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Utilities" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "水电燃气" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "水電煤" } }
       }
     },
     "category.expense.upskilling" : {
@@ -479,9 +514,16 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "進修"
+            "value" : "學習"
           }
         }
+      }
+    },
+    "category.expense.miscellaneous" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Miscellaneous" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "杂费" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "雜費" } }
       }
     },
     "category.expense.pet" : {

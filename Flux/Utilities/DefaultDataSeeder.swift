@@ -6,26 +6,12 @@ import SwiftData
 struct DefaultDataSeeder {
     let context: ModelContext
 
-    private let expenseCategoryDefinitions: [(key: String, icon: String, color: String)] = [
-        ("category.expense.dining", "fork.knife", "#F59E0B"),
-        ("category.expense.groceries", "cart.fill", "#22C55E"),
-        ("category.expense.transport", "tram.fill", "#14B8A6"),
-        ("category.expense.shopping", "bag.fill", "#06B6D4"),
-        ("category.expense.bills", "doc.text.fill", "#64748B"),
-        ("category.expense.housing", "building.2.fill", "#3B82F6"),
-        ("category.expense.subscriptions", "repeat", "#A855F7"),
-        ("category.expense.medical", "cross.case.fill", "#EC4899"),
-        ("category.expense.entertainment", "tv.fill", "#6366F1"),
-        ("category.expense.personalCare", "shower.fill", "#F43F5E"),
-        ("category.expense.home", "house.fill", "#06B6D4"),
-        ("category.expense.travel", "airplane", "#F59E0B"),
-        ("category.expense.education", "book.fill", "#3B82F6"),
-        ("category.expense.learning", "graduationcap.fill", "#14B8A6"),
-        ("category.expense.gifts", "gift.fill", "#EF4444"),
-        ("category.expense.pet", "pawprint.fill", "#A16207"),
-        ("category.expense.insurance", "shield.fill", "#A855F7"),
-        ("category.expense.tax", "building.columns.fill", "#F59E0B")
-    ]
+    init(context: ModelContext, defaults: UserDefaults = .standard) {
+        self.context = context
+        // Kept as an initializer argument for source compatibility with callers/tests that inject
+        // a suite. Migration completion now belongs to the SwiftData store, not UserDefaults.
+        _ = defaults
+    }
 
     private let incomeCategoryDefinitions: [(key: String, icon: String, color: String)] = [
         ("category.income.salary", "banknote.fill", "#22C55E"),
@@ -53,6 +39,8 @@ struct DefaultDataSeeder {
         let categoryCount = try context.fetchCount(FetchDescriptor<Category>())
         let accountTypeDefinitionCount = try context.fetchCount(FetchDescriptor<AccountTypeDefinition>())
         let accountCount = try context.fetchCount(FetchDescriptor<Account>())
+        let isFreshStore = currencyCount == 0 && categoryCount == 0 &&
+            accountTypeDefinitionCount == 0 && accountCount == 0
         #if DEBUG
         let transactionCount = try context.fetchCount(FetchDescriptor<Transaction>())
         let budgetCount = try context.fetchCount(FetchDescriptor<Budget>())
@@ -64,10 +52,13 @@ struct DefaultDataSeeder {
             try seedMissingSupportedCurrencies()
         }
         
-        if categoryCount == 0 {
+        if isFreshStore {
             try seedCategories()
+            try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+        } else {
+            try ExpenseCategoryMigration.runVersionedUpgradeIfNeeded(in: context)
         }
-        try migrateRenamedDefaultExpenseCategories()
+        try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
 
         if accountTypeDefinitionCount == 0 {
             try seedAccountTypeDefinitions()
@@ -91,6 +82,39 @@ struct DefaultDataSeeder {
         }
         #endif
         
+        try context.save()
+
+    }
+
+    /// Rebuilds both category catalogues after the user's explicit Clear All Data action.
+    /// Normal launches never use this path, so manually deleted categories stay deleted.
+    func seedCategoriesForExplicitReset() throws {
+        let categoryCount = try context.fetchCount(FetchDescriptor<Category>())
+        guard categoryCount == 0 else { return }
+        try seedCategories()
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+    }
+
+    /// Rebuilds the baseline data after Clear All Data without an intermediate save. Callers can
+    /// therefore commit the deletions and replacement records atomically in one context save.
+    /// Debug sample transactions and budgets are intentionally excluded from an explicit reset.
+    func seedDataForExplicitReset() throws {
+        try seedCurrencies()
+        try seedCategories()
+        try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
+
+        let accountTypeDefinitionCount = try context.fetchCount(
+            FetchDescriptor<AccountTypeDefinition>()
+        )
+        if accountTypeDefinitionCount == 0 {
+            try seedAccountTypeDefinitions()
+        } else {
+            try seedMissingDefaultAccountTypeDefinitions()
+        }
+
+        try seedAccounts()
+        try backfillAccountTypeDefinitions()
+        try backfillCategorySortOrders()
         try context.save()
     }
     
@@ -152,33 +176,6 @@ struct DefaultDataSeeder {
                 sortOrder: index
             )
             context.insert(category)
-        }
-    }
-
-    private func migrateRenamedDefaultExpenseCategories() throws {
-        let categories = try context.fetch(FetchDescriptor<Category>())
-        let migrations: [(oldKeys: [String], newKey: String)] = [
-            (
-                oldKeys: ["category.expense.health", "Health", "健康"],
-                newKey: "category.expense.medical"
-            ),
-            (
-                oldKeys: ["category.expense.upskilling", "Upskilling", "进修", "進修"],
-                newKey: "category.expense.learning"
-            )
-        ]
-
-        for migration in migrations {
-            let hasNewDefault = categories.contains {
-                $0.type == .expense && $0.isSystemDefault && $0.nameKey == migration.newKey
-            }
-            guard !hasNewDefault else { continue }
-
-            for category in categories where category.type == .expense
-                && category.isSystemDefault
-                && migration.oldKeys.contains(category.nameKey) {
-                category.nameKey = migration.newKey
-            }
         }
     }
 
@@ -278,9 +275,8 @@ struct DefaultDataSeeder {
         }
     }
 
-    private var expenseCategorySeedOrder: [(key: String, icon: String, color: String)] {
-        let lookup = Dictionary(uniqueKeysWithValues: expenseCategoryDefinitions.map { ($0.key, $0) })
-        return expensePreferredCategoryKeys.compactMap { lookup[$0] }
+    private var expenseCategorySeedOrder: [ExpenseCategoryDefinition] {
+        ExpenseCategoryCatalog.definitions
     }
 
     private var incomeCategorySeedOrder: [(key: String, icon: String, color: String)] {
@@ -294,26 +290,7 @@ struct DefaultDataSeeder {
     }
 
     private var expensePreferredCategoryKeys: [String] {
-        [
-            "category.expense.dining",
-            "category.expense.groceries",
-            "category.expense.transport",
-            "category.expense.shopping",
-            "category.expense.bills",
-            "category.expense.housing",
-            "category.expense.subscriptions",
-            "category.expense.medical",
-            "category.expense.entertainment",
-            "category.expense.personalCare",
-            "category.expense.home",
-            "category.expense.travel",
-            "category.expense.education",
-            "category.expense.learning",
-            "category.expense.gifts",
-            "category.expense.pet",
-            "category.expense.insurance",
-            "category.expense.tax"
-        ]
+        ExpenseCategoryCatalog.definitions.map(\.key)
     }
 
     private var incomePreferredCategoryKeys: [String] {

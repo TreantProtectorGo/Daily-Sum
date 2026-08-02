@@ -1621,28 +1621,34 @@ final class FluxTests: XCTestCase {
             categories.map(\.nameKey),
             [
                 "category.expense.dining",
+                "category.expense.coffee",
                 "category.expense.groceries",
                 "category.expense.transport",
-                "category.expense.shopping",
-                "category.expense.bills",
                 "category.expense.housing",
-                "category.expense.subscriptions",
+                "category.expense.utilities",
+                "category.expense.phone",
+                "category.expense.home",
+                "category.expense.shopping",
+                "category.expense.electronics",
+                "category.expense.personalCare",
+                "category.expense.sports",
                 "category.expense.medical",
                 "category.expense.entertainment",
-                "category.expense.personalCare",
-                "category.expense.home",
-                "category.expense.travel",
-                "category.expense.education",
+                "category.expense.subscriptions",
                 "category.expense.learning",
+                "category.expense.family",
+                "category.expense.travel",
                 "category.expense.gifts",
                 "category.expense.pet",
                 "category.expense.insurance",
-                "category.expense.tax"
+                "category.expense.tax",
+                "category.expense.miscellaneous"
             ]
         )
-        XCTAssertEqual(categories.map(\.sortOrder), Array(0..<18))
+        XCTAssertEqual(categories.map(\.sortOrder), Array(0..<23))
         XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.food" })
-        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.coffee" })
+        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.bills" })
+        XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.education" })
         XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.health" })
         XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.upskilling" })
     }
