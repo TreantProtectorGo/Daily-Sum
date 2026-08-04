@@ -4713,19 +4713,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Include Upcoming Subscriptions"
+            "value" : "Include Upcoming Scheduled Transactions"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "显示即将到期的订阅交易"
+            "value" : "显示即将发生的排期交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "顯示即將到期的訂閱交易"
+            "value" : "顯示即將發生的排期交易"
           }
         }
       }
@@ -4736,19 +4736,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When turned off, future auto-generated subscription transactions stay hidden."
+            "value" : "When turned off, future auto-generated scheduled transactions stay hidden."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "关闭后，不再显示之后自动生成的订阅交易。"
+            "value" : "关闭后，不再显示之后自动生成的排期交易。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "關閉後，不會顯示日後自動產生的訂閱交易。"
+            "value" : "關閉後，不會顯示日後自動產生的排期交易。"
           }
         }
       }
@@ -5592,19 +5592,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "A subscription expense is due soon."
+            "value" : "A scheduled transaction is coming up soon."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "有订阅支出即将到期。"
+            "value" : "有排期交易即将发生。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "有訂閱支出即將到期。"
+            "value" : "有排期交易即將發生。"
           }
         }
       }
@@ -5615,19 +5615,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Bill due soon"
+            "value" : "Scheduled transaction coming up"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "账单即将到期"
+            "value" : "排期交易即将发生"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "帳單即將到期"
+            "value" : "排期交易即將發生"
           }
         }
       }
@@ -8829,6 +8829,72 @@
         }
       }
     },
+    "transaction.accessibility.editHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit transaction"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯交易"
+          }
+        }
+      }
+    },
+    "transaction.accessibility.pendingEditHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit or confirm this scheduled transaction"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑或确认这笔排期交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯或確認這筆排期交易"
+          }
+        }
+      }
+    },
+    "transaction.accessibility.upcomingEditHint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit this upcoming scheduled transaction"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑这笔即将发生的排期交易"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯這筆即將發生的排期交易"
+          }
+        }
+      }
+    },
     "transaction.account" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9088,19 +9154,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keep Subscription"
+            "value" : "Keep Schedule"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保留订阅"
+            "value" : "保留排期"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保留訂閱"
+            "value" : "保留排期"
           }
         }
       }
@@ -9111,19 +9177,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Skip this occurrence or stop this subscription?"
+            "value" : "Skip this occurrence or stop this schedule?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要跳过本期，还是停止此订阅？"
+            "value" : "要跳过本期，还是停止此排期？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要跳過本期，還是停止此訂閱？"
+            "value" : "要跳過本期，還是停止此排期？"
           }
         }
       }
@@ -9157,19 +9223,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Stop this subscription"
+            "value" : "Stop this schedule"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "停止订阅"
+            "value" : "停止排期"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "停止訂閱"
+            "value" : "停止排期"
           }
         }
       }
@@ -9180,19 +9246,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "This is a subscription transaction"
+            "value" : "This is a scheduled transaction"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这是订阅交易"
+            "value" : "这是排期交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此為訂閱交易"
+            "value" : "此為排期交易"
           }
         }
       }
@@ -9203,19 +9269,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Delete entire subscription"
+            "value" : "Delete entire schedule"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除整个订阅"
+            "value" : "删除整个排期"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刪除整個訂閱"
+            "value" : "刪除整個排期"
           }
         }
       }
@@ -9272,19 +9338,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Deleting this source transaction will delete the entire subscription."
+            "value" : "Deleting this source transaction will delete the entire schedule."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除此来源交易会一并删除整个订阅。"
+            "value" : "删除此来源交易会一并删除整个排期。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刪除此來源交易會一併刪除整個訂閱。"
+            "value" : "刪除此來源交易會一併刪除整個排期。"
           }
         }
       }
@@ -9427,25 +9493,69 @@
         }
       }
     },
+    "transaction.schedule.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm and post"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确认入账"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確認入帳"
+          }
+        }
+      }
+    },
     "transaction.schedule.dueDay" : {
       "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Due Day"
+            "value" : "Day of Month"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "到期日"
+            "value" : "每月日期"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "到期日"
+            "value" : "每月日期"
+          }
+        }
+      }
+    },
+    "transaction.schedule.editTemplate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit schedule"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑排期"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯排期"
           }
         }
       }
@@ -9456,19 +9566,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Subscription expenses are auto-generated up to 31 days ahead."
+            "value" : "Scheduled transactions are auto-generated up to 31 days ahead."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "系统会提前生成未来 31 天的订阅支出交易。"
+            "value" : "系统会提前生成未来 31 天的排期交易。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "系統會預先建立未來 31 天的訂閱支出交易。"
+            "value" : "系統會預先建立未來 31 天的排期交易。"
           }
         }
       }
@@ -9577,13 +9687,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "计划"
+            "value" : "排期"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "排程"
+            "value" : "排期"
           }
         }
       }
@@ -9611,6 +9721,50 @@
         }
       }
     },
+    "transaction.schedule.occurrence.footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes here apply only to this occurrence."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这里的更改只适用于本次。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "呢度嘅更改只適用於今次。"
+          }
+        }
+      }
+    },
+    "transaction.schedule.pending" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending confirmation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待确认"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待確認"
+          }
+        }
+      }
+    },
     "transaction.schedule.recurring" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9623,13 +9777,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "订阅"
+            "value" : "定期"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "訂閱"
+            "value" : "定期"
           }
         }
       }
@@ -9715,13 +9869,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "即将到期"
+            "value" : "即将发生"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "即將到期"
+            "value" : "即將發生"
           }
         }
       }
@@ -10123,7 +10277,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%lld due in the next %lld days • Next %@"
+            "value" : "%lld scheduled in the next %lld days • Next %@"
           }
         },
         "zh-Hans" : {
@@ -10146,19 +10300,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Upcoming subscriptions"
+            "value" : "Upcoming scheduled transactions"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "即将到期的订阅"
+            "value" : "即将发生的排期交易"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "即將到期的訂閱"
+            "value" : "即將發生的排期交易"
           }
         }
       }

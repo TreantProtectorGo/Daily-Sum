@@ -484,6 +484,29 @@
         }
       }
     },
+    "category.expense.clothing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clothing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服饰"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服飾"
+          }
+        }
+      }
+    },
     "category.expense.sports" : {
       "extractionState" : "stale",
       "localizations" : {

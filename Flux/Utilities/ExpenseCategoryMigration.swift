@@ -18,6 +18,7 @@ enum ExpenseCategoryCatalog {
         .init(key: "category.expense.phone", icon: "phone.fill", color: "#3B82F6"),
         .init(key: "category.expense.home", icon: "sofa.fill", color: "#14B8A6"),
         .init(key: "category.expense.shopping", icon: "bag.fill", color: "#06B6D4"),
+        .init(key: "category.expense.clothing", icon: "tshirt.fill", color: "#A855F7"),
         .init(key: "category.expense.electronics", icon: "desktopcomputer", color: "#6366F1"),
         .init(key: "category.expense.personalCare", icon: "comb", color: "#F43F5E"),
         .init(key: "category.expense.sports", icon: "dumbbell.fill", color: "#14B8A6"),
@@ -48,6 +49,7 @@ enum ExpenseCategoryCatalog {
 enum ExpenseCategoryMigration {
     static let versionedMigrationKey = "flux.expenseCategories.v2.done"
     static let appearanceMigrationKey = "flux.expenseCategories.v3Appearance.done"
+    static let clothingMigrationKey = "flux.expenseCategories.v4Clothing.done"
     private static let appearanceCategoryMarkerPrefix =
         "flux.expenseCategories.v3Appearance.category."
 
@@ -68,7 +70,7 @@ enum ExpenseCategoryMigration {
     private static let legacyStoreFingerprintKeys: Set<String> = [
         "category.expense.dining", "category.expense.groceries",
         "category.expense.transport", "category.expense.housing",
-        "category.expense.home", "category.expense.shopping",
+        "category.expense.home", "category.expense.shopping", "category.expense.clothing",
         "category.expense.personalCare", "category.expense.entertainment",
         "category.expense.subscriptions", "category.expense.travel",
         "category.expense.gifts", "category.expense.pet",
@@ -183,6 +185,7 @@ enum ExpenseCategoryMigration {
             try markMigrationCompleted(versionedMigrationKey, in: context)
         }
 
+        try runClothingUpgradeIfNeeded(in: context)
         try runAppearanceUpgradeIfNeeded(in: context)
     }
 
@@ -192,6 +195,7 @@ enum ExpenseCategoryMigration {
         let categories = try context.fetch(FetchDescriptor<Category>())
         var markerKeys = try reconcileAppearanceMarkers(in: context).keys
         try markMigrationCompleted(versionedMigrationKey, in: context)
+        try markMigrationCompleted(clothingMigrationKey, in: context)
         for category in categories where isCurrentCanonicalSystemCategory(category) {
             markAppearanceCompleted(
                 for: category,
@@ -227,6 +231,11 @@ enum ExpenseCategoryMigration {
     static func hasCompletedAppearanceUpgrade(in context: ModelContext) throws -> Bool {
         try context.fetch(FetchDescriptor<AppMigrationState>())
             .contains { $0.key == appearanceMigrationKey }
+    }
+
+    static func hasCompletedClothingUpgrade(in context: ModelContext) throws -> Bool {
+        try context.fetch(FetchDescriptor<AppMigrationState>())
+            .contains { $0.key == clothingMigrationKey }
     }
 
     static func hasCompletedAppearanceUpgrade(
@@ -268,6 +277,44 @@ enum ExpenseCategoryMigration {
         // markers are authoritative because CloudKit and backup imports can deliver a new category
         // identity after this store-wide marker already exists.
         try markMigrationCompleted(appearanceMigrationKey, in: context)
+    }
+
+    /// Adds Clothing once to an existing Flux catalogue without guessing which historical
+    /// Shopping transactions belong to it. The durable marker prevents a later user deletion
+    /// from recreating the category.
+    private static func runClothingUpgradeIfNeeded(in context: ModelContext) throws {
+        guard try !hasCompletedClothingUpgrade(in: context) else { return }
+
+        let categories = try context.fetch(FetchDescriptor<Category>())
+        let isExistingFluxCatalogue = categories.contains {
+            $0.type == .expense &&
+                $0.isSystemDefault &&
+                legacyStoreFingerprintKeys.contains($0.nameKey)
+        }
+
+        if isExistingFluxCatalogue,
+           !categories.contains(where: {
+               $0.type == .expense &&
+                   $0.isSystemDefault &&
+                   $0.nameKey == "category.expense.clothing"
+           }),
+           let definition = ExpenseCategoryCatalog.definitionByKey["category.expense.clothing"] {
+            let nextSortOrder = (categories
+                .filter { $0.type == .expense }
+                .map(\.sortOrder)
+                .max() ?? -1) + 1
+            let clothing = Category(
+                nameKey: definition.key,
+                icon: definition.icon,
+                colorHex: definition.color,
+                type: .expense,
+                isSystemDefault: true,
+                sortOrder: nextSortOrder
+            )
+            context.insert(clothing)
+        }
+
+        try markMigrationCompleted(clothingMigrationKey, in: context)
     }
 
     /// Normalizes only actual legacy system records. If the canonical target was deleted,

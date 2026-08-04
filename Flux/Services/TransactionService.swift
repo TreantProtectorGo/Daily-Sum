@@ -124,10 +124,11 @@ final class TransactionService {
         return template
     }
 
-    /// Creates a scheduled monthly expense template.
+    /// Creates a scheduled monthly income or expense template.
     @discardableResult
     func createScheduled(
         amount: Decimal,
+        type: TransactionType,
         startDate: Date,
         dueDayOfMonth: Int,
         reminderLeadDays: Int,
@@ -149,7 +150,7 @@ final class TransactionService {
         let template = Transaction(
             amount: travelSnapshot?.accountAmount ?? amount,
             currencyCode: travelSnapshot?.accountCurrencyCode ?? account.currencyCode,
-            type: .expense,
+            type: type,
             date: startDate,
             notes: notes,
             isTravelTransaction: travelSnapshot != nil ? true : isTravelTransaction,
@@ -194,11 +195,7 @@ final class TransactionService {
 
         descriptor.predicate = #Predicate<Transaction> { !$0.isRecurringTemplate }
 
-        if let limit {
-            descriptor.fetchLimit = limit
-        }
-
-        var results = try context.fetch(descriptor)
+        var results = try context.fetch(descriptor).filter(\.isPosted)
 
         if let startDate {
             results = results.filter { $0.date >= startDate }
@@ -214,6 +211,10 @@ final class TransactionService {
         }
         if let category {
             results = results.filter { $0.category?.id == category.id }
+        }
+
+        if let limit {
+            results = Array(results.prefix(limit))
         }
 
         return results
@@ -272,11 +273,20 @@ final class TransactionService {
         syncBudgetAlerts()
     }
 
+    /// Posts one generated occurrence after the user confirms its actual amount and date.
+    func confirmScheduledOccurrence(_ transaction: Transaction) throws {
+        guard transaction.isPendingScheduledOccurrence else { return }
+        transaction.postingStatus = .posted
+        try context.save()
+        syncBudgetAlerts()
+    }
+
     /// Updates a scheduled template and removes future generated entries so they can be regenerated.
     @discardableResult
     func updateScheduledTemplate(
         _ template: Transaction,
         amount: Decimal,
+        type: TransactionType? = nil,
         startDate: Date,
         dueDayOfMonth: Int,
         reminderLeadDays: Int,
@@ -302,7 +312,7 @@ final class TransactionService {
             let startOfToday = calendar.startOfDay(for: now)
 
             template.amount = travelSnapshot?.accountAmount ?? amount
-            template.type = .expense
+            template.type = type ?? template.type
             template.date = startDate
             template.currencyCode = travelSnapshot?.accountCurrencyCode ?? account.currencyCode
             template.account = account
@@ -327,7 +337,8 @@ final class TransactionService {
                 }
             }
 
-            for transaction in generatedTransactions where transaction.date >= startOfToday {
+            for transaction in generatedTransactions where
+                transaction.date >= startOfToday && transaction.isPendingScheduledOccurrence {
                 context.delete(transaction)
             }
 
@@ -361,15 +372,25 @@ final class TransactionService {
             try delete(transaction)
             return
         }
+        guard let template = try fetch(byId: templateId), template.isRecurringTemplate else {
+            // Older stores can contain a generated row whose template was already removed. Treat
+            // it as a standalone transaction and never create an exception pointing at nothing.
+            transaction.recurringTemplateId = nil
+            try delete(transaction)
+            return
+        }
 
         switch action {
         case .skipOccurrence:
-            try await skipScheduledOccurrence(templateId: templateId, dueDate: transaction.date)
+            try await skipScheduledOccurrence(
+                templateId: templateId,
+                dueDate: transaction.originalScheduledOccurrenceDate ?? transaction.date
+            )
         case .stopPlan:
             let selectedTransactionId = transaction.id
             try await stopScheduledPlan(templateId: templateId)
             if let remainingSelectedTransaction = try fetch(byId: selectedTransactionId),
-               !remainingSelectedTransaction.isRecurringTemplate {
+               remainingSelectedTransaction.isPendingScheduledOccurrence {
                 try delete(remainingSelectedTransaction)
             }
         }
@@ -399,21 +420,30 @@ final class TransactionService {
             }
         )
         let generated = try context.fetch(generatedDescriptor)
-        for transaction in generated where dayKey(for: transaction.date) == targetDay {
+        var reminderDates = [dueDate]
+        for transaction in generated where
+            dayKey(for: transaction.originalScheduledOccurrenceDate ?? transaction.date) == targetDay &&
+            transaction.isPendingScheduledOccurrence {
+            reminderDates.append(transaction.date)
             context.delete(transaction)
         }
 
         try context.save()
 
         let reminderScheduler = TransactionReminderScheduler(context: context)
-        await reminderScheduler.removeReminder(forTemplateId: templateId, dueDate: dueDate)
+        for reminderDate in reminderDates {
+            await reminderScheduler.removeReminder(
+                forTemplateId: templateId,
+                dueDate: reminderDate
+            )
+        }
     }
 
     /// Stops one scheduled plan and removes all future generated entries.
     func stopScheduledPlan(templateId: UUID) async throws {
         let template = try fetch(byId: templateId)
 
-        try deleteFutureGeneratedTransactions(forTemplateId: templateId)
+        try removePendingFutureAndDetachPreservedOccurrences(forTemplateId: templateId)
         try deleteOccurrenceExceptions(forTemplateId: templateId)
 
         if let template {
@@ -430,7 +460,7 @@ final class TransactionService {
     func delete(_ transaction: Transaction) throws {
         if transaction.isRecurringTemplate {
             let templateId = transaction.id
-            try deleteFutureGeneratedTransactions(forTemplateId: templateId)
+            try removePendingFutureAndDetachPreservedOccurrences(forTemplateId: templateId)
             try deleteOccurrenceExceptions(forTemplateId: templateId)
             context.delete(transaction)
             try context.save()
@@ -454,7 +484,7 @@ final class TransactionService {
     func delete(_ transactions: [Transaction]) throws {
         for transaction in transactions {
             if transaction.isRecurringTemplate {
-                try deleteFutureGeneratedTransactions(forTemplateId: transaction.id)
+                try removePendingFutureAndDetachPreservedOccurrences(forTemplateId: transaction.id)
                 try deleteOccurrenceExceptions(forTemplateId: transaction.id)
             }
             context.delete(transaction)
@@ -530,16 +560,22 @@ final class TransactionService {
         UserDefaults.standard.set(true, forKey: Constants.installmentPurgeV1Key)
     }
 
-    private func deleteFutureGeneratedTransactions(forTemplateId templateId: UUID) throws {
-        let now = Date.now
+    /// A deleted template must not leave relationship-like UUIDs that fail backup preflight or
+    /// make preserved rows behave as if their schedule still exists.
+    private func removePendingFutureAndDetachPreservedOccurrences(
+        forTemplateId templateId: UUID,
+        now: Date = .now
+    ) throws {
         let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate<Transaction> {
-                $0.recurringTemplateId == templateId && $0.date > now
-            }
+            predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
         )
-        let futureGenerated = try context.fetch(descriptor)
-        for generated in futureGenerated {
-            context.delete(generated)
+        let generatedTransactions = try context.fetch(descriptor)
+        for transaction in generatedTransactions {
+            if transaction.date > now && transaction.isPendingScheduledOccurrence {
+                context.delete(transaction)
+            } else {
+                transaction.recurringTemplateId = nil
+            }
         }
     }
 

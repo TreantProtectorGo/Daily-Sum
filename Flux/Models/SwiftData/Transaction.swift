@@ -1,6 +1,11 @@
 import Foundation
 import SwiftData
 
+enum TransactionPostingStatus: String, Codable {
+    case pending
+    case posted
+}
+
 /// A financial transaction (income or expense)
 @Model
 final class Transaction {
@@ -73,6 +78,15 @@ final class Transaction {
     
     /// Date when this instance was generated (for scheduled transactions)
     var generatedDate: Date?
+
+    /// Immutable schedule slot assigned when this occurrence was generated. The visible date may
+    /// later be edited or delayed, but skip and regeneration logic must continue to identify the
+    /// original slot. Optional for CloudKit and records created by older app versions.
+    var originalScheduledOccurrenceDate: Date?
+
+    /// Posting state for a generated scheduled occurrence. A nil value is treated as posted so
+    /// transactions created by older app versions retain their historical balance/report behavior.
+    var postingStatusRawValue: String?
     
     /// The account this transaction belongs to
     @Relationship(deleteRule: .nullify)
@@ -106,6 +120,8 @@ final class Transaction {
         installmentSequenceNumber: Int? = nil,
         recurringTemplateId: UUID? = nil,
         generatedDate: Date? = nil,
+        originalScheduledOccurrenceDate: Date? = nil,
+        postingStatus: TransactionPostingStatus? = nil,
         account: Account? = nil,
         category: Category? = nil
     ) {
@@ -132,6 +148,8 @@ final class Transaction {
         self.installmentSequenceNumber = installmentSequenceNumber
         self.recurringTemplateId = recurringTemplateId
         self.generatedDate = generatedDate
+        self.originalScheduledOccurrenceDate = originalScheduledOccurrenceDate
+        self.postingStatusRawValue = postingStatus?.rawValue
         self.account = account
         self.category = category
     }
@@ -149,6 +167,24 @@ final class Transaction {
     /// Whether this transaction was auto-generated from a template
     var isGeneratedFromRecurring: Bool {
         recurringTemplateId != nil
+    }
+
+    var postingStatus: TransactionPostingStatus {
+        get {
+            guard let postingStatusRawValue else { return .posted }
+            return TransactionPostingStatus(rawValue: postingStatusRawValue) ?? .posted
+        }
+        set {
+            postingStatusRawValue = newValue.rawValue
+        }
+    }
+
+    var isPendingScheduledOccurrence: Bool {
+        !isRecurringTemplate && postingStatus == .pending
+    }
+
+    var isPosted: Bool {
+        !isRecurringTemplate && !isPendingScheduledOccurrence
     }
 
     var resolvedSchedulePlanType: SchedulePlanType? {
@@ -222,6 +258,8 @@ final class Transaction {
             installmentSequenceNumber: installmentSequenceNumber,
             recurringTemplateId: template.id,
             generatedDate: .now,
+            originalScheduledOccurrenceDate: date,
+            postingStatus: .pending,
             account: template.account,
             category: template.category
         )

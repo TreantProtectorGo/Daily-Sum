@@ -39,12 +39,44 @@ final class TransactionEntryPresentationTests: XCTestCase {
             at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
         )
 
-        XCTAssertTrue(source.contains("showSubscriptionSyncScopeDialog"))
+        XCTAssertTrue(source.contains("showScheduledSyncScopeDialog"))
         XCTAssertTrue(source.contains(".confirmationDialog("))
         XCTAssertTrue(source.contains("syncScope: .todayAndFuture"))
         XCTAssertTrue(source.contains("syncScope: .allGenerated"))
         XCTAssertTrue(source.contains("transaction.subscription.sync.todayAndFuture"))
         XCTAssertTrue(source.contains("transaction.subscription.sync.allGenerated"))
+    }
+
+    func testIncomeAndExpenseEntriesShareTheRecurringScheduleFlow() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+
+        XCTAssertFalse(source.contains("if transactionType == .expense {\n                    scheduleSection"))
+        XCTAssertFalse(source.contains("transactionType == .expense, scheduleMode != .oneTime"))
+        XCTAssertFalse(source.contains("if nextType != .expense {\n            scheduleMode = .oneTime"))
+        XCTAssertTrue(source.contains("type: transactionType"))
+        XCTAssertTrue(source.contains("let willRemainRecurring = scheduleMode == .recurring"))
+    }
+
+    func testGeneratedOccurrenceEditingIsSeparatedFromScheduleEditing() throws {
+        let source = try sourceContents(
+            at: "Flux/Views/Sheets/TransactionEntrySheet.swift"
+        )
+
+        XCTAssertTrue(
+            source.contains(
+                "if existingTransaction == nil || existingTransaction?.isRecurringTemplate == true"
+            )
+        )
+        XCTAssertTrue(source.contains("scheduledOccurrenceSection"))
+        XCTAssertTrue(source.contains("postPendingOccurrence: true"))
+        XCTAssertTrue(source.contains("systemImage: \"clock.fill\""))
+        XCTAssertFalse(source.contains("clock.badge.questionmark"))
+        XCTAssertTrue(source.contains("transaction.schedule.editTemplate"))
+        XCTAssertTrue(source.contains("Changes here apply only to this occurrence."))
+        XCTAssertFalse(source.contains("guard let templateID = transaction.recurringTemplateId"))
+        XCTAssertFalse(source.contains("return try service.fetch(byId: templateID)"))
     }
 
     func testNewTransactionRefreshesTravelCurrencyAndReappliesUntouchedDefault() throws {

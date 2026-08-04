@@ -513,7 +513,7 @@ final class FluxTests: XCTestCase {
         )
     }
 
-    func testTransactionRowSnapshotPromptsScheduledDeleteOnlyForFutureGeneratedDay() {
+    func testTransactionRowSnapshotPromptsScheduledDeleteOnlyForAttachedPendingOccurrence() {
         let account = Account(name: "Test", type: .cash, currencyCode: "USD")
 
         let futureGenerated = Transaction(
@@ -539,10 +539,46 @@ final class FluxTests: XCTestCase {
             date: Calendar.current.date(byAdding: .day, value: 1, to: .now)!,
             account: account
         )
+        let pendingToday = Transaction(
+            amount: 12,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            recurringTemplateId: UUID(),
+            postingStatus: .pending,
+            account: account
+        )
+        let pendingFuture = Transaction(
+            amount: 12,
+            currencyCode: "USD",
+            type: .expense,
+            date: Calendar.current.date(byAdding: .day, value: 1, to: .now)!,
+            recurringTemplateId: UUID(),
+            postingStatus: .pending,
+            account: account
+        )
+        let detachedPending = Transaction(
+            amount: 12,
+            currencyCode: "USD",
+            type: .expense,
+            date: .now,
+            postingStatus: .pending,
+            account: account
+        )
 
-        XCTAssertTrue(TransactionRowSnapshot(transaction: futureGenerated).shouldPromptScheduledDelete)
+        XCTAssertFalse(TransactionRowSnapshot(transaction: futureGenerated).shouldPromptScheduledDelete)
         XCTAssertFalse(TransactionRowSnapshot(transaction: todayGenerated).shouldPromptScheduledDelete)
         XCTAssertFalse(TransactionRowSnapshot(transaction: futureManual).shouldPromptScheduledDelete)
+        XCTAssertTrue(TransactionRowSnapshot(transaction: pendingToday).shouldPromptScheduledDelete)
+        XCTAssertTrue(TransactionRowSnapshot(transaction: pendingFuture).shouldPromptScheduledDelete)
+        let detachedSnapshot = TransactionRowSnapshot(transaction: detachedPending)
+        XCTAssertTrue(detachedSnapshot.isPendingScheduledOccurrence)
+        XCTAssertFalse(detachedSnapshot.shouldPromptScheduledDelete)
+        XCTAssertTrue(detachedSnapshot.accessibilityValueText.contains("Pending confirmation"))
+        XCTAssertEqual(
+            detachedSnapshot.accessibilityHintText,
+            "Edit or confirm this scheduled transaction"
+        )
     }
 
     func testTransactionRowSnapshotIncludesTravelTransactionFlag() {
@@ -611,6 +647,59 @@ final class FluxTests: XCTestCase {
         XCTAssertTrue(snapshot.accessibilityValueText.contains("Lunch"))
         XCTAssertTrue(snapshot.accessibilityValueText.contains(snapshot.trailingSecondaryText))
         XCTAssertFalse(snapshot.accessibilityHintText.isEmpty)
+    }
+
+    func testPendingAndUpcomingScheduleStateIsIncludedForVoiceOver() {
+        let transaction = Transaction(
+            amount: 850,
+            currencyCode: "HKD",
+            type: .income,
+            date: Calendar.current.date(byAdding: .day, value: 1, to: .now)!,
+            recurringTemplateId: UUID(),
+            postingStatus: .pending
+        )
+
+        let snapshot = TransactionRowSnapshot(transaction: transaction)
+
+        XCTAssertTrue(snapshot.accessibilityValueText.contains("Upcoming"))
+        XCTAssertTrue(snapshot.accessibilityValueText.contains("Pending confirmation"))
+        XCTAssertEqual(
+            snapshot.accessibilityHintText,
+            "Edit or confirm this scheduled transaction"
+        )
+    }
+
+    func testDateGroupIgnoresPendingCurrenciesAndHidesPendingOnlyZeroTotals() {
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let posted = Transaction(
+            amount: 100,
+            currencyCode: "HKD",
+            type: .income,
+            date: date
+        )
+        let pending = Transaction(
+            amount: 20,
+            currencyCode: "USD",
+            type: .expense,
+            date: date,
+            recurringTemplateId: UUID(),
+            postingStatus: .pending
+        )
+        let postedAndPending = TransactionDateGroupSnapshot(
+            date: date,
+            rows: [posted, pending].map(TransactionRowSnapshot.init(transaction:))
+        )
+        let pendingOnly = TransactionDateGroupSnapshot(
+            date: date,
+            rows: [TransactionRowSnapshot(transaction: pending)]
+        )
+
+        XCTAssertEqual(postedAndPending.currencyCode, "HKD")
+        XCTAssertEqual(postedAndPending.incomeTotal, 100)
+        XCTAssertEqual(postedAndPending.expenseTotal, 0)
+        XCTAssertNil(pendingOnly.currencyCode)
+        XCTAssertEqual(pendingOnly.incomeTotal, 0)
+        XCTAssertEqual(pendingOnly.expenseTotal, 0)
     }
 
     @MainActor
@@ -1629,6 +1718,7 @@ final class FluxTests: XCTestCase {
                 "category.expense.phone",
                 "category.expense.home",
                 "category.expense.shopping",
+                "category.expense.clothing",
                 "category.expense.electronics",
                 "category.expense.personalCare",
                 "category.expense.sports",
@@ -1645,7 +1735,7 @@ final class FluxTests: XCTestCase {
                 "category.expense.miscellaneous"
             ]
         )
-        XCTAssertEqual(categories.map(\.sortOrder), Array(0..<23))
+        XCTAssertEqual(categories.map(\.sortOrder), Array(0..<24))
         XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.food" })
         XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.bills" })
         XCTAssertFalse(categories.contains { $0.nameKey == "category.expense.education" })

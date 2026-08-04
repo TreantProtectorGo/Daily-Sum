@@ -278,7 +278,7 @@ final class ReportsViewModel {
                     !$0.isRecurringTemplate && $0.date >= startDate && $0.date <= endDate
                 }
             )
-            let transactions = try modelContext.fetch(descriptor)
+            let transactions = try modelContext.fetch(descriptor).filter(\.isPosted)
             let convertedTransactions = try await convertTransactions(
                 transactions,
                 displayCurrencyCode: displayCurrencyCode
@@ -293,7 +293,7 @@ final class ReportsViewModel {
                         && $0.date <= trendEndDate
                 }
             )
-            let trendTransactions = try modelContext.fetch(trendDescriptor)
+            let trendTransactions = try modelContext.fetch(trendDescriptor).filter(\.isPosted)
             let convertedTrendTransactions = try await convertTransactions(
                 trendTransactions,
                 displayCurrencyCode: displayCurrencyCode

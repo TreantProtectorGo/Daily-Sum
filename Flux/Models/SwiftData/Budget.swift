@@ -85,7 +85,7 @@ final class Budget {
         )
         
         do {
-            let transactions = try context.fetch(descriptor)
+            let transactions = try context.fetch(descriptor).filter(\.isPosted)
             return transactions
                 .filter { transaction in
                     guard transaction.type == .expense else { return false }

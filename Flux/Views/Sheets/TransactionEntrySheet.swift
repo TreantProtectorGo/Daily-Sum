@@ -22,6 +22,10 @@ private struct TravelCurrencyConversionContext {
     let transactionDate: Date
 }
 
+private struct ScheduledTemplateEditorSelection: Identifiable {
+    let id: UUID
+}
+
 enum TransactionEntryFormValidation {
     static func canSave(
         amount: Decimal,
@@ -236,9 +240,10 @@ struct TransactionEntrySheet: View {
     @State private var amountInputSession = AmountInputSession()
     
     @State private var isSaving = false
-    @State private var showSubscriptionSyncScopeDialog = false
+    @State private var showScheduledSyncScopeDialog = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var scheduledTemplateEditorSelection: ScheduledTemplateEditorSelection?
 
     @AppStorage(UserCurrencyPreference.storageKey) private var preferredCurrencyCode = UserCurrencyPreference.resolvedCurrencyCode
     @AppStorage(TravelCurrencyPreference.modeEnabledStorageKey) private var isTravelCurrencyModeEnabled = true
@@ -278,8 +283,10 @@ struct TransactionEntrySheet: View {
                 detailsSection
                     .disabled(isConvertingTravelCurrency)
 
-                if transactionType == .expense {
+                if existingTransaction == nil || existingTransaction?.isRecurringTemplate == true {
                     scheduleSection
+                } else if existingTransaction?.isGeneratedFromRecurring == true {
+                    scheduledOccurrenceSection
                 }
                 
                 // Notes
@@ -359,7 +366,7 @@ struct TransactionEntrySheet: View {
                     "transaction.subscription.sync.title",
                     defaultValue: "Sync generated transactions"
                 ),
-                isPresented: $showSubscriptionSyncScopeDialog,
+                isPresented: $showScheduledSyncScopeDialog,
                 titleVisibility: .visible
             ) {
                 Button(
@@ -401,6 +408,9 @@ struct TransactionEntrySheet: View {
                 Button(AppLocalization.string("action.ok", defaultValue: "OK")) { }
             } message: {
                 Text(errorMessage)
+            }
+            .sheet(item: $scheduledTemplateEditorSelection) { selection in
+                TransactionEntrySheet(transactionId: selection.id, onSave: {})
             }
         }
         .dockedAmountNumberPad(
@@ -545,7 +555,7 @@ struct TransactionEntrySheet: View {
             if scheduleMode != .oneTime {
                 let dueDayTitle = AppLocalization.string(
                     "transaction.schedule.dueDay",
-                    defaultValue: "Due Day"
+                    defaultValue: "Day of Month"
                 )
                 Picker(
                     dueDayTitle,
@@ -581,10 +591,77 @@ struct TransactionEntrySheet: View {
             if scheduleMode != .oneTime {
                 Text(AppLocalization.string(
                     "transaction.schedule.footer",
-                    defaultValue: "Subscription expenses auto-generate up to 31 days ahead."
+                    defaultValue: "Scheduled transactions auto-generate up to 31 days ahead."
                 ))
             }
         }
+    }
+
+    private var scheduledOccurrenceSection: some View {
+        Section {
+            if existingTransaction?.isPendingScheduledOccurrence == true {
+                Label(
+                    AppLocalization.string(
+                        "transaction.schedule.pending",
+                        defaultValue: "Pending confirmation"
+                    ),
+                    systemImage: "clock.fill"
+                )
+                .foregroundStyle(.orange)
+
+                Button {
+                    Task {
+                        await saveTransaction(postPendingOccurrence: true)
+                    }
+                } label: {
+                    Label(
+                        AppLocalization.string(
+                            "transaction.schedule.confirm",
+                            defaultValue: "Confirm and post"
+                        ),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                }
+                .disabled(!isFormValid || isSaving)
+                .accessibilityIdentifier("transaction.schedule.confirm")
+            }
+
+            if let templateID = resolvedScheduledTemplateID {
+                Button {
+                    scheduledTemplateEditorSelection = ScheduledTemplateEditorSelection(id: templateID)
+                } label: {
+                    Label(
+                        AppLocalization.string(
+                            "transaction.schedule.editTemplate",
+                            defaultValue: "Edit schedule"
+                        ),
+                        systemImage: "calendar.badge.clock"
+                    )
+                }
+            }
+        } footer: {
+            Text(
+                AppLocalization.string(
+                    "transaction.schedule.occurrence.footer",
+                    defaultValue: "Changes here apply only to this occurrence."
+                )
+            )
+        }
+    }
+
+    /// Only expose schedule editing while the occurrence still belongs to an active template.
+    private var resolvedScheduledTemplateID: UUID? {
+        guard let templateID = existingTransaction?.recurringTemplateId else {
+            return nil
+        }
+        let descriptor = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.id == templateID }
+        )
+        guard let template = try? modelContext.fetch(descriptor).first,
+              template.isRecurringTemplate else {
+            return nil
+        }
+        return templateID
     }
     
     private var notesSection: some View {
@@ -698,12 +775,11 @@ struct TransactionEntrySheet: View {
     // MARK: - Actions
 
     private func handleSaveRequest() {
-        let isEditingSubscription = existingTransaction?.isRecurringTemplate == true ||
-            existingTransaction?.recurringTemplateId != nil
-        let willRemainRecurring = transactionType == .expense && scheduleMode == .recurring
+        let isEditingSchedule = existingTransaction?.isRecurringTemplate == true
+        let willRemainRecurring = scheduleMode == .recurring
 
-        if isEditingSubscription && willRemainRecurring {
-            showSubscriptionSyncScopeDialog = true
+        if isEditingSchedule && willRemainRecurring {
+            showScheduledSyncScopeDialog = true
         } else {
             Task {
                 await saveTransaction(syncScope: .todayAndFuture)
@@ -780,9 +856,6 @@ struct TransactionEntrySheet: View {
             changeSource: .userSelection
         )
         transactionType = nextType
-        if nextType != .expense {
-            scheduleMode = .oneTime
-        }
         if existingTransaction == nil {
             applyTravelTransactionDefaultIfNeeded()
         }
@@ -1066,7 +1139,8 @@ struct TransactionEntrySheet: View {
     }
     
     private func saveTransaction(
-        syncScope: ScheduledTransactionSyncScope = .todayAndFuture
+        syncScope: ScheduledTransactionSyncScope = .todayAndFuture,
+        postPendingOccurrence: Bool = false
     ) async {
         guard isFormValid,
               let account = selectedAccount,
@@ -1093,13 +1167,10 @@ struct TransactionEntrySheet: View {
             let resolvedIsTravelTransaction = resolvedTravelSnapshot != nil
             
             if let existing = existingTransaction {
-                let templateForScheduledEdit = try scheduledTemplateForEditing(
-                    from: existing,
-                    service: service
-                )
+                let templateForScheduledEdit = scheduledTemplateForEditing(from: existing)
 
                 if let template = templateForScheduledEdit {
-                    if transactionType == .expense, scheduleMode != .oneTime {
+                    if scheduleMode != .oneTime {
                         let syncReferenceDate = Date.now
                         let cutoffDate = Calendar.current.date(
                             byAdding: .day,
@@ -1109,6 +1180,7 @@ struct TransactionEntrySheet: View {
                         let generated = try service.updateScheduledTemplate(
                             template,
                             amount: amount,
+                            type: transactionType,
                             startDate: date,
                             dueDayOfMonth: dueDayOfMonth,
                             reminderLeadDays: reminderLeadDays,
@@ -1163,6 +1235,7 @@ struct TransactionEntrySheet: View {
                         }
                     }
                 } else {
+                    let previousOccurrenceDate = existing.date
                     existing.type = transactionType
                     existing.category = selectedCategory
                     existing.account = account
@@ -1178,11 +1251,25 @@ struct TransactionEntrySheet: View {
                     }
 
                     try modelContext.save()
+                    if postPendingOccurrence {
+                        try service.confirmScheduledOccurrence(existing)
+                    }
+                    if let templateID = existing.recurringTemplateId {
+                        let reminderScheduler = TransactionReminderScheduler(context: modelContext)
+                        await reminderScheduler.removeReminder(
+                            forTemplateId: templateID,
+                            dueDate: previousOccurrenceDate
+                        )
+                        if existing.isPendingScheduledOccurrence {
+                            try? await reminderScheduler.syncReminders(for: [existing])
+                        }
+                    }
                 }
             } else {
-                if transactionType == .expense, scheduleMode != .oneTime {
+                if scheduleMode != .oneTime {
                     let template = try service.createScheduled(
                         amount: amount,
+                        type: transactionType,
                         startDate: date,
                         dueDayOfMonth: dueDayOfMonth,
                         reminderLeadDays: reminderLeadDays,
@@ -1355,19 +1442,12 @@ struct TransactionEntrySheet: View {
         accountPresentationTrigger += 1
     }
 
-    private func scheduledTemplateForEditing(
-        from transaction: Transaction,
-        service: TransactionService
-    ) throws -> Transaction? {
+    private func scheduledTemplateForEditing(from transaction: Transaction) -> Transaction? {
         if transaction.isRecurringTemplate {
             return transaction
         }
 
-        guard let templateID = transaction.recurringTemplateId else {
-            return nil
-        }
-
-        return try service.fetch(byId: templateID)
+        return nil
     }
 
     private var selectedPlanType: TransactionService.ScheduledPlanKind {

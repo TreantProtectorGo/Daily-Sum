@@ -89,12 +89,12 @@ struct TransactionReminderScheduler {
             let content = UNMutableNotificationContent()
             content.title = AppLocalization.string(
                 "schedule.reminder.title",
-                defaultValue: "Upcoming bill due"
+                defaultValue: "Scheduled transaction coming up"
             )
             content.body = transaction.notes
                 ?? AppLocalization.string(
                     "schedule.reminder.body",
-                    defaultValue: "A scheduled expense is coming due soon."
+                    defaultValue: "A scheduled transaction is coming up soon."
                 )
             content.sound = .default
 
@@ -137,6 +137,7 @@ struct TransactionReminderScheduler {
             }
         )
         let scheduledTransactions = try context.fetch(descriptor)
+            .filter(\.isPendingScheduledOccurrence)
         let pendingRequests = await notificationCenter.pendingNotificationRequests()
         let managedIdentifiers = pendingRequests
             .map(\.identifier)
@@ -169,7 +170,7 @@ struct TransactionReminderScheduler {
     }
 
     private func shouldScheduleReminder(for transaction: Transaction, now: Date) -> Bool {
-        guard transaction.recurringTemplateId != nil else {
+        guard transaction.isPendingScheduledOccurrence else {
             return false
         }
         return transaction.date > now

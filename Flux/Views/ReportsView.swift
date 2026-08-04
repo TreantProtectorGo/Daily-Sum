@@ -779,7 +779,7 @@ struct ReportCategoryDetailView: View {
                 sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
             )
 
-            let fetched = try modelContext.fetch(descriptor)
+            let fetched = try modelContext.fetch(descriptor).filter(\.isPosted)
             let transactionType: TransactionType = breakdownType == .expense ? .expense : .income
             transactionRows = fetched.compactMap { transaction in
                 guard transaction.type == transactionType else {

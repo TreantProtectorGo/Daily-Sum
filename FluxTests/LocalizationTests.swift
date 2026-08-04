@@ -15,6 +15,7 @@ final class LocalizationTests: XCTestCase {
         "category.expense.phone",
         "category.expense.home",
         "category.expense.shopping",
+        "category.expense.clothing",
         "category.expense.electronics",
         "category.expense.personalCare",
         "category.expense.sports",
@@ -245,6 +246,7 @@ final class LocalizationTests: XCTestCase {
             "Phone Bill",
             "Household",
             "Shopping",
+            "Clothing",
             "Electronics",
             "Personal Care",
             "Sports",
@@ -285,11 +287,11 @@ final class LocalizationTests: XCTestCase {
         )
         XCTAssertEqual(
             localizedStringValue(key: "schedule.reminder.title", locale: "en"),
-            "Bill due soon"
+            "Scheduled transaction coming up"
         )
         XCTAssertEqual(
             localizedStringValue(key: "schedule.reminder.body", locale: "en"),
-            "A subscription expense is due soon."
+            "A scheduled transaction is coming up soon."
         )
         XCTAssertEqual(
             localizedStringValue(key: "settings.clearData.title", locale: "en"),
@@ -400,7 +402,7 @@ final class LocalizationTests: XCTestCase {
                 "transaction.currencyPicker.all": "All Currencies",
                 "filter.advanced": "Advanced Filters",
                 "filter.travelTransactions": "Show Foreign Currency Transactions Only",
-                "filter.showUpcomingScheduled": "Include Upcoming Subscriptions",
+                "filter.showUpcomingScheduled": "Include Upcoming Scheduled Transactions",
                 "account.error.travelCurrencyChangeUnsupported": "This account has foreign currency transactions. Create a new account instead of changing its currency."
             ],
             "zh-Hans": [
@@ -436,7 +438,7 @@ final class LocalizationTests: XCTestCase {
                 "transaction.currencyPicker.all": "所有货币",
                 "filter.advanced": "进阶筛选",
                 "filter.travelTransactions": "仅显示外币交易",
-                "filter.showUpcomingScheduled": "显示即将到期的订阅交易",
+                "filter.showUpcomingScheduled": "显示即将发生的排期交易",
                 "account.error.travelCurrencyChangeUnsupported": "此账户已有外币交易。请新建账户，不要直接更改币种。"
             ],
             "zh-Hant": [
@@ -472,7 +474,7 @@ final class LocalizationTests: XCTestCase {
                 "transaction.currencyPicker.all": "所有貨幣",
                 "filter.advanced": "進階篩選",
                 "filter.travelTransactions": "僅顯示外幣交易",
-                "filter.showUpcomingScheduled": "顯示即將到期的訂閱交易",
+                "filter.showUpcomingScheduled": "顯示即將發生的排期交易",
                 "account.error.travelCurrencyChangeUnsupported": "此帳戶已有外幣交易。請另建新帳戶，勿直接更改貨幣。"
             ]
         ]
@@ -734,6 +736,32 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
+    func testPendingScheduledOccurrenceActionsAreLocalized() {
+        let expectedValues = [
+            "en": [
+                "transaction.schedule.pending": "Pending confirmation",
+                "transaction.schedule.confirm": "Confirm and post",
+                "transaction.schedule.editTemplate": "Edit schedule"
+            ],
+            "zh-Hans": [
+                "transaction.schedule.pending": "待确认",
+                "transaction.schedule.confirm": "确认入账",
+                "transaction.schedule.editTemplate": "编辑排期"
+            ],
+            "zh-Hant": [
+                "transaction.schedule.pending": "待確認",
+                "transaction.schedule.confirm": "確認入帳",
+                "transaction.schedule.editTemplate": "編輯排期"
+            ]
+        ]
+
+        for (locale, values) in expectedValues {
+            for (key, value) in values {
+                XCTAssertEqual(localizedStringValue(key: key, locale: locale), value)
+            }
+        }
+    }
+
     func testBudgetAlertWarningBodyFormatsAcrossLanguages() {
         let originalLanguage = AppLanguagePreference.language
         defer { AppLanguagePreference.language = originalLanguage }
@@ -865,6 +893,7 @@ final class LocalizationTests: XCTestCase {
             "電話費",
             "家居",
             "購物",
+            "服飾",
             "電子產品",
             "個人護理",
             "運動",
@@ -946,6 +975,7 @@ final class LocalizationTests: XCTestCase {
             "电话费",
             "家居",
             "购物",
+            "服饰",
             "电子产品",
             "个人护理",
             "运动",
@@ -978,6 +1008,7 @@ final class LocalizationTests: XCTestCase {
             "category.expense.home",
             "category.expense.transport",
             "category.expense.shopping",
+            "category.expense.clothing",
             "category.expense.entertainment",
             "category.expense.bills",
             "category.expense.insurance",
@@ -1058,6 +1089,7 @@ final class LocalizationTests: XCTestCase {
             "category.expense.phone": ("phone.fill", "#3B82F6"),
             "category.expense.home": ("sofa.fill", "#14B8A6"),
             "category.expense.shopping": ("bag.fill", "#06B6D4"),
+            "category.expense.clothing": ("tshirt.fill", "#A855F7"),
             "category.expense.electronics": ("desktopcomputer", "#6366F1"),
             "category.expense.personalCare": ("comb", "#F43F5E"),
             "category.expense.sports": ("dumbbell.fill", "#14B8A6"),
@@ -1096,8 +1128,13 @@ final class LocalizationTests: XCTestCase {
             expectations["category.expense.entertainment"]!.colorHex,
             expectations["category.expense.subscriptions"]!.colorHex
         )
+        XCTAssertNotEqual(
+            expectations["category.expense.shopping"]!.colorHex,
+            expectations["category.expense.clothing"]!.colorHex
+        )
 
         XCTAssertTrue(SFSymbolCatalog.all.contains("ellipsis.circle.fill"))
         XCTAssertTrue(SFSymbolCatalog.all.contains("phone.fill"))
+        XCTAssertTrue(SFSymbolCatalog.all.contains("tshirt.fill"))
     }
 }

@@ -59,8 +59,8 @@ struct FluxApp: App {
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active, let container else { return }
                 Task { @MainActor in
-                    // Category normalization is cheap when there is nothing to merge and must not
-                    // inherit the 15-minute throttle used by heavier activation maintenance.
+                    // CloudKit can deliver legacy categories or occurrences after startup. Their
+                    // idempotent upgrades must not inherit the heavier 15-minute throttle.
                     maintainExpenseCategories(in: container)
                     await refreshTravelCurrencyPreferenceIfNeeded()
                     guard activationMaintenancePolicy.claimRun() else { return }
@@ -176,16 +176,22 @@ struct FluxApp: App {
         scheduler.runIfNeeded()
     }
 
-    /// Idempotently handles legacy categories that arrive after launch through CloudKit.
+    /// Idempotently handles legacy categories and occurrences that arrive after launch through
+    /// CloudKit. Posting state is upgraded before any subsequent generation/reminder resync.
     @MainActor
     private func maintainExpenseCategories(in container: ModelContainer) {
         let maintenanceContext = ModelContext(container)
         maintenanceContext.autosaveEnabled = false
         do {
-            let changed = try ExpenseCategoryMigration.normalizeLegacySystemCategories(
+            let postingStatusChanged = try ScheduledPostingStatusMigration
+                .runVersionedUpgradeIfNeeded(
+                    in: maintenanceContext,
+                    saveChanges: false
+                )
+            let expenseCategoriesChanged = try ExpenseCategoryMigration.normalizeLegacySystemCategories(
                 in: maintenanceContext
             )
-            if changed {
+            if postingStatusChanged || expenseCategoriesChanged {
                 try maintenanceContext.save()
             }
         } catch {
@@ -209,6 +215,9 @@ struct FluxApp: App {
                 }
                 guard !Task.isCancelled else { return }
                 maintainExpenseCategories(in: container)
+                // A late CloudKit occurrence is upgraded above before generation inspects its
+                // original slot and reminders are rebuilt.
+                await refreshScheduledTransactionsAndReminders(in: container)
             }
         }
     }
@@ -229,6 +238,11 @@ struct FluxApp: App {
         do {
             let service = TransactionService(context: container.mainContext)
             try await service.purgeAllInstallmentDataIfNeeded()
+            // Upgrade legacy future occurrences before generation examines existing dates and
+            // before reminder resync decides which transactions need confirmation notifications.
+            try ScheduledPostingStatusMigration.runVersionedUpgradeIfNeeded(
+                in: container.mainContext
+            )
             let generator = RecurringTransactionGenerator(context: container.mainContext)
             _ = try generator.generatePendingTransactions()
             let reminderScheduler = TransactionReminderScheduler(context: container.mainContext)

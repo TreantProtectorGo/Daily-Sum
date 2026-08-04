@@ -111,6 +111,7 @@ final class Category {
         "category.expense.home",
         "category.expense.transport",
         "category.expense.shopping",
+        "category.expense.clothing",
         "category.expense.entertainment",
         "category.expense.bills",
         "category.expense.insurance",

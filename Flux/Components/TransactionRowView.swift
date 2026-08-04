@@ -19,6 +19,7 @@ struct TransactionRowSnapshot: Identifiable {
     let isTravelTransaction: Bool
     let isGeneratedFromRecurring: Bool
     let isUpcoming: Bool
+    let isPendingScheduledOccurrence: Bool
 
     var isFutureCalendarDay: Bool {
         let calendar = Calendar.current
@@ -26,7 +27,7 @@ struct TransactionRowSnapshot: Identifiable {
     }
 
     var shouldPromptScheduledDelete: Bool {
-        isGeneratedFromRecurring && isFutureCalendarDay
+        isPendingScheduledOccurrence && isGeneratedFromRecurring
     }
 
     init(transaction: Transaction) {
@@ -45,6 +46,7 @@ struct TransactionRowSnapshot: Identifiable {
         isTravelTransaction = transaction.isTravelTransaction ?? false
         isGeneratedFromRecurring = transaction.isGeneratedFromRecurring
         isUpcoming = transaction.isUpcoming
+        isPendingScheduledOccurrence = transaction.isPendingScheduledOccurrence
     }
 
     var primarySignedAmount: Decimal {
@@ -97,6 +99,9 @@ struct TransactionRowSnapshot: Identifiable {
             ),
             trailingSecondaryText
         ]
+        if let accessibilityScheduleStateText {
+            parts.append(accessibilityScheduleStateText)
+        }
         if let notes, !notes.isEmpty {
             parts.append(notes)
         }
@@ -104,7 +109,40 @@ struct TransactionRowSnapshot: Identifiable {
     }
 
     var accessibilityHintText: String {
-        AppLocalization.string("transaction.accessibility.editHint", defaultValue: "Edit transaction")
+        if isPendingScheduledOccurrence {
+            return AppLocalization.string(
+                "transaction.accessibility.pendingEditHint",
+                defaultValue: "Edit or confirm this scheduled transaction"
+            )
+        }
+        if isGeneratedFromRecurring && isUpcoming {
+            return AppLocalization.string(
+                "transaction.accessibility.upcomingEditHint",
+                defaultValue: "Edit this upcoming scheduled transaction"
+            )
+        }
+        return AppLocalization.string(
+            "transaction.accessibility.editHint",
+            defaultValue: "Edit transaction"
+        )
+    }
+
+    private var accessibilityScheduleStateText: String? {
+        var states: [String] = []
+        if isGeneratedFromRecurring && isUpcoming {
+            states.append(
+                AppLocalization.string("transaction.schedule.upcoming", defaultValue: "Upcoming")
+            )
+        }
+        if isPendingScheduledOccurrence {
+            states.append(
+                AppLocalization.string(
+                    "transaction.schedule.pending",
+                    defaultValue: "Pending confirmation"
+                )
+            )
+        }
+        return states.isEmpty ? nil : states.joined(separator: ", ")
     }
 }
 
@@ -172,14 +210,17 @@ struct TransactionRowView: View {
     }
 
     private var scheduleDetailText: String? {
-        guard snapshot.isGeneratedFromRecurring else {
-            return nil
-        }
-
         var parts: [String] = []
-        if snapshot.isUpcoming {
+        if snapshot.isGeneratedFromRecurring && snapshot.isUpcoming {
             parts.append(
                 AppLocalization.string("transaction.schedule.upcoming", defaultValue: "Upcoming")
+            )
+        }
+
+
+        if snapshot.isPendingScheduledOccurrence {
+            parts.append(
+                AppLocalization.string("transaction.schedule.pending", defaultValue: "Pending confirmation")
             )
         }
 

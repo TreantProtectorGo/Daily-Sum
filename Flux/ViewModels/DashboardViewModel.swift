@@ -102,8 +102,11 @@ final class DashboardViewModel {
                 },
                 sortBy: [SortDescriptor(\Transaction.date, order: .reverse)]
             )
-            transactionDescriptor.fetchLimit = 10
-            let recentTransactions = try modelContext.fetch(transactionDescriptor)
+            let recentTransactions = Array(
+                try modelContext.fetch(transactionDescriptor)
+                    .filter(\.isPosted)
+                    .prefix(10)
+            )
             let loadedRecentTransactionRows = recentTransactions.map(
                 TransactionRowSnapshot.init(transaction:)
             )
@@ -119,6 +122,7 @@ final class DashboardViewModel {
                 }
             )
             let monthlyTransactions = try modelContext.fetch(monthlyTransactionDescriptor)
+                .filter(\.isPosted)
             
             let incomeTransactions = monthlyTransactions.filter { $0.type == .income }
             let expenseTransactions = monthlyTransactions.filter { $0.type == .expense }

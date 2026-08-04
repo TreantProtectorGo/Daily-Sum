@@ -79,7 +79,9 @@ final class TransactionCSVExportService: TransactionCSVExportServicing {
         let descriptor = FetchDescriptor<Transaction>(
             predicate: #Predicate<Transaction> { !$0.isRecurringTemplate }
         )
-        let transactions = try context.fetch(descriptor).sorted(by: transactionSort)
+        let transactions = try context.fetch(descriptor)
+            .filter(\.isPosted)
+            .sorted(by: transactionSort)
         var rows: [[CSVField]] = []
         rows.reserveCapacity(transactions.count)
 

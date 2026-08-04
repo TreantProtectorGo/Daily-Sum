@@ -295,6 +295,7 @@ final class BalanceTrendViewModel {
             }
         )
         let earliestTransactionDate = try modelContext.fetch(transactionDescriptor)
+            .filter(\.isPosted)
             .filter { transaction in
                 guard let account = transaction.account else {
                     return true
@@ -335,6 +336,7 @@ final class BalanceTrendViewModel {
             }
         )
         return try modelContext.fetch(descriptor)
+            .filter(\.isPosted)
             .filter { $0.account?.includeInTotal != false }
     }
 

@@ -201,7 +201,7 @@ final class BudgetService {
                     !$0.isRecurringTemplate
                 }
             )
-        )
+        ).filter(\.isPosted)
         var result: [UUID: BudgetStatus] = [:]
 
         for budget in budgets {

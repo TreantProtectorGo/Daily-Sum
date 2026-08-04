@@ -300,6 +300,10 @@ final class BackupImportService: BackupImportServicing {
 
             resolveRelationships(in: archive, with: importedObjects)
             try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
+            try ScheduledPostingStatusMigration.runVersionedUpgradeIfNeeded(
+                in: context,
+                saveChanges: false
+            )
             try context.save()
         } catch {
             context.rollback()
@@ -366,6 +370,7 @@ final class BackupImportService: BackupImportServicing {
         )
         mergeTransactions(
             archive.financialData.transactions,
+            archiveSchemaVersion: archive.schemaVersion,
             into: context,
             state: &state,
             accumulator: &accumulator
@@ -387,6 +392,10 @@ final class BackupImportService: BackupImportServicing {
         // customization. A changed system-default identity or appearance invalidates its marker
         // during merge so normalization can modernize old shipped values exactly once.
         try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
+        try ScheduledPostingStatusMigration.runVersionedUpgradeIfNeeded(
+            in: context,
+            saveChanges: false
+        )
         try context.save()
         applyPreferences(from: archive.preferences, scope: scope)
         restoreSessionMarkerStore.clear()
@@ -527,7 +536,9 @@ final class BackupImportService: BackupImportServicing {
                 installmentTotalCount: record.installmentTotalCount,
                 installmentSequenceNumber: record.installmentSequenceNumber,
                 recurringTemplateId: record.recurringTemplateId,
-                generatedDate: record.generatedDate
+                generatedDate: record.generatedDate,
+                originalScheduledOccurrenceDate: record.originalScheduledOccurrenceDate,
+                postingStatus: record.postingStatusRawValue.flatMap(TransactionPostingStatus.init(rawValue:))
             )
             context.insert(transaction)
             imported.transactions[record.id] = transaction
@@ -1023,6 +1034,7 @@ final class BackupImportService: BackupImportServicing {
 
     private func mergeTransactions(
         _ records: [BackupTransactionRecord],
+        archiveSchemaVersion: Int,
         into context: ModelContext,
         state: inout MergeState,
         accumulator: inout MergeAccumulator
@@ -1068,7 +1080,11 @@ final class BackupImportService: BackupImportServicing {
             let category = record.categoryId.flatMap { state.categories[$0] }
 
             if let existing = state.transactions[record.id] {
-                if transactionMatches(existing, record: record) {
+                if transactionMatches(
+                    existing,
+                    record: record,
+                    archiveSchemaVersion: archiveSchemaVersion
+                ) {
                     accumulator.append(
                         makeReportEntry(
                             entityType: "transactions",
@@ -1081,7 +1097,13 @@ final class BackupImportService: BackupImportServicing {
                         )
                     )
                 } else {
-                    update(existing: existing, from: record, account: account, category: category)
+                    update(
+                        existing: existing,
+                        from: record,
+                        archiveSchemaVersion: archiveSchemaVersion,
+                        account: account,
+                        category: category
+                    )
                     accumulator.append(
                         makeReportEntry(
                             entityType: "transactions",
@@ -1120,6 +1142,8 @@ final class BackupImportService: BackupImportServicing {
                 installmentSequenceNumber: record.installmentSequenceNumber,
                 recurringTemplateId: record.recurringTemplateId,
                 generatedDate: record.generatedDate,
+                originalScheduledOccurrenceDate: record.originalScheduledOccurrenceDate,
+                postingStatus: record.postingStatusRawValue.flatMap(TransactionPostingStatus.init(rawValue:)),
                 account: account,
                 category: category
             )
@@ -1581,9 +1605,16 @@ final class BackupImportService: BackupImportServicing {
 
     private func transactionMatches(
         _ transaction: Transaction,
-        record: BackupTransactionRecord
+        record: BackupTransactionRecord,
+        archiveSchemaVersion: Int
     ) -> Bool {
-        transaction.amount == record.amount &&
+        let mergedPostingStatus = archiveSchemaVersion < 3 && record.postingStatusRawValue == nil
+            ? transaction.postingStatusRawValue
+            : record.postingStatusRawValue
+        let mergedOriginalOccurrenceDate = record.originalScheduledOccurrenceDate ??
+            transaction.originalScheduledOccurrenceDate
+
+        return transaction.amount == record.amount &&
         transaction.currencyCode == record.currencyCode &&
         transaction.type == record.type &&
         transaction.date == record.date &&
@@ -1605,6 +1636,8 @@ final class BackupImportService: BackupImportServicing {
         transaction.installmentSequenceNumber == record.installmentSequenceNumber &&
         transaction.recurringTemplateId == record.recurringTemplateId &&
         transaction.generatedDate == record.generatedDate &&
+        transaction.originalScheduledOccurrenceDate == mergedOriginalOccurrenceDate &&
+        transaction.postingStatusRawValue == mergedPostingStatus &&
         transaction.account?.id == record.accountId &&
         transaction.category?.id == record.categoryId
     }
@@ -1626,6 +1659,7 @@ final class BackupImportService: BackupImportServicing {
     private func update(
         existing transaction: Transaction,
         from record: BackupTransactionRecord,
+        archiveSchemaVersion: Int,
         account: Account?,
         category: Category?
     ) {
@@ -1653,6 +1687,12 @@ final class BackupImportService: BackupImportServicing {
         transaction.installmentSequenceNumber = record.installmentSequenceNumber
         transaction.recurringTemplateId = record.recurringTemplateId
         transaction.generatedDate = record.generatedDate
+        if let originalScheduledOccurrenceDate = record.originalScheduledOccurrenceDate {
+            transaction.originalScheduledOccurrenceDate = originalScheduledOccurrenceDate
+        }
+        if archiveSchemaVersion >= 3 || record.postingStatusRawValue != nil {
+            transaction.postingStatusRawValue = record.postingStatusRawValue
+        }
         transaction.account = account
         transaction.category = category
     }

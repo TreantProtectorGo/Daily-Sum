@@ -499,7 +499,7 @@ enum SFSymbolCatalog {
         "calendar.badge.clock", "clock", "clock.fill",
 
         // Shopping and daily spend
-        "cart", "cart.fill", "basket", "basket.fill", "bag", "bag.fill",
+        "cart", "cart.fill", "basket", "basket.fill", "bag", "bag.fill", "tshirt", "tshirt.fill",
         "shippingbox", "shippingbox.fill", "tag", "tag.fill", "tags", "tags.fill",
         "gift", "gift.fill", "ticket", "ticket.fill", "takeoutbag.and.cup.and.straw",
         "takeoutbag.and.cup.and.straw.fill", "cup.and.saucer", "cup.and.saucer.fill",

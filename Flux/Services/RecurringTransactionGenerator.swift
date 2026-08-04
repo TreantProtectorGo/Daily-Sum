@@ -52,17 +52,37 @@ struct RecurringTransactionGenerator {
         }
 
         let allGenerated = try fetchGeneratedTransactions(for: template)
-        let lastGenerated = allGenerated.max(by: { $0.date < $1.date })
-        var existingDays = Set(allGenerated.map { dayKey(for: $0.date) })
+        let lastGenerated = allGenerated.max {
+            ($0.originalScheduledOccurrenceDate ?? $0.date) <
+                ($1.originalScheduledOccurrenceDate ?? $1.date)
+        }
+        var existingOccurrenceKeys = Set(allGenerated.map {
+            occurrenceKey(
+                for: $0.originalScheduledOccurrenceDate ?? $0.date,
+                recurrenceRule: rule
+            )
+        })
         let skippedDays = try fetchSkippedDayKeys(forTemplateId: template.id)
 
         let dueDay = min(max(template.dueDayOfMonth ?? Calendar.current.component(.day, from: template.date), 1), 31)
-        let startDate = nextGenerationStartDate(
-            for: template,
-            lastGenerated: lastGenerated,
-            dueDay: dueDay,
-            recurrenceRule: rule
-        )
+        let startDate: Date
+        if minimumDate == nil {
+            startDate = nextGenerationStartDate(
+                for: template,
+                lastGenerated: lastGenerated,
+                dueDay: dueDay,
+                recurrenceRule: rule
+            )
+        } else {
+            // Regeneration after a template edit must reconsider every occurrence in the sync
+            // window. A confirmed future row can be later than a pending row that was removed;
+            // using only the latest generated row would otherwise leave that earlier gap empty.
+            startDate = firstOccurrenceDate(
+                for: template,
+                dueDay: dueDay,
+                recurrenceRule: rule
+            )
+        }
 
         var generated: [Transaction] = []
         var currentDate = startDate
@@ -80,7 +100,11 @@ struct RecurringTransactionGenerator {
 
         while currentDate <= cutoffDate {
             let currentDayKey = dayKey(for: currentDate)
-            let alreadyExists = existingDays.contains(currentDayKey)
+            let currentOccurrenceKey = occurrenceKey(
+                for: currentDate,
+                recurrenceRule: rule
+            )
+            let alreadyExists = existingOccurrenceKeys.contains(currentOccurrenceKey)
             let isSkipped = skippedDays.contains(currentDayKey)
 
             if !alreadyExists && !isSkipped {
@@ -90,7 +114,7 @@ struct RecurringTransactionGenerator {
                 )
                 context.insert(transaction)
                 generated.append(transaction)
-                existingDays.insert(currentDayKey)
+                existingOccurrenceKeys.insert(currentOccurrenceKey)
             }
 
             currentDate = nextOccurrenceDate(
@@ -130,6 +154,29 @@ struct RecurringTransactionGenerator {
         dueDay: Int,
         recurrenceRule: RecurrenceRule
     ) -> Date {
+        let scheduleStart = firstOccurrenceDate(
+            for: template,
+            dueDay: dueDay,
+            recurrenceRule: recurrenceRule
+        )
+
+        guard let lastGenerated else {
+            return scheduleStart
+        }
+
+        let afterLastGenerated = nextOccurrenceDate(
+            after: lastGenerated.originalScheduledOccurrenceDate ?? lastGenerated.date,
+            dueDay: dueDay,
+            recurrenceRule: recurrenceRule
+        )
+        return max(scheduleStart, afterLastGenerated)
+    }
+
+    private func firstOccurrenceDate(
+        for template: Transaction,
+        dueDay: Int,
+        recurrenceRule: RecurrenceRule
+    ) -> Date {
         let scheduleStart: Date
         if recurrenceRule == .monthly {
             let aligned = clampedMonthlyDate(
@@ -143,17 +190,7 @@ struct RecurringTransactionGenerator {
         } else {
             scheduleStart = template.date
         }
-
-        guard let lastGenerated else {
-            return scheduleStart
-        }
-
-        let afterLastGenerated = nextOccurrenceDate(
-            after: lastGenerated.date,
-            dueDay: dueDay,
-            recurrenceRule: recurrenceRule
-        )
-        return max(scheduleStart, afterLastGenerated)
+        return scheduleStart
     }
 
     private func nextOccurrenceDate(
@@ -180,6 +217,8 @@ struct RecurringTransactionGenerator {
         timeSource: Date,
         calendar: Calendar = .current
     ) -> Date {
+        // Keep the template's local time-of-day for compatibility with existing schedules and
+        // reminder times. Day-based duplicate/skip comparisons are normalized separately.
         let monthComponents = calendar.dateComponents([.year, .month], from: referenceDate)
         guard
             let year = monthComponents.year,
@@ -200,26 +239,45 @@ struct RecurringTransactionGenerator {
         return calendar.date(from: timeComponents) ?? referenceDate
     }
 
-    /// Deletes all generated transactions for a template (when template is modified/deleted)
+    /// Deletes pending future occurrences and detaches every preserved occurrence before a
+    /// template is converted to a standalone transaction.
     func deleteFutureGeneratedTransactions(for template: Transaction) throws {
         let templateId = template.id
         let now = Date.now
         let descriptor = FetchDescriptor<Transaction>(
-            predicate: #Predicate<Transaction> {
-                $0.recurringTemplateId == templateId && $0.date > now
-            }
+            predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateId }
         )
-        let futureTransactions = try context.fetch(descriptor)
-        for transaction in futureTransactions {
-            context.delete(transaction)
+        let generatedTransactions = try context.fetch(descriptor)
+        var changed = false
+        for transaction in generatedTransactions {
+            if transaction.date > now && transaction.isPendingScheduledOccurrence {
+                context.delete(transaction)
+            } else {
+                transaction.recurringTemplateId = nil
+            }
+            changed = true
         }
 
-        if !futureTransactions.isEmpty {
+        if changed {
             try context.save()
         }
     }
 
     private func dayKey(for date: Date, calendar: Calendar = .current) -> Date {
         calendar.startOfDay(for: date)
+    }
+
+    private func occurrenceKey(
+        for date: Date,
+        recurrenceRule: RecurrenceRule,
+        calendar: Calendar = .current
+    ) -> Date {
+        guard recurrenceRule == .monthly else {
+            return dayKey(for: date, calendar: calendar)
+        }
+        let components = calendar.dateComponents([.year, .month], from: date)
+        return calendar.date(from: components).map {
+            calendar.startOfDay(for: $0)
+        } ?? dayKey(for: date, calendar: calendar)
     }
 }

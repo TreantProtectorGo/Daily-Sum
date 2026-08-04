@@ -930,11 +930,11 @@ final class SettingsViewModel {
 
     private func refreshDataCounts() throws {
         accountCount = try modelContext.fetchCount(FetchDescriptor<Account>())
-        transactionCount = try modelContext.fetchCount(
+        transactionCount = try modelContext.fetch(
             FetchDescriptor<Transaction>(
                 predicate: #Predicate<Transaction> { !$0.isRecurringTemplate }
             )
-        )
+        ).filter(\.isPosted).count
         categoryCount = try modelContext.fetchCount(FetchDescriptor<Category>())
         budgetCount = try modelContext.fetchCount(FetchDescriptor<Budget>())
     }

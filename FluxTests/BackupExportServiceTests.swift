@@ -82,6 +82,10 @@ final class BackupExportServiceTests: XCTestCase {
         XCTAssertEqual(archive.integrityMetadata.recordCounts.accountTypeDefinitions, 1)
         XCTAssertEqual(archive.financialData.accounts.first?.typeDefinitionId, seedAccountTypeID)
         XCTAssertEqual(archive.financialData.categories.first?.sortOrder, 6)
+        XCTAssertEqual(
+            archive.financialData.transactions.first?.originalScheduledOccurrenceDate,
+            Date(timeIntervalSince1970: 1_700_000_450)
+        )
         XCTAssertTrue(archive.integrityMetadata.contentHash.hasPrefix("sha256:"))
     }
 
@@ -216,6 +220,7 @@ final class BackupExportServiceTests: XCTestCase {
             schedulePlanType: .recurring,
             dueDayOfMonth: 15,
             reminderLeadDays: 3,
+            originalScheduledOccurrenceDate: Date(timeIntervalSince1970: 1_700_000_450),
             account: account,
             category: category
         )

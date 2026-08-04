@@ -13,6 +13,10 @@ final class BackupArchiveCodecTests: XCTestCase {
         XCTAssertEqual(decoded.appVersion, archive.appVersion)
         XCTAssertEqual(decoded.financialData.accounts.count, 1)
         XCTAssertEqual(decoded.financialData.transactions.count, 1)
+        XCTAssertEqual(
+            decoded.financialData.transactions.first?.originalScheduledOccurrenceDate,
+            archive.financialData.transactions.first?.originalScheduledOccurrenceDate
+        )
         XCTAssertEqual(decoded.preferences.crossDevice.appLanguage, archive.preferences.crossDevice.appLanguage)
         XCTAssertTrue(decoded.integrityMetadata.contentHash.hasPrefix("sha256:"))
     }
@@ -36,6 +40,42 @@ final class BackupArchiveCodecTests: XCTestCase {
         XCTAssertTrue(decoded.financialData.accountTypeDefinitions.isEmpty)
         XCTAssertNil(decoded.financialData.categories.first?.sortOrder)
         XCTAssertNil(decoded.financialData.accounts.first?.typeDefinitionId)
+    }
+
+    func testBackupArchiveCodecDecodesSchemaVersionTwo() throws {
+        var archive = Self.makeValidArchive()
+        archive.schemaVersion = 2
+
+        let decoded = try BackupArchiveCodec.decode(
+            BackupArchiveCodec.encode(archive)
+        )
+
+        XCTAssertEqual(decoded.schemaVersion, 2)
+        XCTAssertEqual(
+            decoded.financialData.transactions.first?.postingStatusRawValue,
+            archive.financialData.transactions.first?.postingStatusRawValue
+        )
+    }
+
+    func testLegacyBackupTransactionRecordDecodesWithoutPostingStatus() throws {
+        let data = Data(
+            """
+            {
+              "id":"33333333-3333-3333-3333-333333333333",
+              "amount":10,
+              "currencyCode":"HKD",
+              "type":"expense",
+              "date":"2026-08-05T00:00:00Z",
+              "isRecurringTemplate":false
+            }
+            """.utf8
+        )
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let record = try decoder.decode(BackupTransactionRecord.self, from: data)
+
+        XCTAssertNil(record.postingStatusRawValue)
     }
 
     func testBackupArchiveCodecRejectsUnsupportedSchemaVersion() throws {
@@ -352,6 +392,8 @@ final class BackupArchiveCodecTests: XCTestCase {
                         installmentSequenceNumber: nil,
                         recurringTemplateId: nil,
                         generatedDate: nil,
+                        originalScheduledOccurrenceDate: Date(timeIntervalSince1970: 1_700_000_450),
+                        postingStatusRawValue: TransactionPostingStatus.pending.rawValue,
                         accountId: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
                         categoryId: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
                     )

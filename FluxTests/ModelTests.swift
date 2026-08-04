@@ -230,7 +230,9 @@ final class ModelTests: XCTestCase {
         XCTAssertTrue(template.isRecurringTemplate)
         XCTAssertFalse(instance.isRecurringTemplate)
         XCTAssertEqual(instance.recurringTemplateId, template.id)
+        XCTAssertEqual(instance.originalScheduledOccurrenceDate, instance.date)
         XCTAssertTrue(instance.isGeneratedFromRecurring)
+        XCTAssertTrue(instance.isPendingScheduledOccurrence)
     }
 
     func testLegacyInstallmentRawValueResolvesAsRecurring() throws {

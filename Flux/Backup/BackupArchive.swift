@@ -1,7 +1,9 @@
 import Foundation
 
 struct BackupArchive: Codable, Equatable {
-    static let currentSchemaVersion = 2
+    /// Schema v3 makes generated-occurrence posting state and schedule-slot identity part of
+    /// backup semantics.
+    static let currentSchemaVersion = 3
     static let minimumSupportedSchemaVersion = 1
 
     var schemaVersion: Int
@@ -143,6 +145,8 @@ struct BackupTransactionRecord: Codable, Equatable {
     var installmentSequenceNumber: Int?
     var recurringTemplateId: UUID?
     var generatedDate: Date?
+    var originalScheduledOccurrenceDate: Date? = nil
+    var postingStatusRawValue: String? = nil
     var accountId: UUID?
     var categoryId: UUID?
 }

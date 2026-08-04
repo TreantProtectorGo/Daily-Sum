@@ -125,7 +125,7 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
     }
 
     @MainActor
-    func testExistingStoreUpgradeCreatesOnlyNewV2Categories() async throws {
+    func testExistingStoreUpgradeCreatesNewVersionedCategories() async throws {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
         let legacyDining = systemCategory("category.expense.dining", sortOrder: 0)
@@ -145,9 +145,45 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
             "category.expense.miscellaneous"
         ]
         XCTAssertTrue(newV2Keys.isSubset(of: systemKeys))
+        XCTAssertTrue(systemKeys.contains("category.expense.clothing"))
         XCTAssertTrue(systemKeys.contains("category.expense.dining"))
         XCTAssertFalse(systemKeys.contains("category.expense.shopping"))
-        XCTAssertEqual(systemKeys.count, 8)
+        XCTAssertEqual(systemKeys.count, 9)
+        XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedClothingUpgrade(in: context))
+    }
+
+    @MainActor
+    func testClothingUpgradeDoesNotReclassifyShoppingAndDoesNotRecreateAfterDeletion() async throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let shopping = systemCategory("category.expense.shopping", sortOrder: 8)
+        let purchase = transaction(category: shopping)
+        context.insert(Currency(code: "HKD", exchangeRateToBase: 1, isBaseCurrency: true))
+        context.insert(AppMigrationState(key: ExpenseCategoryMigration.versionedMigrationKey))
+        context.insert(shopping)
+        context.insert(purchase)
+        try context.save()
+
+        let seeder = DefaultDataSeeder(context: context)
+        try await seeder.seedIfNeeded()
+
+        var categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        let clothing = try XCTUnwrap(categories.first {
+            $0.isSystemDefault && $0.nameKey == "category.expense.clothing"
+        })
+        XCTAssertEqual(clothing.icon, "tshirt.fill")
+        XCTAssertTrue(purchase.category === shopping)
+        XCTAssertEqual(shopping.nameKey, "category.expense.shopping")
+
+        context.delete(clothing)
+        try context.save()
+        try await seeder.seedIfNeeded()
+
+        categories = try context.fetch(FetchDescriptor<Flux.Category>())
+        XCTAssertFalse(categories.contains {
+            $0.isSystemDefault && $0.nameKey == "category.expense.clothing"
+        })
+        XCTAssertTrue(purchase.category === shopping)
     }
 
     @MainActor
@@ -357,7 +393,7 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
         try context.save()
 
-        let markers = appearanceMarkers(in: context)
+        let markers = try appearanceMarkers(in: context)
         XCTAssertEqual(markers.count, 1)
         XCTAssertEqual(markers[0].id, olderDuplicate.id)
         XCTAssertEqual(markers[0].key, original.key)
@@ -374,7 +410,7 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
 
         XCTAssertFalse(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
         try context.save()
-        XCTAssertEqual(appearanceMarkers(in: context).map(\.key), [markerKey])
+        XCTAssertEqual(try appearanceMarkers(in: context).map(\.key), [markerKey])
 
         let phone = Category(
             id: phoneID,
@@ -420,13 +456,13 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         context.insert(source)
         try ExpenseCategoryMigration.markVersionedUpgradeCompleted(in: context)
         try context.save()
-        XCTAssertEqual(appearanceMarkers(in: context).count, 2)
+        XCTAssertEqual(try appearanceMarkers(in: context).count, 2)
 
         XCTAssertTrue(try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context))
         try context.save()
 
         XCTAssertEqual(try context.fetch(FetchDescriptor<Flux.Category>()).map(\.id), [winner.id])
-        XCTAssertEqual(appearanceMarkers(in: context).count, 1)
+        XCTAssertEqual(try appearanceMarkers(in: context).count, 1)
         XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(
             for: winner,
             in: context
@@ -464,8 +500,8 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         let context = container.mainContext
         let seeder = DefaultDataSeeder(context: context)
         try await seeder.seedIfNeeded()
-        let oldMarkerKeys = Set(appearanceMarkers(in: context).map(\.key))
-        XCTAssertEqual(oldMarkerKeys.count, 23)
+        let oldMarkerKeys = Set(try appearanceMarkers(in: context).map(\.key))
+        XCTAssertEqual(oldMarkerKeys.count, 24)
 
         for category in try context.fetch(FetchDescriptor<Flux.Category>()) {
             context.delete(category)
@@ -474,8 +510,8 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         try seeder.seedCategoriesForExplicitReset()
         try context.save()
 
-        let newMarkerKeys = Set(appearanceMarkers(in: context).map(\.key))
-        XCTAssertEqual(newMarkerKeys.count, 23)
+        let newMarkerKeys = Set(try appearanceMarkers(in: context).map(\.key))
+        XCTAssertEqual(newMarkerKeys.count, 24)
         XCTAssertTrue(oldMarkerKeys.isDisjoint(with: newMarkerKeys))
         XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedAppearanceUpgrade(in: context))
     }
@@ -766,7 +802,7 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         try context.save()
 
         let categories = try context.fetch(FetchDescriptor<Flux.Category>())
-        XCTAssertEqual(categories.filter { $0.type == .expense }.count, 23)
+        XCTAssertEqual(categories.filter { $0.type == .expense }.count, 24)
         XCTAssertEqual(categories.filter { $0.type == .income }.count, 9)
         XCTAssertTrue(try ExpenseCategoryMigration.hasCompletedVersionedUpgrade(in: context))
     }
@@ -780,7 +816,7 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         try seeder.seedDataForExplicitReset()
 
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<Currency>()), SupportedCurrency.allCases.count)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<Flux.Category>()).filter { $0.type == .expense }.count, 23)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Flux.Category>()).filter { $0.type == .expense }.count, 24)
         XCTAssertEqual(try context.fetch(FetchDescriptor<Flux.Category>()).filter { $0.type == .income }.count, 9)
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<Account>()), 1)
         XCTAssertFalse(try context.fetch(FetchDescriptor<Account>()).contains { $0.typeDefinition == nil })
@@ -855,9 +891,12 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
             currencyCode: "HKD",
             category: unrelatedCategory
         )
-        [
+        let budgets: [Budget] = [
             keepActive, deactivate, preservedInactive, unrelatedFirst, unrelatedSecond
-        ].forEach(context.insert)
+        ]
+        for budget in budgets {
+            context.insert(budget)
+        }
         try context.save()
 
         try ExpenseCategoryMigration.normalizeLegacySystemCategories(in: context)
@@ -875,7 +914,8 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         XCTAssertFalse(preservedInactive.isActive)
         XCTAssertTrue(unrelatedFirst.isActive)
         XCTAssertTrue(unrelatedSecond.isActive)
-        XCTAssertTrue([keepActive, deactivate, preservedInactive].allSatisfy {
+        let mergedBudgets: [Budget] = [keepActive, deactivate, preservedInactive]
+        XCTAssertTrue(mergedBudgets.allSatisfy {
             $0.category === canonicalWinner
         })
     }
@@ -907,8 +947,8 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
         _ nameKey: String,
         id: UUID = UUID(),
         sortOrder: Int
-    ) -> Category {
-        Category(
+    ) -> Flux.Category {
+        Flux.Category(
             id: id,
             nameKey: nameKey,
             icon: "tag",
@@ -920,7 +960,7 @@ final class ExpenseCategoryMigrationTests: XCTestCase {
     }
 
     @MainActor
-    private func transaction(category: Category) -> Transaction {
+    private func transaction(category: Flux.Category) -> Transaction {
         Transaction(
             amount: 100,
             currencyCode: "HKD",

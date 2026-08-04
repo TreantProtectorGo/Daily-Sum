@@ -186,6 +186,8 @@ final class BackupExportService: BackupExportServicing {
                     installmentSequenceNumber: transaction.installmentSequenceNumber,
                     recurringTemplateId: transaction.recurringTemplateId,
                     generatedDate: transaction.generatedDate,
+                    originalScheduledOccurrenceDate: transaction.originalScheduledOccurrenceDate,
+                    postingStatusRawValue: transaction.postingStatusRawValue,
                     accountId: transaction.account?.id,
                     categoryId: transaction.category?.id
                 )

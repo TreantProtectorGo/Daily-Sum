@@ -131,7 +131,7 @@ final class Account {
     var currentBalance: Decimal {
         let now = Date.now
         let transactionSum = (transactions ?? []).reduce(Decimal.zero) { sum, transaction in
-            guard !transaction.isRecurringTemplate, transaction.date <= now else {
+            guard transaction.isPosted, transaction.date <= now else {
                 return sum
             }
             switch transaction.type {
@@ -156,11 +156,11 @@ final class Account {
     
     /// Number of transactions in this account
     var transactionCount: Int {
-        transactions?.count ?? 0
+        transactions?.filter(\.isPosted).count ?? 0
     }
     
     /// Most recent transaction date
     var lastTransactionDate: Date? {
-        transactions?.max(by: { $0.date < $1.date })?.date
+        transactions?.filter(\.isPosted).max(by: { $0.date < $1.date })?.date
     }
 }

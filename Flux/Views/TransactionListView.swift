@@ -109,7 +109,7 @@ struct TransactionListView: View {
         .alert(
             AppLocalization.string(
                 "transaction.deleteScheduledFuture.title",
-                defaultValue: "This is a subscription transaction"
+                defaultValue: "This is a scheduled transaction"
             ),
             isPresented: $showScheduledDeleteDialog,
             actions: {
@@ -132,7 +132,7 @@ struct TransactionListView: View {
                 Button(
                     AppLocalization.string(
                         "transaction.deleteScheduledFuture.stop",
-                        defaultValue: "Stop this subscription"
+                        defaultValue: "Stop this schedule"
                     ),
                     role: .destructive
                 ) {
@@ -149,7 +149,7 @@ struct TransactionListView: View {
                 Button(
                     AppLocalization.string(
                         "transaction.deleteScheduledFuture.keep",
-                        defaultValue: "Keep Subscription"
+                        defaultValue: "Keep Schedule"
                     ),
                     role: .cancel
                 ) {
@@ -160,7 +160,7 @@ struct TransactionListView: View {
                 Text(
                     AppLocalization.string(
                         "transaction.deleteScheduledFuture.message",
-                        defaultValue: "Do you want to skip only this due date or stop this subscription?"
+                        defaultValue: "Do you want to skip this occurrence or stop this schedule?"
                     )
                 )
             }
@@ -168,7 +168,7 @@ struct TransactionListView: View {
         .alert(
             AppLocalization.string(
                 "transaction.deleteScheduledFuture.title",
-                defaultValue: "This is a subscription transaction"
+                defaultValue: "This is a scheduled transaction"
             ),
             isPresented: $showSourceDeleteDialog,
             actions: {
@@ -189,7 +189,7 @@ struct TransactionListView: View {
                 Button(
                     AppLocalization.string(
                         "transaction.deleteScheduledSource.deleteAll",
-                        defaultValue: "Delete entire subscription"
+                        defaultValue: "Delete entire schedule"
                     ),
                     role: .destructive
                 ) {
@@ -217,7 +217,7 @@ struct TransactionListView: View {
                 Text(
                     AppLocalization.string(
                         "transaction.deleteScheduledSource.message",
-                        defaultValue: "Deleting this source transaction will remove the entire subscription."
+                        defaultValue: "Deleting this source transaction will remove the entire schedule."
                     )
                 )
             }
@@ -305,7 +305,7 @@ struct TransactionListView: View {
                     Text(
                         AppLocalization.string(
                             "transaction.upcomingHint.title",
-                            defaultValue: "Upcoming subscription transactions"
+                            defaultValue: "Upcoming scheduled transactions"
                         )
                     )
                     .font(.subheadline)
@@ -347,7 +347,7 @@ struct TransactionListView: View {
 
         return AppLocalization.formatted(
             "transaction.upcomingHint.subtitle",
-            defaultValue: "%1$lld due in the next %2$lld days • Next %3$@",
+            defaultValue: "%1$lld scheduled in the next %2$lld days • Next %3$@",
             Int64(viewModel.hiddenUpcomingScheduledCount),
             Int64(RecurringTransactionGenerator.defaultLookAheadDays),
             nextDateText
@@ -383,6 +383,34 @@ struct TransactionListView: View {
                 }
                 .tint(.red)
                 .accessibilityLabel(AppLocalization.string("action.delete", defaultValue: "Delete"))
+            }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                if row.isPendingScheduledOccurrence {
+                    Button {
+                        Task {
+                            do {
+                                try await viewModel.confirmScheduledOccurrence(transactionId: row.id)
+                            } catch {
+                                viewModel.reportOperationError(error)
+                            }
+                        }
+                    } label: {
+                        Label(
+                            AppLocalization.string(
+                                "transaction.schedule.confirm",
+                                defaultValue: "Confirm and post"
+                            ),
+                            systemImage: "checkmark.circle.fill"
+                        )
+                    }
+                    .tint(.green)
+                    .accessibilityLabel(
+                        AppLocalization.string(
+                            "transaction.schedule.confirm",
+                            defaultValue: "Confirm and post"
+                        )
+                    )
+                }
             }
     }
 
@@ -581,7 +609,7 @@ struct TransactionFiltersSheet: View {
                     Toggle(
                         AppLocalization.string(
                             "filter.showUpcomingScheduled",
-                            defaultValue: "Include Upcoming Subscriptions"
+                            defaultValue: "Include Upcoming Scheduled Transactions"
                         ),
                         isOn: Binding(
                             get: { viewModel.showUpcomingScheduled },
@@ -597,7 +625,7 @@ struct TransactionFiltersSheet: View {
                     Text(
                         AppLocalization.string(
                             "filter.showUpcomingScheduled.footer",
-                            defaultValue: "When turned off, future auto-generated subscription transactions stay hidden."
+                            defaultValue: "When turned off, future auto-generated scheduled transactions stay hidden."
                         )
                     )
                 }

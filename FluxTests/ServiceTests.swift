@@ -296,6 +296,39 @@ final class ServiceTests: XCTestCase {
         XCTAssertEqual(days, [31, 28, 31])
     }
 
+    func testRecurringGeneratorPreservesTemplateTimeOfDay() throws {
+        let account = Account(name: "Salary", type: .bank, currencyCode: "HKD")
+        context.insert(account)
+        let calendar = Calendar(identifier: .gregorian)
+        let startDate = calendar.date(
+            from: DateComponents(year: 2026, month: 1, day: 5, hour: 9, minute: 30)
+        )!
+        let cutoffDate = calendar.date(
+            from: DateComponents(year: 2026, month: 2, day: 6, hour: 23)
+        )!
+        let template = Transaction(
+            amount: 17_000,
+            currencyCode: "HKD",
+            type: .income,
+            date: startDate,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: 5,
+            account: account
+        )
+        context.insert(template)
+        try context.save()
+
+        let generated = try RecurringTransactionGenerator(context: context)
+            .generateTransactions(from: template, upTo: cutoffDate)
+
+        XCTAssertEqual(generated.count, 2)
+        XCTAssertTrue(generated.allSatisfy { calendar.component(.hour, from: $0.date) == 9 })
+        XCTAssertTrue(generated.allSatisfy { calendar.component(.minute, from: $0.date) == 30 })
+        XCTAssertTrue(generated.allSatisfy(\.isPendingScheduledOccurrence))
+    }
+
     func testGeneratorSkipsOccurrenceExceptions() throws {
         let account = Account(name: "Credit Card", type: .cash, currencyCode: "USD")
         context.insert(account)
@@ -382,6 +415,7 @@ final class ServiceTests: XCTestCase {
 
         let template = try service.createScheduled(
             amount: 120,
+            type: .expense,
             startDate: .now,
             dueDayOfMonth: 15,
             reminderLeadDays: 1,
@@ -394,6 +428,100 @@ final class ServiceTests: XCTestCase {
         XCTAssertTrue(template.isRecurringTemplate)
         XCTAssertEqual(template.type, .expense)
         XCTAssertEqual(template.schedulePlanType, .recurring)
+    }
+
+    func testCreateScheduledIncomeGeneratesIncomeOccurrences() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Salary Account", type: .bank, currencyCode: "HKD")
+        let category = Category(
+            nameKey: "category.income.salary",
+            icon: "banknote.fill",
+            colorHex: "#34C759",
+            type: .income
+        )
+        context.insert(account)
+        context.insert(category)
+        try context.save()
+
+        let calendar = Calendar(identifier: .gregorian)
+        let startDate = calendar.date(
+            from: DateComponents(year: 2026, month: 9, day: 5, hour: 9)
+        )!
+        let template = try service.createScheduled(
+            amount: 17_000,
+            type: .income,
+            startDate: startDate,
+            dueDayOfMonth: 5,
+            reminderLeadDays: 1,
+            account: account,
+            category: category,
+            notes: "Salary",
+            planType: .recurring
+        )
+
+        let cutoffDate = calendar.date(byAdding: .month, value: 1, to: startDate)!
+        let generated = try RecurringTransactionGenerator(context: context)
+            .generateTransactions(from: template, upTo: cutoffDate)
+
+        XCTAssertEqual(template.type, .income)
+        XCTAssertEqual(template.category?.id, category.id)
+        XCTAssertEqual(template.account?.id, account.id)
+        XCTAssertEqual(generated.count, 2)
+        XCTAssertTrue(generated.allSatisfy { $0.type == .income })
+        XCTAssertTrue(generated.allSatisfy { $0.category?.id == category.id })
+        XCTAssertTrue(generated.allSatisfy { $0.account?.id == account.id })
+        XCTAssertTrue(generated.allSatisfy { $0.recurringTemplateId == template.id })
+    }
+
+    func testUpdateScheduledIncomeKeepsIncomeTypeWhenRegenerating() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Shared Costs", type: .bank, currencyCode: "HKD")
+        let category = Category(
+            nameKey: "category.income.reimbursement",
+            icon: "person.2.fill",
+            colorHex: "#30B0C7",
+            type: .income
+        )
+        context.insert(account)
+        context.insert(category)
+        try context.save()
+
+        let calendar = Calendar(identifier: .gregorian)
+        let now = calendar.date(
+            from: DateComponents(year: 2026, month: 9, day: 1, hour: 12)
+        )!
+        let template = try service.createScheduled(
+            amount: 50,
+            type: .income,
+            startDate: now,
+            dueDayOfMonth: 15,
+            reminderLeadDays: 3,
+            account: account,
+            category: category,
+            notes: "Shared subscription",
+            planType: .recurring
+        )
+        let cutoffDate = calendar.date(byAdding: .month, value: 2, to: now)!
+
+        let regenerated = try service.updateScheduledTemplate(
+            template,
+            amount: 60,
+            startDate: now,
+            dueDayOfMonth: 20,
+            reminderLeadDays: 1,
+            account: account,
+            notes: "Updated shared subscription",
+            category: category,
+            planType: .recurring,
+            now: now,
+            regenerateThrough: cutoffDate
+        )
+
+        XCTAssertEqual(template.type, .income)
+        XCTAssertEqual(template.amount, 60)
+        XCTAssertFalse(regenerated.isEmpty)
+        XCTAssertTrue(regenerated.allSatisfy { $0.type == .income })
+        XCTAssertTrue(regenerated.allSatisfy { $0.amount == 60 })
     }
 
     func testUpdateScheduledTemplateTodayAndFutureUsesCalendarDayBoundary() async throws {
@@ -409,6 +537,7 @@ final class ServiceTests: XCTestCase {
         let movedFutureStart = Calendar.current.date(byAdding: .month, value: 2, to: now)!
         let template = try service.createScheduled(
             amount: 90,
+            type: .expense,
             startDate: Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now,
             dueDayOfMonth: 20,
             reminderLeadDays: 1,
@@ -507,6 +636,7 @@ final class ServiceTests: XCTestCase {
         let startOfToday = Calendar.current.startOfDay(for: now)
         let template = try service.createScheduled(
             amount: 90,
+            type: .expense,
             startDate: Calendar.current.date(byAdding: .month, value: -2, to: now)!,
             dueDayOfMonth: 12,
             reminderLeadDays: 1,
@@ -607,6 +737,7 @@ final class ServiceTests: XCTestCase {
         let baseService = TransactionService(context: context)
         let template = try baseService.createScheduled(
             amount: 90,
+            type: .expense,
             startDate: Calendar.current.date(byAdding: .month, value: -1, to: now)!,
             dueDayOfMonth: 12,
             reminderLeadDays: 1,
@@ -682,6 +813,7 @@ final class ServiceTests: XCTestCase {
         let now = Date.now
         let template = try service.createScheduled(
             amount: 150,
+            type: .expense,
             startDate: Calendar.current.date(byAdding: .month, value: -2, to: now) ?? now,
             dueDayOfMonth: 10,
             reminderLeadDays: 1,
@@ -717,8 +849,11 @@ final class ServiceTests: XCTestCase {
         let deletedTemplate = try service.fetch(byId: templateId)
         XCTAssertNil(deletedTemplate)
 
-        let remainingPast = try service.fetch(byId: pastGeneratedId)
-        XCTAssertNotNil(remainingPast)
+        let remainingPast = try XCTUnwrap(service.fetch(byId: pastGeneratedId))
+        XCTAssertNil(remainingPast.recurringTemplateId)
+        XCTAssertTrue(remainingPast.isPendingScheduledOccurrence)
+        XCTAssertEqual(account.currentBalance, 0)
+        XCTAssertFalse(try service.fetch().contains { $0.id == pastGeneratedId })
 
         let removedFuture = try service.fetch(byId: futureGeneratedId)
         XCTAssertNil(removedFuture)
@@ -733,6 +868,7 @@ final class ServiceTests: XCTestCase {
         let dueDate = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
         let template = try service.createScheduled(
             amount: 88,
+            type: .expense,
             startDate: .now,
             dueDayOfMonth: Calendar.current.component(.day, from: dueDate),
             reminderLeadDays: 1,
@@ -772,6 +908,7 @@ final class ServiceTests: XCTestCase {
         let now = Date.now
         let template = try service.createScheduled(
             amount: 120,
+            type: .expense,
             startDate: Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now,
             dueDayOfMonth: 12,
             reminderLeadDays: 1,
@@ -810,6 +947,7 @@ final class ServiceTests: XCTestCase {
         let now = Date.now
         let template = try service.createScheduled(
             amount: 66,
+            type: .expense,
             startDate: Calendar.current.date(byAdding: .month, value: -2, to: now) ?? now,
             dueDayOfMonth: 7,
             reminderLeadDays: 1,
@@ -2006,5 +2144,283 @@ final class ServiceTests: XCTestCase {
 
         XCTAssertFalse(refreshed)
         XCTAssertEqual(provider.callCount, 0)
+    }
+
+    func testUpdatingScheduleReplacesOnlyPendingFutureOccurrences() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Salary", type: .bank, currencyCode: "HKD")
+        context.insert(account)
+        try context.save()
+
+        let now = Calendar.current.date(
+            from: DateComponents(year: 2026, month: 8, day: 3, hour: 12)
+        )!
+        let template = try service.createScheduled(
+            amount: 17_000,
+            type: .income,
+            startDate: now,
+            dueDayOfMonth: 5,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Salary",
+            planType: .recurring
+        )
+        let pending = Transaction.fromTemplate(
+            template,
+            forDate: Calendar.current.date(byAdding: .month, value: 1, to: now)!
+        )
+        let confirmed = Transaction.fromTemplate(
+            template,
+            forDate: Calendar.current.date(byAdding: .month, value: 2, to: now)!
+        )
+        confirmed.postingStatus = .posted
+        let confirmedAmount = confirmed.amount
+        let confirmedDate = confirmed.date
+        context.insert(pending)
+        context.insert(confirmed)
+        try context.save()
+
+        let cutoff = Calendar.current.date(byAdding: .month, value: 4, to: now)!
+        _ = try service.updateScheduledTemplate(
+            template,
+            amount: 18_000,
+            startDate: now,
+            dueDayOfMonth: 10,
+            reminderLeadDays: 3,
+            account: account,
+            notes: "Updated salary",
+            category: nil,
+            planType: .recurring,
+            now: now,
+            regenerateThrough: cutoff
+        )
+
+        XCTAssertNil(try service.fetch(byId: pending.id))
+        let preserved = try XCTUnwrap(service.fetch(byId: confirmed.id))
+        XCTAssertEqual(preserved.postingStatus, .posted)
+        XCTAssertEqual(preserved.amount, confirmedAmount)
+        XCTAssertEqual(preserved.date, confirmedDate)
+
+        let templateID = template.id
+        let related = try context.fetch(
+            FetchDescriptor<Transaction>(
+                predicate: #Predicate<Transaction> { $0.recurringTemplateId == templateID }
+            )
+        )
+        XCTAssertTrue(related.contains { $0.id == confirmed.id })
+        XCTAssertTrue(related.contains { $0.isPendingScheduledOccurrence })
+    }
+
+    func testStoppingSchedulePreservesConfirmedFutureAndOverduePendingOccurrence() async throws {
+        let service = TransactionService(context: context)
+        let currencyCode = UserCurrencyPreference.resolvedCurrencyCode
+        let account = Account(name: "Shared", type: .bank, currencyCode: currencyCode)
+        context.insert(account)
+        try context.save()
+
+        let now = Date.now
+        let template = try service.createScheduled(
+            amount: 50,
+            type: .income,
+            startDate: now,
+            dueDayOfMonth: 5,
+            reminderLeadDays: 1,
+            account: account,
+            category: nil,
+            notes: "Netflix split",
+            planType: .recurring
+        )
+        let overduePending = Transaction.fromTemplate(
+            template,
+            forDate: now.addingTimeInterval(-86_400)
+        )
+        let futurePending = Transaction.fromTemplate(
+            template,
+            forDate: now.addingTimeInterval(86_400)
+        )
+        let futureConfirmed = Transaction.fromTemplate(
+            template,
+            forDate: now.addingTimeInterval(172_800)
+        )
+        futureConfirmed.postingStatus = .posted
+        context.insert(overduePending)
+        context.insert(futurePending)
+        context.insert(futureConfirmed)
+        try context.save()
+
+        try await service.stopScheduledPlan(templateId: template.id)
+
+        XCTAssertNil(try service.fetch(byId: template.id))
+        XCTAssertNil(try service.fetch(byId: futurePending.id))
+        let preservedOverdue = try XCTUnwrap(service.fetch(byId: overduePending.id))
+        let preservedConfirmed = try XCTUnwrap(service.fetch(byId: futureConfirmed.id))
+        XCTAssertNil(preservedOverdue.recurringTemplateId)
+        XCTAssertNil(preservedConfirmed.recurringTemplateId)
+        XCTAssertTrue(preservedOverdue.isPendingScheduledOccurrence)
+        XCTAssertFalse(preservedConfirmed.isGeneratedFromRecurring)
+        XCTAssertEqual(account.currentBalance, 0)
+        XCTAssertFalse(try service.fetch().contains { $0.id == preservedOverdue.id })
+
+        let reports = ReportsViewModel(modelContext: context)
+        reports.selectedPeriod = .all
+        await reports.loadReports()
+        XCTAssertEqual(reports.totalIncome, 0)
+
+        try service.confirmScheduledOccurrence(preservedOverdue)
+        XCTAssertFalse(preservedOverdue.isPendingScheduledOccurrence)
+        XCTAssertEqual(account.currentBalance, 50)
+        XCTAssertTrue(try service.fetch().contains { $0.id == preservedOverdue.id })
+        await reports.loadReports()
+        XCTAssertEqual(reports.totalIncome, 50)
+
+        let archive = try BackupExportService(context: context).makeBackupArchive()
+        let archiveData = try BackupArchiveCodec.encode(archive)
+        XCTAssertNoThrow(
+            try BackupImportService(
+                restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+            ).validateImport(
+                data: archiveData,
+                mode: .replace,
+                scope: .financialDataOnly
+            )
+        )
+
+        try await service.handleFutureGeneratedDeletion(
+            preservedOverdue,
+            action: .skipOccurrence
+        )
+        XCTAssertNil(try service.fetch(byId: preservedOverdue.id))
+        XCTAssertTrue(try context.fetch(FetchDescriptor<ScheduledOccurrenceException>()).isEmpty)
+    }
+
+    func testTemplateToOneTimeCleanupKeepsOverduePendingUnposted() throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Cash", type: .cash, currencyCode: "HKD")
+        context.insert(account)
+        let template = Transaction(
+            amount: 100,
+            currencyCode: "HKD",
+            type: .expense,
+            date: .now,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            account: account
+        )
+        let futurePending = Transaction.fromTemplate(
+            template,
+            forDate: Date.now.addingTimeInterval(86_400)
+        )
+        let overduePending = Transaction.fromTemplate(
+            template,
+            forDate: Date.now.addingTimeInterval(-86_400)
+        )
+        let futureConfirmed = Transaction.fromTemplate(
+            template,
+            forDate: Date.now.addingTimeInterval(172_800)
+        )
+        futureConfirmed.postingStatus = .posted
+        context.insert(template)
+        context.insert(futurePending)
+        context.insert(overduePending)
+        context.insert(futureConfirmed)
+        try context.save()
+
+        try RecurringTransactionGenerator(context: context)
+            .deleteFutureGeneratedTransactions(for: template)
+
+        XCTAssertNil(try service.fetch(byId: futurePending.id))
+        XCTAssertNil(try service.fetch(byId: futureConfirmed.id)?.recurringTemplateId)
+        let preservedOverdue = try XCTUnwrap(service.fetch(byId: overduePending.id))
+        XCTAssertNil(preservedOverdue.recurringTemplateId)
+        XCTAssertTrue(preservedOverdue.isPendingScheduledOccurrence)
+        XCTAssertEqual(account.currentBalance, 0)
+        XCTAssertFalse(try service.fetch().contains { $0.id == preservedOverdue.id })
+
+        try service.confirmScheduledOccurrence(preservedOverdue)
+        XCTAssertEqual(account.currentBalance, -100)
+        XCTAssertTrue(try service.fetch().contains { $0.id == preservedOverdue.id })
+    }
+
+    func testDelayedOccurrenceSkipUsesOriginalSlotAndDoesNotRegenerate() async throws {
+        let service = TransactionService(context: context)
+        let account = Account(name: "Salary", type: .bank, currencyCode: "HKD")
+        context.insert(account)
+
+        let calendar = Calendar.current
+        let originalDate = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 5, hour: 9)
+        )!
+        let template = Transaction(
+            amount: 17_000,
+            currencyCode: "HKD",
+            type: .income,
+            date: originalDate,
+            isRecurringTemplate: true,
+            recurrenceRule: .monthly,
+            schedulePlanType: .recurring,
+            dueDayOfMonth: 5,
+            account: account
+        )
+        context.insert(template)
+        try context.save()
+
+        let generator = RecurringTransactionGenerator(context: context)
+        let occurrence = try XCTUnwrap(
+            generator.generateTransactions(from: template, upTo: originalDate).first
+        )
+        XCTAssertEqual(occurrence.originalScheduledOccurrenceDate, originalDate)
+
+        let delayedDate = calendar.date(byAdding: .day, value: 10, to: originalDate)!
+        occurrence.date = delayedDate
+        try context.save()
+
+        try await service.handleFutureGeneratedDeletion(occurrence, action: .skipOccurrence)
+
+        let templateID = template.id
+        let skippedDay = calendar.startOfDay(for: originalDate)
+        let exceptions = try context.fetch(
+            FetchDescriptor<ScheduledOccurrenceException>(
+                predicate: #Predicate<ScheduledOccurrenceException> {
+                    $0.templateId == templateID
+                }
+            )
+        )
+        XCTAssertEqual(exceptions.map(\.occurrenceDate), [skippedDay])
+
+        let regenerated = try generator.generateTransactions(
+            from: template,
+            upTo: originalDate
+        )
+        XCTAssertTrue(regenerated.isEmpty)
+        XCTAssertTrue(
+            try context.fetch(
+                FetchDescriptor<Transaction>(
+                    predicate: #Predicate<Transaction> {
+                        $0.recurringTemplateId == templateID
+                    }
+                )
+            ).isEmpty
+        )
+    }
+
+    func testSkippingLegacyOrphanDeletesStandaloneWithoutCreatingException() async throws {
+        let service = TransactionService(context: context)
+        let orphan = Transaction(
+            amount: 25,
+            currencyCode: "HKD",
+            type: .income,
+            date: .now,
+            recurringTemplateId: UUID(),
+            postingStatus: .pending
+        )
+        context.insert(orphan)
+        try context.save()
+
+        try await service.handleFutureGeneratedDeletion(orphan, action: .skipOccurrence)
+
+        XCTAssertNil(try service.fetch(byId: orphan.id))
+        XCTAssertTrue(try context.fetch(FetchDescriptor<ScheduledOccurrenceException>()).isEmpty)
     }
 }

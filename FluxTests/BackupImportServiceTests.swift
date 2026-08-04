@@ -94,6 +94,29 @@ final class BackupImportServiceTests: XCTestCase {
         }
     }
 
+    func testSchemaThreeReplaceRestoresOriginalScheduledOccurrenceDate() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let originalDate = Date(timeIntervalSince1970: 1_700_000_450)
+        var archive = Self.makeArchive()
+        archive.financialData.transactions[0].originalScheduledOccurrenceDate = originalDate
+
+        _ = try BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        ).applyImport(
+            data: try BackupArchiveCodec.encode(archive),
+            mode: .replace,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        XCTAssertEqual(
+            try XCTUnwrap(context.fetch(FetchDescriptor<Transaction>()).first)
+                .originalScheduledOccurrenceDate,
+            originalDate
+        )
+    }
+
     func testPrepareImportRejectsTruncatedArchiveData() throws {
         let service = BackupImportService(restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore())
         let data = Data("{\"schemaVersion\":1".utf8)
@@ -343,6 +366,78 @@ final class BackupImportServiceTests: XCTestCase {
         XCTAssertEqual(report.entries.map(\.action), [.skipped, .skipped])
     }
 
+    func testLegacyMergeDoesNotEraseConfirmedFuturePostingStatus() throws {
+        let container = try ModelContainerConfiguration.createTestContainer()
+        let context = container.mainContext
+        let service = BackupImportService(
+            restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
+        )
+        let templateID = UUID(uuidString: "45454545-4545-4545-4545-454545454545")!
+        let occurrenceID = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
+        let accountID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        let futureDate = Date.now.addingTimeInterval(86_400)
+
+        var archive = Self.makeArchive()
+        archive.schemaVersion = 2
+        archive.financialData.transactions[0].date = futureDate
+        archive.financialData.transactions[0].recurrenceRule = .monthly
+        archive.financialData.transactions[0].recurringTemplateId = templateID
+        archive.financialData.transactions[0].postingStatusRawValue = nil
+        archive.financialData.transactions.append(
+            BackupTransactionRecord(
+                id: templateID,
+                amount: 25.5,
+                currencyCode: "USD",
+                type: .expense,
+                date: futureDate,
+                notes: "Schedule",
+                isTravelTransaction: false,
+                travelAmount: nil,
+                travelCurrencyCode: nil,
+                travelExchangeRate: nil,
+                travelExchangeRateEffectiveDate: nil,
+                travelExchangeRateProvider: nil,
+                receiptImageData: nil,
+                isRecurringTemplate: true,
+                recurrenceRule: .monthly,
+                schedulePlanTypeRawValue: SchedulePlanType.recurring.rawValue,
+                dueDayOfMonth: Calendar.current.component(.day, from: futureDate),
+                reminderLeadDays: 0,
+                installmentTotalCount: nil,
+                installmentSequenceNumber: nil,
+                recurringTemplateId: nil,
+                generatedDate: nil,
+                postingStatusRawValue: nil,
+                accountId: accountID,
+                categoryId: nil
+            )
+        )
+        archive.integrityMetadata.recordCounts.transactions = 2
+        let data = try BackupArchiveCodec.encode(archive)
+
+        _ = try service.applyImport(
+            data: data,
+            mode: .replace,
+            scope: .financialDataOnly,
+            context: context
+        )
+        let occurrence = try XCTUnwrap(
+            context.fetch(FetchDescriptor<Transaction>()).first { $0.id == occurrenceID }
+        )
+        occurrence.postingStatus = .posted
+        try context.save()
+
+        _ = try service.applyImport(
+            data: data,
+            mode: .merge,
+            scope: .financialDataOnly,
+            context: context
+        )
+
+        XCTAssertEqual(occurrence.postingStatusRawValue, TransactionPostingStatus.posted.rawValue)
+        XCTAssertEqual(occurrence.postingStatus, .posted)
+    }
+
     func testApplyImportReplaceNormalizesLegacyCategoryRelationships() throws {
         try assertLegacyCategoryRelationshipsNormalize(mode: .replace)
     }
@@ -351,7 +446,7 @@ final class BackupImportServiceTests: XCTestCase {
         let container = try ModelContainerConfiguration.createTestContainer()
         let context = container.mainContext
         try await DefaultDataSeeder(context: context).seedIfNeeded()
-        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 23)
+        XCTAssertEqual(try appearanceMarkerKeys(in: context).count, 24)
 
         let service = BackupImportService(
             restoreSessionMarkerStore: InMemoryRestoreSessionMarkerStore()
@@ -366,7 +461,7 @@ final class BackupImportServiceTests: XCTestCase {
             scope: .financialDataOnly,
             context: context
         )
-        let firstKeys = appearanceMarkerKeys(in: context)
+        let firstKeys = try appearanceMarkerKeys(in: context)
         XCTAssertEqual(firstKeys.count, 2)
 
         _ = try service.applyImport(
@@ -375,7 +470,7 @@ final class BackupImportServiceTests: XCTestCase {
             scope: .financialDataOnly,
             context: context
         )
-        let secondKeys = appearanceMarkerKeys(in: context)
+        let secondKeys = try appearanceMarkerKeys(in: context)
         XCTAssertEqual(secondKeys, firstKeys)
         XCTAssertEqual(secondKeys.count, 2)
         XCTAssertEqual(
@@ -436,7 +531,7 @@ final class BackupImportServiceTests: XCTestCase {
             for: phone,
             in: context
         ))
-        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+        XCTAssertEqual(try appearanceMarkerKeys(in: context).count, 1)
     }
 
     func testMergeImportModernizesIncomingSameIDSystemCategoryOverExistingMarkedCustomization() throws {
@@ -494,7 +589,7 @@ final class BackupImportServiceTests: XCTestCase {
             for: phone,
             in: context
         ))
-        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+        XCTAssertEqual(try appearanceMarkerKeys(in: context).count, 1)
     }
 
     func testMergeImportKeepsAppearanceCompletionForSameStableCategoryID() throws {
@@ -549,7 +644,7 @@ final class BackupImportServiceTests: XCTestCase {
             for: phone,
             in: context
         ))
-        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+        XCTAssertEqual(try appearanceMarkerKeys(in: context).count, 1)
     }
 
     func testMergeImportPreservesChangedSameIDNonSystemCustomization() throws {
@@ -600,7 +695,7 @@ final class BackupImportServiceTests: XCTestCase {
             for: phone,
             in: context
         ))
-        XCTAssertEqual(appearanceMarkerKeys(in: context).count, 1)
+        XCTAssertEqual(try appearanceMarkerKeys(in: context).count, 1)
     }
 
     func testApplyImportMergeReportsRecordLevelFailureForMissingReference() throws {

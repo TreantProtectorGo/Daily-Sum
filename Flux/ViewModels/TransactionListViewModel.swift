@@ -40,16 +40,20 @@ struct TransactionDateGroupSnapshot {
     init(date: Date, rows: [TransactionRowSnapshot]) {
         self.date = date
         self.rows = rows
+        let postedRows = rows.filter { !$0.isPendingScheduledOccurrence }
 
-        incomeTotal = rows
+        incomeTotal = postedRows
             .filter { $0.signedAmount > 0 }
             .reduce(Decimal.zero) { $0 + $1.signedAmount }
 
-        expenseTotal = rows
+        expenseTotal = postedRows
             .filter { $0.signedAmount < 0 }
             .reduce(Decimal.zero) { $0 + abs($1.signedAmount) }
 
-        let currencyCodes = Set(rows.map(\.currencyCode))
+        // Pending rows do not contribute to posted totals, so they must not make a valid
+        // single-currency posted group look mixed. A pending-only day intentionally has no
+        // currency summary, avoiding meaningless +0 / -0 values.
+        let currencyCodes = Set(postedRows.map(\.currencyCode))
         currencyCode = currencyCodes.count == 1 ? currencyCodes.first : nil
     }
 }
@@ -297,6 +301,26 @@ final class TransactionListViewModel {
         try transactionService.fetch(byId: transactionId)
     }
 
+    func confirmScheduledOccurrence(transactionId: UUID) async throws {
+        guard let transaction = try transactionService.fetch(byId: transactionId) else {
+            await loadTransactions()
+            return
+        }
+        try transactionService.confirmScheduledOccurrence(transaction)
+        if let templateID = transaction.recurringTemplateId {
+            await TransactionReminderScheduler(context: modelContext).removeReminder(
+                forTemplateId: templateID,
+                dueDate: transaction.date
+            )
+        }
+        TransactionDataChangeStore.shared.markChanged()
+        await loadTransactions()
+    }
+
+    func reportOperationError(_ error: Error) {
+        errorMessage = error.localizedDescription
+    }
+
     func isSourceRecurringTransaction(transactionId: UUID) -> Bool {
         guard
             let transaction = try? transactionService.fetch(byId: transactionId),
@@ -458,7 +482,10 @@ final class TransactionListViewModel {
         if action == .stopPlan,
            let templateId {
             let relatedGeneratedIds = transactions
-                .filter { $0.recurringTemplateId == templateId }
+                .filter {
+                    $0.recurringTemplateId == templateId &&
+                    $0.isPendingScheduledOccurrence
+                }
                 .map(\.id)
             idsToRemove.formUnion(relatedGeneratedIds)
         }
